@@ -16,8 +16,8 @@ except ImportError as e:
     print(f"Error importing from MoBSE: {e}")
     sys.exit(1)
 
-from data_loader import fetch_schaefer_atlas, create_masker, get_fc_matrix
-from bootstrap import (
+from src.data.data_loader import fetch_schaefer_atlas, create_masker, get_fc_matrix
+from src.core.bootstrap import (
     fisher_z, fisher_z_inv, 
     correct_attenuation, 
     estimate_optimal_block_length,

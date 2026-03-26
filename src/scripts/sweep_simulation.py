@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
-from simulate import generate_synthetic_timeseries
-from data_loader import get_fc_matrix
-from bootstrap import (
+from src.core.simulate import generate_synthetic_timeseries
+from src.data.data_loader import get_fc_matrix
+from src.core.bootstrap import (
     fisher_z, fisher_z_inv, 
     correct_attenuation, 
     estimate_optimal_block_length,
