@@ -9,20 +9,24 @@
 ---
 
 ## 📖 Documentation Index
-The documentation has been structurally indexed to guide users from underlying mathematical theories to final academic reporting. All files are located in the `docs/` repository.
+The documentation has been structurally re-indexed by category to guide users through the BS-NET developmental pipeline. For a standalone structural directory, see `[docs/INDEX.md]`.
 
-### 🧠 Core Concepts & Pipeline Architecture
-* `[01_theory_concept.md]`: Theoretical derivations of Spearman-Brown extrapolation and block-bootstrapping mechanics.
-* `[02_arch_pipeline.md]`: Infrastructural layout connecting spatial preprocessing, nuisance regression, and data-loaders.
+### 🧠 1. Theory & Pipeline Architecture
+* `[1.1_theory_concept.md]`: Theoretical derivations of Spearman-Brown extrapolation and block-bootstrapping mechanics.
+* `[1.2_arch_pipeline.md]`: Infrastructural layout connecting spatial preprocessing, nuisance regression, and data-loaders.
 
-### 🧪 Experiment Logs & Results
-* `[03_log_experiment_20260326.md]`: Raw laboratory logbook tracking daily empirical tuning (e.g., OpenNeuro ds000030).
-* `[04_res_optimal_duration.md]`: Comprehensive academic findings mathematically proving 120s as the optimal scan duration (Marginal Gain & Uncertainty Decay).
-* `[05_res_figure1_legends.md]`: High-fidelity academic figure legends for statistical threshold mapping (Figure 1).
+### 📓 2. Operation & Experiment Logs
+* `[2.1_log_experiment_20260326.md]`: Baseline laboratory logbook tracking daily empirical tuning and theoretical simulations.
+* `[2.2_log_experiment_20260327.md]`: Final laboratory logbook detailing N=100 empirical scale-up, bias correction, and pass-rate validation.
 
-### 🎓 Final Reports
-* `[06_pub_report_academic.md]`: Formal, peer-review-ready technical manuscript of the pipeline.
-* `[07_pub_report_general.md]`: Accessible, executive-level summary of the clinical implications.
+### 📊 3. Quantitative Validation & Figure Legends
+* `[3.1_res_optimal_duration.md]`: Comprehensive academic findings scaling the 120s threshold and large-cohort empirical proofs.
+* `[3.2_res_figure1_legends.md]`: High-fidelity academic figure legends for statistical extrapolation thresholds (Figure 1).
+* `[3.3_res_figure2_legends.md]`: Empirical validation legends and clinical reliability mapping on N=100 real-world cohort (Figure 2).
+
+### 🎓 4. Formal Publication Reports
+* `[4.1_pub_report_academic.md]`: Formal, peer-review-ready technical academic manuscript of the BS-NET module.
+* `[4.2_pub_report_general.md]`: Accessible, executive-level summary of clinical implications and generalized verification.
 
 ---
 
