@@ -1,0 +1,178 @@
+## BS-NET
+
+## BTS(부트스트래핑) FC(rsfMRI 기반 기능적 연결성) 로직 및 액션 플랜
+
+- [ ]  최종 목표: "2분" 이내 짧은 데이터만으로도 부트스트래핑을 통해 전체(장시간) 데이터에서의 네트워크 상관계수를 올바르게 예측 (모델링)
+
+---
+
+### 1) 목표 정의(타깃 파라미터)
+
+- 이상적(oracle) 가중치 *w*∗가 있을 때, 장시간 T에서의 “예측 네트워크”와 “실제 네트워크”의 진짜 상관계수를
+    
+    $$
+    \rho^*(T) = \mathrm{Corr}\Big(\widehat{N}(T;w^*),N(T)\Big)
+    $$
+    
+    로 정의.
+    
+    - N(T): 장시간 T에서 추정한 “참” 네트워크(예: RSN 맵 벡터 또는 FC 행열을 벡터화).
+    - 같은 T에서 *w*∗로 생성된 예측 네트워크.
+        
+        $$
+        \widehat{N}(T;w^*)
+        $$
+        
+        실제론 T가 길 때의 데이터가 없거나 제한적이므로, 짧은 길이 t≤2분*t*≤2분의 데이터로 이를 추정하고자 함.
+        
+
+---
+
+### 2) 관측 모형과 신뢰도(노이즈 분해)
+
+- 짧은 길이 *t*에서 얻는 네트워크는 신호+노이즈로 두고, 길이가 길어질수록((*T*>*t*)) *εT*,*ηT* 의 분산이 감소한다고 가정(평균 0, 분산 ∝1/*T*).
+    
+    $$
+    N(t)=N^\text{true}+\varepsilon_t,\qquad\widehat{N}(t;w^*)=\widehat{N}^{\text{true}}(w^*)+\eta_t
+    $$
+    
+- 신뢰도(재현성)를 길이 *L*에서 *R*(*L*)라 하면(예: split-half나 test–retest로 추정),
+    
+    $$
+    R(L) \approx \frac{\sigma^2_{\text{signal}}}{\sigma^2_{\text{signal}}+\sigma^2_{\text{noise}}(L)}
+    $$
+    
+- 길이 확장에 따른 신뢰도는 Spearman–Brown 근사로 예측:
+    
+    $$
+    R(T) \approx \frac{k\,R(t)}{1+(k-1)\,R(t)},\qquad k=\frac{T}{t}
+    $$
+    
+
+---
+
+### 3) 짧은 길이에서의 관측 상관과 감쇠 보정
+
+- 짧은 길이 *t*에서 얻은 관측 상관계수(예: Fisher z 변환 전 원상관)는 두 벡터가 모두 노이즈를 포함하므로 감쇠(attenuation) 됨.
+    
+    $$
+    r_{\text{obs}}(t) = \mathrm{Corr}\big(\widehat{N}(t;w^*),N(t)\big)
+    $$
+    
+- 고전적 보정은 여기서 *RN*(*t*)와 *RN*(*t*)는 각각 예측 네트워크와 실제 네트워크의 길이 *t*에서의 신뢰도.
+    
+    $$
+    r_{\text{true}}(t) \approx \frac{r_{\text{obs}}(t)}{\sqrt{R_{\widehat{N}}(t)\,R_{N}(t)}}
+    
+    $$
+    
+- 장시간 *T*로 확장 시, 타깃은
+    
+    $$
+    \rho^*(T) \approx r_{\text{true}}(t) \sqrt{R_{\widehat{N}}(T)\,R_{N}(T)}
+    $$
+    
+    즉,
+    
+    $$
+    \boxed{\;\;\widehat{\rho}^*(T) = \frac{r_{\text{obs}}(t)}{\sqrt{R_{\widehat{N}}(t)\,R_{N}(t)}} \times \sqrt{R_{\widehat{N}}(T)\,R_{N}(T)}\;\;}
+    $$
+    
+    이고, *R*∙(*T*)는 위 SB 공식을 써서 *R*∙(*t*) 로부터 예측합니다.
+    
+- **해석**: **짧은 길이에서 관측한 상관을, 짧은 길이의 신뢰도로 감쇠 보정한 뒤, 장시간의 신뢰도만큼 다시 “되살려” 장시간의 상관으로 변환.**
+
+---
+
+### 4) 부트스트랩 절차(**2분** 이내 데이터만 사용)
+
+1. 블록/원형 부트스트랩으로 길이 t*t* 세그먼트(≤2분)를 b=1,…,B*b*=1,…,*B*회 재표본(시간 의존성 보존).
+2. 각 부트스트랩에서
+- 네트워크 추정: *N*(*b*)(*t*),*N*(*b*)(*t*;*w*∗)
+    
+    $$
+    N^{(b)}(t), \widehat{N}^{(b)}(t;w^*)
+    $$
+    
+- 관측 상관: *r*obs(*b*)(*t*) (공간 상관/행렬 상관, Fisher z 권장)
+    
+    $$
+    r_{\text{obs}}^{(b)}(t)
+    $$
+    
+- 신뢰도 추정:
+- RN(b)(t)*RN*(*b*)(*t*): split-half(같은 *t* 내 절반-절반) 또는 작은 중첩 윈도우로 재현성 추정
+
+$$
+R_{N}^{(b)}(t)
+$$
+
+- RN^(b)(t)*RN*(*b*)(*t*): 예측물의 재현성(같은 입력에 다시 예측·노이즈만 다른 경우, 또는 모델 출력의 내부 불확실성으로 근사)
+- 장시간 신뢰도 예측(목표 *T*):
+    
+    $$
+    R_{\bullet}^{(b)}(T)=\frac{(T/t)\,R_{\bullet}^{(b)}(t)}{1+((T/t)-1)\,R_{\bullet}^{(b)}(t)}
+    $$
+    
+- 장시간 상관 추정치:
+
+$$
+|\widehat{\rho}^{*(b)}(T) = \frac{r_{\text{obs}}^{(b)}(t)}{\sqrt{R_{\widehat{N}}^{(b)}(t)\,R_{N}^{(b)}(t)}}\times \sqrt{R_{\widehat{N}}^{(b)}(T)\,R_{N}^{(b)}(T)}
+$$
+
+### 요약 통계
+
+- ρ^∗(T)=median or meanb(ρ^∗(b)(T))*ρ*∗(*T*)=median or mean*b*(*ρ*∗(*b*)(*T*)) 및 BCa 부트스트랩 신뢰구간.
+    
+    $$
+    \widehat{\rho}^*(T)=\text{median or mean}_b\big(\widehat{\rho}^{*(b)}(T)\big) 
+    $$
+    
+- FC 행렬처럼 상관 기반이면 각 단계에서 Fisher z 변환 후 평균·CI 계산, 마지막에 역변환이 안정적:
+    
+    $$
+    z=\tfrac12\ln\frac{1+r}{1-r},\quad \bar z=\frac{1}{B}\sum_b z_b,\quad \hat r=\tanh(\bar z)
+    $$
+    
+
+---
+
+### 5) 구현 체크리스트 (실전형)
+
+- 네트워크 표준화: 벡터화 후 평균=0, 분산=1로 맞추고 공간 마스크 동일 적용.
+- 지표 선택: 공간 상관(연속 맵) / 행렬 상관(FC). 이진 마스크면 Dice 보조 보고.
+- 부트스트랩 방식: 시간의 자기상관을 고려해 블록 길이를 10–20TR 수준으로(스캔 파라미터에 맞춤).
+- split-half 설계: 동일 *t* 윈도우 내 짝/홀 TR 또는 interleaved split으로 편향 최소화.
+- 잡음천장 확인: 가능하면 재스캔이나 더 긴 세그먼트가 일부라도 있으면, 위 추정치가 물리적으로 합리적인 범위(예: 천장 이하)인지 점검.
+- 바이어스 보정: *w*∗가 진짜 oracle이 아니라 추정치 *w*^이면, nested CV로 *r*obs(*t*) 추정(정보 누수 방지).
+
+---
+
+### 6) 간단 의사코드(개요)
+
+```bash
+inputs: short_ts (≤2분), model w*, target length T, B bootstrap
+for b in 1..B:
+  ts_b = block_bootstrap(short_ts)
+  N_b(t)       = estimate_network(ts_b)
+  Nhat_b(t)    = predict_network(ts_b, w*)
+  r_obs_b      = corr(Nhat_b(t), N_b(t))# Fisher z 추천# reliability at t
+  R_N_b(t)     = split_half_reliability(ts_b, estimate_network)
+  R_Nhat_b(t)  = split_half_reliability_on_prediction(ts_b, predict_network, w*)
+
+# extrapolate reliability to T (Spearman–Brown)
+  R_N_b(T)     = SB(R_N_b(t), k=T/t)
+  R_Nhat_b(T)  = SB(R_Nhat_b(t), k=T/t)
+
+  rho_b(T)     = r_obs_b / sqrt(R_Nhat_b(t)*R_N_b(t)) * sqrt(R_Nhat_b(T)*R_N_b(T))
+aggregate rho_b(T) with BCa CI  →  ρ̂*(T), CI
+
+```
+
+---
+
+### 핵심 요약 정리
+
+- 짧은(≤2분) rsfMRI에서
+- 부트스트랩·신뢰도(스피어만–브라운)·감쇠보정을 결합해,
+- “이상적 가중치” 모델의 장시간 상관계수를 추정한다.
