@@ -1,0 +1,16 @@
+# Data and Archives
+data/
+backup/
+archieve/
+
+# Virtual Environment
+.venv/
+venv/
+__pycache__/
+
+# Mac
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
