@@ -1,5 +1,6 @@
+
 import numpy as np
-import warnings
+
 
 def fisher_z(r):
     r = np.clip(r, -0.9999, 0.9999)
@@ -9,28 +10,28 @@ def fisher_z_inv(z):
     return np.tanh(z)
 
 def spearman_brown(r_t, k):
-    r_t = np.clip(r_t, 0.001, 0.999) 
+    r_t = np.clip(r_t, 0.001, 0.999)
     return (k * r_t) / (1 + (k - 1) * r_t)
 
 def correct_attenuation(r_obs_t, r_hat_t, r_real_t, k, empirical_prior=None):
     min_rel = 0.05
-    
+
     # Bayesian Prior Update (Stabilizing split-half calculation bias)
     if empirical_prior is not None:
         prior_mean, prior_var = empirical_prior
-        # Assuming observation is noisy, giving it high observation_var 
-        observation_var = 0.15 
+        # Assuming observation is noisy, giving it high observation_var
+        observation_var = 0.15
         weight = prior_var / (prior_var + observation_var)
         r_real_t = weight * r_real_t + (1 - weight) * prior_mean
-        
+
     r_hat_t = max(r_hat_t, min_rel)
     r_real_t = max(r_real_t, min_rel)
-    
+
     r_true_t = r_obs_t / np.sqrt(r_hat_t * r_real_t)
-    
+
     r_hat_T = spearman_brown(r_hat_t, k)
     r_real_T = spearman_brown(r_real_t, k)
-    
+
     rho_hat_T = r_true_t * np.sqrt(r_hat_T * r_real_T)
     return np.clip(rho_hat_T, -1.0, 1.0)
 
@@ -42,7 +43,7 @@ def estimate_optimal_block_length(time_series):
     n_samples, n_rois = time_series.shape
     if n_samples < 5:
         return n_samples
-    
+
     ar1_sum = 0
     valid_rois = 0
     for i in range(n_rois):
@@ -53,14 +54,14 @@ def estimate_optimal_block_length(time_series):
             if not np.isnan(c):
                 ar1_sum += c
                 valid_rois += 1
-                
+
     ar1 = ar1_sum / valid_rois if valid_rois > 0 else 0
     ar1 = max(0.01, min(0.99, ar1))
-    
+
     # Heuristic block length based on AR(1) decay
     b = int(np.ceil(-2 / np.log(ar1))) * 2
     b = max(5, min(b, max(5, n_samples // 4)))
-    
+
     return int(b)
 
 def block_bootstrap_indices(n_samples, block_size, n_blocks):

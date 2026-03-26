@@ -4,10 +4,16 @@
 backup/
 archieve/
 
+# Build artifacts
+build/
+*.egg-info/
+
 # Virtual Environment
 .venv/
+.venv_new/
 venv/
 __pycache__/
+.venv312/
 
 # Mac
 .DS_Store

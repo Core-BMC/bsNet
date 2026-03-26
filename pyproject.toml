@@ -16,12 +16,39 @@ dependencies = [
     "matplotlib",
     "seaborn",
     "nibabel",
-    "scikit-learn"
+    "scikit-learn",
+    "networkx"
 ]
 
 [project.optional-dependencies]
-# 추가 설치 옵션 예시 (e.g., 모션 보정(mobse) 연구, 패키징 테스트 등)
 dev = [
     "pytest",
     "black",
+    "ruff",
+    "isort",
 ]
+
+# ── Formatting & Linting (PEP 8) ──────────────────────
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+
+[tool.isort]
+profile = "black"
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+ignore = ["E501"]  # line length는 black이 관리
+
+[tool.ruff.lint.per-file-ignores]
+# N806: neuroimaging 도메인 관례 변수 (fc_true_T, G, C, L 등)
+"src/core/bootstrap.py" = ["N806"]
+"src/core/pipeline.py" = ["N806"]
+"src/core/graph_metrics.py" = ["N806"]
+"src/scripts/*.py" = ["N806"]
+"src/visualization/*.py" = ["N806"]

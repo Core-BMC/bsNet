@@ -1,7 +1,8 @@
 import nilearn.datasets
-from nilearn.maskers import NiftiLabelsMasker
 import numpy as np
+from nilearn.maskers import NiftiLabelsMasker
 from sklearn.covariance import LedoitWolf
+
 
 def fetch_schaefer_atlas(n_rois=400, resolution=2, yeo_networks=7):
     """
@@ -9,8 +10,8 @@ def fetch_schaefer_atlas(n_rois=400, resolution=2, yeo_networks=7):
     """
     print(f"Fetching Schaefer 2018 atlas (ROIs: {n_rois}, Networks: {yeo_networks}, Resolution: {resolution}mm)...")
     atlas = nilearn.datasets.fetch_atlas_schaefer_2018(
-        n_rois=n_rois, 
-        yeo_networks=yeo_networks, 
+        n_rois=n_rois,
+        yeo_networks=yeo_networks,
         resolution_mm=resolution
     )
     return atlas
@@ -42,7 +43,7 @@ def get_fc_matrix(time_series, vectorized=True, use_shrinkage=False):
         if vectorized:
             return res[np.triu_indices_from(res, k=1)]
         return res
-        
+
     if use_shrinkage:
         lw = LedoitWolf()
         cov_matrix = lw.fit(time_series).covariance_
@@ -52,11 +53,11 @@ def get_fc_matrix(time_series, vectorized=True, use_shrinkage=False):
         corr_matrix = np.clip(corr_matrix, -1.0, 1.0)
     else:
         corr_matrix = np.corrcoef(time_series.T)
-        
+
     np.fill_diagonal(corr_matrix, 0)
-    
+
     if vectorized:
         indices = np.triu_indices_from(corr_matrix, k=1)
         return corr_matrix[indices]
-    
+
     return corr_matrix

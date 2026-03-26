@@ -23,6 +23,7 @@ The documentation has been structurally re-indexed by category to guide users th
 * `[3.1_res_optimal_duration.md]`: Comprehensive academic findings scaling the 120s threshold and large-cohort empirical proofs.
 * `[3.2_res_figure1_legends.md]`: High-fidelity academic figure legends for statistical extrapolation thresholds (Figure 1).
 * `[3.3_res_figure2_legends.md]`: Empirical validation legends and clinical reliability mapping on N=100 real-world cohort (Figure 2).
+* `[docs/figure_legends.md]`: Official publish-ready captions mapping the N=400 topology and dense community geometries (Figures 3 & 4).
 
 ### 🎓 4. Formal Publication Reports
 * `[4.1_pub_report_academic.md]`: Formal, peer-review-ready technical academic manuscript of the BS-NET module.
@@ -49,6 +50,14 @@ python3 src/plot_figure1_combined.py
 Execute large-scale empirical correlation predictions against native open-access fMRI repositories.
 ```bash
 python3 src/run_real_data_scale.py
+```
+
+### 4. High-Resolution Topological Validation (Phase 5-7)
+Generate the Continuous Bi-polar Jaccard Overlaps and Global ARI modulations under the Schaefer 400 space.
+```bash
+python3 src/visualization/plot_figure3_topology.py
+python3 src/visualization/plot_figure4_subnetworks.py
+python3 src/visualization/plot_figure4_broken_axis.py
 ```
 
 ## 📜 Version History & License
