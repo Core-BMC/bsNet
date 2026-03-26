@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bsNet"
+version = "1.0.0"
+description = "BS-NET: Fast-Extrapolation Functional Connectivity Pipeline for Short-Scan fMRI"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "scipy",
+    "nilearn",
+    "pandas",
+    "matplotlib",
+    "seaborn",
+    "nibabel",
+    "scikit-learn"
+]
+
+[project.optional-dependencies]
+# 추가 설치 옵션 예시 (e.g., 모션 보정(mobse) 연구, 패키징 테스트 등)
+dev = [
+    "pytest",
+    "black",
+]

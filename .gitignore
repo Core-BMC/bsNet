@@ -1,5 +1,6 @@
 # Data and Archives
-data/
+/data/
+!src/data/
 backup/
 archieve/
 
