@@ -1,0 +1,1401 @@
+Subject,Model,Network,Jaccard Overlap
+0,Raw FC (2m),Visual,0.9827586206896551
+0,Raw FC (2m),Somatomotor,0.504424778761062
+0,Raw FC (2m),Dorsal Attn,1.0
+0,Raw FC (2m),Ventral Attn,1.0
+0,Raw FC (2m),Limbic,1.0
+0,Raw FC (2m),Control,0.49122807017543857
+0,Raw FC (2m),Default Mode,1.0
+0,BS-NET (2m),Visual,0.9827586206896551
+0,BS-NET (2m),Somatomotor,0.504424778761062
+0,BS-NET (2m),Dorsal Attn,1.0
+0,BS-NET (2m),Ventral Attn,1.0
+0,BS-NET (2m),Limbic,1.0
+0,BS-NET (2m),Control,0.49122807017543857
+0,BS-NET (2m),Default Mode,1.0
+1,Raw FC (2m),Visual,0.5
+1,Raw FC (2m),Somatomotor,1.0
+1,Raw FC (2m),Dorsal Attn,1.0
+1,Raw FC (2m),Ventral Attn,1.0
+1,Raw FC (2m),Limbic,0.5
+1,Raw FC (2m),Control,1.0
+1,Raw FC (2m),Default Mode,1.0
+1,BS-NET (2m),Visual,0.5
+1,BS-NET (2m),Somatomotor,1.0
+1,BS-NET (2m),Dorsal Attn,1.0
+1,BS-NET (2m),Ventral Attn,1.0
+1,BS-NET (2m),Limbic,0.5
+1,BS-NET (2m),Control,1.0
+1,BS-NET (2m),Default Mode,1.0
+2,Raw FC (2m),Visual,1.0
+2,Raw FC (2m),Somatomotor,1.0
+2,Raw FC (2m),Dorsal Attn,0.9827586206896551
+2,Raw FC (2m),Ventral Attn,0.9827586206896551
+2,Raw FC (2m),Limbic,0.9824561403508771
+2,Raw FC (2m),Control,0.9649122807017544
+2,Raw FC (2m),Default Mode,0.9830508474576272
+2,BS-NET (2m),Visual,1.0
+2,BS-NET (2m),Somatomotor,1.0
+2,BS-NET (2m),Dorsal Attn,0.9827586206896551
+2,BS-NET (2m),Ventral Attn,0.9827586206896551
+2,BS-NET (2m),Limbic,0.9824561403508771
+2,BS-NET (2m),Control,0.9649122807017544
+2,BS-NET (2m),Default Mode,0.9830508474576272
+3,Raw FC (2m),Visual,1.0
+3,Raw FC (2m),Somatomotor,1.0
+3,Raw FC (2m),Dorsal Attn,1.0
+3,Raw FC (2m),Ventral Attn,1.0
+3,Raw FC (2m),Limbic,1.0
+3,Raw FC (2m),Control,1.0
+3,Raw FC (2m),Default Mode,1.0
+3,BS-NET (2m),Visual,1.0
+3,BS-NET (2m),Somatomotor,1.0
+3,BS-NET (2m),Dorsal Attn,1.0
+3,BS-NET (2m),Ventral Attn,1.0
+3,BS-NET (2m),Limbic,1.0
+3,BS-NET (2m),Control,1.0
+3,BS-NET (2m),Default Mode,1.0
+4,Raw FC (2m),Visual,1.0
+4,Raw FC (2m),Somatomotor,1.0
+4,Raw FC (2m),Dorsal Attn,1.0
+4,Raw FC (2m),Ventral Attn,0.95
+4,Raw FC (2m),Limbic,0.9824561403508771
+4,Raw FC (2m),Control,1.0
+4,Raw FC (2m),Default Mode,0.9655172413793104
+4,BS-NET (2m),Visual,1.0
+4,BS-NET (2m),Somatomotor,1.0
+4,BS-NET (2m),Dorsal Attn,1.0
+4,BS-NET (2m),Ventral Attn,0.95
+4,BS-NET (2m),Limbic,0.9824561403508771
+4,BS-NET (2m),Control,1.0
+4,BS-NET (2m),Default Mode,0.9655172413793104
+5,Raw FC (2m),Visual,1.0
+5,Raw FC (2m),Somatomotor,1.0
+5,Raw FC (2m),Dorsal Attn,1.0
+5,Raw FC (2m),Ventral Attn,0.9661016949152542
+5,Raw FC (2m),Limbic,1.0
+5,Raw FC (2m),Control,0.9649122807017544
+5,Raw FC (2m),Default Mode,1.0
+5,BS-NET (2m),Visual,1.0
+5,BS-NET (2m),Somatomotor,1.0
+5,BS-NET (2m),Dorsal Attn,1.0
+5,BS-NET (2m),Ventral Attn,0.9661016949152542
+5,BS-NET (2m),Limbic,1.0
+5,BS-NET (2m),Control,0.9649122807017544
+5,BS-NET (2m),Default Mode,1.0
+6,Raw FC (2m),Visual,1.0
+6,Raw FC (2m),Somatomotor,1.0
+6,Raw FC (2m),Dorsal Attn,1.0
+6,Raw FC (2m),Ventral Attn,1.0
+6,Raw FC (2m),Limbic,1.0
+6,Raw FC (2m),Control,1.0
+6,Raw FC (2m),Default Mode,1.0
+6,BS-NET (2m),Visual,1.0
+6,BS-NET (2m),Somatomotor,1.0
+6,BS-NET (2m),Dorsal Attn,1.0
+6,BS-NET (2m),Ventral Attn,1.0
+6,BS-NET (2m),Limbic,1.0
+6,BS-NET (2m),Control,1.0
+6,BS-NET (2m),Default Mode,1.0
+7,Raw FC (2m),Visual,1.0
+7,Raw FC (2m),Somatomotor,1.0
+7,Raw FC (2m),Dorsal Attn,1.0
+7,Raw FC (2m),Ventral Attn,0.9824561403508771
+7,Raw FC (2m),Limbic,0.5
+7,Raw FC (2m),Control,0.48695652173913045
+7,Raw FC (2m),Default Mode,0.9830508474576272
+7,BS-NET (2m),Visual,1.0
+7,BS-NET (2m),Somatomotor,1.0
+7,BS-NET (2m),Dorsal Attn,1.0
+7,BS-NET (2m),Ventral Attn,0.9649122807017544
+7,BS-NET (2m),Limbic,0.9827586206896551
+7,BS-NET (2m),Control,0.9655172413793104
+7,BS-NET (2m),Default Mode,0.9830508474576272
+8,Raw FC (2m),Visual,0.9824561403508771
+8,Raw FC (2m),Somatomotor,1.0
+8,Raw FC (2m),Dorsal Attn,1.0
+8,Raw FC (2m),Ventral Attn,1.0
+8,Raw FC (2m),Limbic,1.0
+8,Raw FC (2m),Control,1.0
+8,Raw FC (2m),Default Mode,0.9830508474576272
+8,BS-NET (2m),Visual,0.9824561403508771
+8,BS-NET (2m),Somatomotor,1.0
+8,BS-NET (2m),Dorsal Attn,1.0
+8,BS-NET (2m),Ventral Attn,1.0
+8,BS-NET (2m),Limbic,1.0
+8,BS-NET (2m),Control,1.0
+8,BS-NET (2m),Default Mode,0.9830508474576272
+9,Raw FC (2m),Visual,0.9827586206896551
+9,Raw FC (2m),Somatomotor,1.0
+9,Raw FC (2m),Dorsal Attn,1.0
+9,Raw FC (2m),Ventral Attn,1.0
+9,Raw FC (2m),Limbic,0.9824561403508771
+9,Raw FC (2m),Control,1.0
+9,Raw FC (2m),Default Mode,1.0
+9,BS-NET (2m),Visual,0.9827586206896551
+9,BS-NET (2m),Somatomotor,1.0
+9,BS-NET (2m),Dorsal Attn,1.0
+9,BS-NET (2m),Ventral Attn,1.0
+9,BS-NET (2m),Limbic,0.9824561403508771
+9,BS-NET (2m),Control,1.0
+9,BS-NET (2m),Default Mode,1.0
+10,Raw FC (2m),Visual,1.0
+10,Raw FC (2m),Somatomotor,1.0
+10,Raw FC (2m),Dorsal Attn,1.0
+10,Raw FC (2m),Ventral Attn,1.0
+10,Raw FC (2m),Limbic,1.0
+10,Raw FC (2m),Control,1.0
+10,Raw FC (2m),Default Mode,1.0
+10,BS-NET (2m),Visual,1.0
+10,BS-NET (2m),Somatomotor,1.0
+10,BS-NET (2m),Dorsal Attn,1.0
+10,BS-NET (2m),Ventral Attn,1.0
+10,BS-NET (2m),Limbic,1.0
+10,BS-NET (2m),Control,1.0
+10,BS-NET (2m),Default Mode,1.0
+11,Raw FC (2m),Visual,1.0
+11,Raw FC (2m),Somatomotor,1.0
+11,Raw FC (2m),Dorsal Attn,1.0
+11,Raw FC (2m),Ventral Attn,1.0
+11,Raw FC (2m),Limbic,1.0
+11,Raw FC (2m),Control,1.0
+11,Raw FC (2m),Default Mode,1.0
+11,BS-NET (2m),Visual,1.0
+11,BS-NET (2m),Somatomotor,1.0
+11,BS-NET (2m),Dorsal Attn,1.0
+11,BS-NET (2m),Ventral Attn,1.0
+11,BS-NET (2m),Limbic,1.0
+11,BS-NET (2m),Control,1.0
+11,BS-NET (2m),Default Mode,1.0
+12,Raw FC (2m),Visual,0.9655172413793104
+12,Raw FC (2m),Somatomotor,0.5
+12,Raw FC (2m),Dorsal Attn,0.9473684210526315
+12,Raw FC (2m),Ventral Attn,0.5
+12,Raw FC (2m),Limbic,0.9827586206896551
+12,Raw FC (2m),Control,0.9827586206896551
+12,Raw FC (2m),Default Mode,0.9830508474576272
+12,BS-NET (2m),Visual,0.9655172413793104
+12,BS-NET (2m),Somatomotor,0.5
+12,BS-NET (2m),Dorsal Attn,0.9473684210526315
+12,BS-NET (2m),Ventral Attn,0.5
+12,BS-NET (2m),Limbic,0.9827586206896551
+12,BS-NET (2m),Control,0.9827586206896551
+12,BS-NET (2m),Default Mode,0.9830508474576272
+13,Raw FC (2m),Visual,0.5135135135135135
+13,Raw FC (2m),Somatomotor,1.0
+13,Raw FC (2m),Dorsal Attn,0.9661016949152542
+13,Raw FC (2m),Ventral Attn,0.47368421052631576
+13,Raw FC (2m),Limbic,0.9661016949152542
+13,Raw FC (2m),Control,0.9824561403508771
+13,Raw FC (2m),Default Mode,1.0
+13,BS-NET (2m),Visual,0.5135135135135135
+13,BS-NET (2m),Somatomotor,1.0
+13,BS-NET (2m),Dorsal Attn,0.49137931034482757
+13,BS-NET (2m),Ventral Attn,0.47368421052631576
+13,BS-NET (2m),Limbic,0.9661016949152542
+13,BS-NET (2m),Control,1.0
+13,BS-NET (2m),Default Mode,0.5
+14,Raw FC (2m),Visual,1.0
+14,Raw FC (2m),Somatomotor,1.0
+14,Raw FC (2m),Dorsal Attn,0.5
+14,Raw FC (2m),Ventral Attn,1.0
+14,Raw FC (2m),Limbic,1.0
+14,Raw FC (2m),Control,0.5
+14,Raw FC (2m),Default Mode,1.0
+14,BS-NET (2m),Visual,1.0
+14,BS-NET (2m),Somatomotor,1.0
+14,BS-NET (2m),Dorsal Attn,0.9824561403508771
+14,BS-NET (2m),Ventral Attn,1.0
+14,BS-NET (2m),Limbic,1.0
+14,BS-NET (2m),Control,0.9827586206896551
+14,BS-NET (2m),Default Mode,1.0
+15,Raw FC (2m),Visual,0.9827586206896551
+15,Raw FC (2m),Somatomotor,0.9824561403508771
+15,Raw FC (2m),Dorsal Attn,0.9827586206896551
+15,Raw FC (2m),Ventral Attn,1.0
+15,Raw FC (2m),Limbic,0.9824561403508771
+15,Raw FC (2m),Control,1.0
+15,Raw FC (2m),Default Mode,1.0
+15,BS-NET (2m),Visual,0.9827586206896551
+15,BS-NET (2m),Somatomotor,0.9824561403508771
+15,BS-NET (2m),Dorsal Attn,0.9827586206896551
+15,BS-NET (2m),Ventral Attn,1.0
+15,BS-NET (2m),Limbic,0.9824561403508771
+15,BS-NET (2m),Control,1.0
+15,BS-NET (2m),Default Mode,1.0
+16,Raw FC (2m),Visual,1.0
+16,Raw FC (2m),Somatomotor,0.9827586206896551
+16,Raw FC (2m),Dorsal Attn,1.0
+16,Raw FC (2m),Ventral Attn,1.0
+16,Raw FC (2m),Limbic,0.9824561403508771
+16,Raw FC (2m),Control,1.0
+16,Raw FC (2m),Default Mode,1.0
+16,BS-NET (2m),Visual,1.0
+16,BS-NET (2m),Somatomotor,0.9827586206896551
+16,BS-NET (2m),Dorsal Attn,1.0
+16,BS-NET (2m),Ventral Attn,1.0
+16,BS-NET (2m),Limbic,0.9824561403508771
+16,BS-NET (2m),Control,1.0
+16,BS-NET (2m),Default Mode,1.0
+17,Raw FC (2m),Visual,0.9824561403508771
+17,Raw FC (2m),Somatomotor,1.0
+17,Raw FC (2m),Dorsal Attn,1.0
+17,Raw FC (2m),Ventral Attn,1.0
+17,Raw FC (2m),Limbic,1.0
+17,Raw FC (2m),Control,1.0
+17,Raw FC (2m),Default Mode,0.9830508474576272
+17,BS-NET (2m),Visual,0.9824561403508771
+17,BS-NET (2m),Somatomotor,1.0
+17,BS-NET (2m),Dorsal Attn,1.0
+17,BS-NET (2m),Ventral Attn,1.0
+17,BS-NET (2m),Limbic,1.0
+17,BS-NET (2m),Control,1.0
+17,BS-NET (2m),Default Mode,0.9830508474576272
+18,Raw FC (2m),Visual,0.9827586206896551
+18,Raw FC (2m),Somatomotor,1.0
+18,Raw FC (2m),Dorsal Attn,1.0
+18,Raw FC (2m),Ventral Attn,1.0
+18,Raw FC (2m),Limbic,0.9824561403508771
+18,Raw FC (2m),Control,1.0
+18,Raw FC (2m),Default Mode,1.0
+18,BS-NET (2m),Visual,0.9827586206896551
+18,BS-NET (2m),Somatomotor,1.0
+18,BS-NET (2m),Dorsal Attn,1.0
+18,BS-NET (2m),Ventral Attn,1.0
+18,BS-NET (2m),Limbic,0.9824561403508771
+18,BS-NET (2m),Control,1.0
+18,BS-NET (2m),Default Mode,1.0
+19,Raw FC (2m),Visual,1.0
+19,Raw FC (2m),Somatomotor,0.9827586206896551
+19,Raw FC (2m),Dorsal Attn,1.0
+19,Raw FC (2m),Ventral Attn,0.9824561403508771
+19,Raw FC (2m),Limbic,0.9827586206896551
+19,Raw FC (2m),Control,0.9824561403508771
+19,Raw FC (2m),Default Mode,1.0
+19,BS-NET (2m),Visual,1.0
+19,BS-NET (2m),Somatomotor,0.9827586206896551
+19,BS-NET (2m),Dorsal Attn,1.0
+19,BS-NET (2m),Ventral Attn,0.9824561403508771
+19,BS-NET (2m),Limbic,0.9827586206896551
+19,BS-NET (2m),Control,0.9824561403508771
+19,BS-NET (2m),Default Mode,1.0
+20,Raw FC (2m),Visual,1.0
+20,Raw FC (2m),Somatomotor,0.4827586206896552
+20,Raw FC (2m),Dorsal Attn,1.0
+20,Raw FC (2m),Ventral Attn,0.9827586206896551
+20,Raw FC (2m),Limbic,0.9824561403508771
+20,Raw FC (2m),Control,1.0
+20,Raw FC (2m),Default Mode,0.5043478260869565
+20,BS-NET (2m),Visual,1.0
+20,BS-NET (2m),Somatomotor,1.0
+20,BS-NET (2m),Dorsal Attn,1.0
+20,BS-NET (2m),Ventral Attn,1.0
+20,BS-NET (2m),Limbic,0.9824561403508771
+20,BS-NET (2m),Control,1.0
+20,BS-NET (2m),Default Mode,0.9830508474576272
+21,Raw FC (2m),Visual,1.0
+21,Raw FC (2m),Somatomotor,1.0
+21,Raw FC (2m),Dorsal Attn,1.0
+21,Raw FC (2m),Ventral Attn,0.9824561403508771
+21,Raw FC (2m),Limbic,1.0
+21,Raw FC (2m),Control,0.9827586206896551
+21,Raw FC (2m),Default Mode,1.0
+21,BS-NET (2m),Visual,1.0
+21,BS-NET (2m),Somatomotor,1.0
+21,BS-NET (2m),Dorsal Attn,1.0
+21,BS-NET (2m),Ventral Attn,0.9824561403508771
+21,BS-NET (2m),Limbic,1.0
+21,BS-NET (2m),Control,0.9827586206896551
+21,BS-NET (2m),Default Mode,1.0
+22,Raw FC (2m),Visual,0.9824561403508771
+22,Raw FC (2m),Somatomotor,1.0
+22,Raw FC (2m),Dorsal Attn,1.0
+22,Raw FC (2m),Ventral Attn,1.0
+22,Raw FC (2m),Limbic,0.9827586206896551
+22,Raw FC (2m),Control,1.0
+22,Raw FC (2m),Default Mode,1.0
+22,BS-NET (2m),Visual,0.9824561403508771
+22,BS-NET (2m),Somatomotor,1.0
+22,BS-NET (2m),Dorsal Attn,1.0
+22,BS-NET (2m),Ventral Attn,1.0
+22,BS-NET (2m),Limbic,0.9827586206896551
+22,BS-NET (2m),Control,1.0
+22,BS-NET (2m),Default Mode,1.0
+23,Raw FC (2m),Visual,1.0
+23,Raw FC (2m),Somatomotor,1.0
+23,Raw FC (2m),Dorsal Attn,1.0
+23,Raw FC (2m),Ventral Attn,1.0
+23,Raw FC (2m),Limbic,1.0
+23,Raw FC (2m),Control,1.0
+23,Raw FC (2m),Default Mode,1.0
+23,BS-NET (2m),Visual,1.0
+23,BS-NET (2m),Somatomotor,1.0
+23,BS-NET (2m),Dorsal Attn,1.0
+23,BS-NET (2m),Ventral Attn,1.0
+23,BS-NET (2m),Limbic,1.0
+23,BS-NET (2m),Control,1.0
+23,BS-NET (2m),Default Mode,1.0
+24,Raw FC (2m),Visual,1.0
+24,Raw FC (2m),Somatomotor,1.0
+24,Raw FC (2m),Dorsal Attn,0.9824561403508771
+24,Raw FC (2m),Ventral Attn,0.9827586206896551
+24,Raw FC (2m),Limbic,1.0
+24,Raw FC (2m),Control,1.0
+24,Raw FC (2m),Default Mode,1.0
+24,BS-NET (2m),Visual,1.0
+24,BS-NET (2m),Somatomotor,1.0
+24,BS-NET (2m),Dorsal Attn,0.9824561403508771
+24,BS-NET (2m),Ventral Attn,0.9827586206896551
+24,BS-NET (2m),Limbic,1.0
+24,BS-NET (2m),Control,1.0
+24,BS-NET (2m),Default Mode,1.0
+25,Raw FC (2m),Visual,0.5
+25,Raw FC (2m),Somatomotor,0.9482758620689655
+25,Raw FC (2m),Dorsal Attn,0.9827586206896551
+25,Raw FC (2m),Ventral Attn,0.4956521739130435
+25,Raw FC (2m),Limbic,0.4956521739130435
+25,Raw FC (2m),Control,0.5
+25,Raw FC (2m),Default Mode,0.9827586206896551
+25,BS-NET (2m),Visual,0.9827586206896551
+25,BS-NET (2m),Somatomotor,0.9482758620689655
+25,BS-NET (2m),Dorsal Attn,0.9827586206896551
+25,BS-NET (2m),Ventral Attn,0.5
+25,BS-NET (2m),Limbic,0.48695652173913045
+25,BS-NET (2m),Control,1.0
+25,BS-NET (2m),Default Mode,0.9827586206896551
+26,Raw FC (2m),Visual,1.0
+26,Raw FC (2m),Somatomotor,1.0
+26,Raw FC (2m),Dorsal Attn,1.0
+26,Raw FC (2m),Ventral Attn,1.0
+26,Raw FC (2m),Limbic,1.0
+26,Raw FC (2m),Control,1.0
+26,Raw FC (2m),Default Mode,1.0
+26,BS-NET (2m),Visual,1.0
+26,BS-NET (2m),Somatomotor,1.0
+26,BS-NET (2m),Dorsal Attn,1.0
+26,BS-NET (2m),Ventral Attn,1.0
+26,BS-NET (2m),Limbic,1.0
+26,BS-NET (2m),Control,1.0
+26,BS-NET (2m),Default Mode,1.0
+27,Raw FC (2m),Visual,0.9827586206896551
+27,Raw FC (2m),Somatomotor,1.0
+27,Raw FC (2m),Dorsal Attn,1.0
+27,Raw FC (2m),Ventral Attn,1.0
+27,Raw FC (2m),Limbic,1.0
+27,Raw FC (2m),Control,0.9824561403508771
+27,Raw FC (2m),Default Mode,1.0
+27,BS-NET (2m),Visual,0.9827586206896551
+27,BS-NET (2m),Somatomotor,1.0
+27,BS-NET (2m),Dorsal Attn,1.0
+27,BS-NET (2m),Ventral Attn,1.0
+27,BS-NET (2m),Limbic,1.0
+27,BS-NET (2m),Control,0.9824561403508771
+27,BS-NET (2m),Default Mode,1.0
+28,Raw FC (2m),Visual,0.9827586206896551
+28,Raw FC (2m),Somatomotor,1.0
+28,Raw FC (2m),Dorsal Attn,1.0
+28,Raw FC (2m),Ventral Attn,0.9649122807017544
+28,Raw FC (2m),Limbic,1.0
+28,Raw FC (2m),Control,1.0
+28,Raw FC (2m),Default Mode,1.0
+28,BS-NET (2m),Visual,0.9827586206896551
+28,BS-NET (2m),Somatomotor,1.0
+28,BS-NET (2m),Dorsal Attn,1.0
+28,BS-NET (2m),Ventral Attn,0.9649122807017544
+28,BS-NET (2m),Limbic,1.0
+28,BS-NET (2m),Control,1.0
+28,BS-NET (2m),Default Mode,1.0
+29,Raw FC (2m),Visual,1.0
+29,Raw FC (2m),Somatomotor,0.9827586206896551
+29,Raw FC (2m),Dorsal Attn,0.8947368421052632
+29,Raw FC (2m),Ventral Attn,0.9661016949152542
+29,Raw FC (2m),Limbic,0.9661016949152542
+29,Raw FC (2m),Control,0.9824561403508771
+29,Raw FC (2m),Default Mode,0.9666666666666667
+29,BS-NET (2m),Visual,1.0
+29,BS-NET (2m),Somatomotor,0.9827586206896551
+29,BS-NET (2m),Dorsal Attn,0.8947368421052632
+29,BS-NET (2m),Ventral Attn,0.9661016949152542
+29,BS-NET (2m),Limbic,0.9661016949152542
+29,BS-NET (2m),Control,0.9824561403508771
+29,BS-NET (2m),Default Mode,0.9666666666666667
+30,Raw FC (2m),Visual,0.9824561403508771
+30,Raw FC (2m),Somatomotor,1.0
+30,Raw FC (2m),Dorsal Attn,0.9827586206896551
+30,Raw FC (2m),Ventral Attn,1.0
+30,Raw FC (2m),Limbic,1.0
+30,Raw FC (2m),Control,1.0
+30,Raw FC (2m),Default Mode,1.0
+30,BS-NET (2m),Visual,0.9824561403508771
+30,BS-NET (2m),Somatomotor,1.0
+30,BS-NET (2m),Dorsal Attn,0.9827586206896551
+30,BS-NET (2m),Ventral Attn,1.0
+30,BS-NET (2m),Limbic,1.0
+30,BS-NET (2m),Control,1.0
+30,BS-NET (2m),Default Mode,1.0
+31,Raw FC (2m),Visual,1.0
+31,Raw FC (2m),Somatomotor,1.0
+31,Raw FC (2m),Dorsal Attn,0.9649122807017544
+31,Raw FC (2m),Ventral Attn,1.0
+31,Raw FC (2m),Limbic,1.0
+31,Raw FC (2m),Control,0.9827586206896551
+31,Raw FC (2m),Default Mode,0.9830508474576272
+31,BS-NET (2m),Visual,1.0
+31,BS-NET (2m),Somatomotor,1.0
+31,BS-NET (2m),Dorsal Attn,0.9649122807017544
+31,BS-NET (2m),Ventral Attn,1.0
+31,BS-NET (2m),Limbic,1.0
+31,BS-NET (2m),Control,0.9827586206896551
+31,BS-NET (2m),Default Mode,0.9830508474576272
+32,Raw FC (2m),Visual,0.9661016949152542
+32,Raw FC (2m),Somatomotor,1.0
+32,Raw FC (2m),Dorsal Attn,1.0
+32,Raw FC (2m),Ventral Attn,1.0
+32,Raw FC (2m),Limbic,1.0
+32,Raw FC (2m),Control,0.504424778761062
+32,Raw FC (2m),Default Mode,0.48695652173913045
+32,BS-NET (2m),Visual,0.9827586206896551
+32,BS-NET (2m),Somatomotor,1.0
+32,BS-NET (2m),Dorsal Attn,1.0
+32,BS-NET (2m),Ventral Attn,1.0
+32,BS-NET (2m),Limbic,1.0
+32,BS-NET (2m),Control,1.0
+32,BS-NET (2m),Default Mode,0.9827586206896551
+33,Raw FC (2m),Visual,1.0
+33,Raw FC (2m),Somatomotor,1.0
+33,Raw FC (2m),Dorsal Attn,1.0
+33,Raw FC (2m),Ventral Attn,1.0
+33,Raw FC (2m),Limbic,1.0
+33,Raw FC (2m),Control,1.0
+33,Raw FC (2m),Default Mode,1.0
+33,BS-NET (2m),Visual,1.0
+33,BS-NET (2m),Somatomotor,1.0
+33,BS-NET (2m),Dorsal Attn,1.0
+33,BS-NET (2m),Ventral Attn,1.0
+33,BS-NET (2m),Limbic,1.0
+33,BS-NET (2m),Control,1.0
+33,BS-NET (2m),Default Mode,1.0
+34,Raw FC (2m),Visual,1.0
+34,Raw FC (2m),Somatomotor,0.9824561403508771
+34,Raw FC (2m),Dorsal Attn,1.0
+34,Raw FC (2m),Ventral Attn,1.0
+34,Raw FC (2m),Limbic,0.9827586206896551
+34,Raw FC (2m),Control,1.0
+34,Raw FC (2m),Default Mode,1.0
+34,BS-NET (2m),Visual,1.0
+34,BS-NET (2m),Somatomotor,0.9824561403508771
+34,BS-NET (2m),Dorsal Attn,1.0
+34,BS-NET (2m),Ventral Attn,0.5
+34,BS-NET (2m),Limbic,0.9827586206896551
+34,BS-NET (2m),Control,0.5
+34,BS-NET (2m),Default Mode,1.0
+35,Raw FC (2m),Visual,0.9661016949152542
+35,Raw FC (2m),Somatomotor,1.0
+35,Raw FC (2m),Dorsal Attn,1.0
+35,Raw FC (2m),Ventral Attn,0.9649122807017544
+35,Raw FC (2m),Limbic,1.0
+35,Raw FC (2m),Control,1.0
+35,Raw FC (2m),Default Mode,1.0
+35,BS-NET (2m),Visual,0.9661016949152542
+35,BS-NET (2m),Somatomotor,1.0
+35,BS-NET (2m),Dorsal Attn,1.0
+35,BS-NET (2m),Ventral Attn,0.9649122807017544
+35,BS-NET (2m),Limbic,1.0
+35,BS-NET (2m),Control,1.0
+35,BS-NET (2m),Default Mode,1.0
+36,Raw FC (2m),Visual,1.0
+36,Raw FC (2m),Somatomotor,1.0
+36,Raw FC (2m),Dorsal Attn,1.0
+36,Raw FC (2m),Ventral Attn,1.0
+36,Raw FC (2m),Limbic,0.5
+36,Raw FC (2m),Control,0.5
+36,Raw FC (2m),Default Mode,1.0
+36,BS-NET (2m),Visual,1.0
+36,BS-NET (2m),Somatomotor,1.0
+36,BS-NET (2m),Dorsal Attn,1.0
+36,BS-NET (2m),Ventral Attn,1.0
+36,BS-NET (2m),Limbic,0.5
+36,BS-NET (2m),Control,0.5
+36,BS-NET (2m),Default Mode,1.0
+37,Raw FC (2m),Visual,1.0
+37,Raw FC (2m),Somatomotor,1.0
+37,Raw FC (2m),Dorsal Attn,0.9824561403508771
+37,Raw FC (2m),Ventral Attn,0.9827586206896551
+37,Raw FC (2m),Limbic,0.9824561403508771
+37,Raw FC (2m),Control,0.9827586206896551
+37,Raw FC (2m),Default Mode,1.0
+37,BS-NET (2m),Visual,1.0
+37,BS-NET (2m),Somatomotor,1.0
+37,BS-NET (2m),Dorsal Attn,0.9824561403508771
+37,BS-NET (2m),Ventral Attn,0.9827586206896551
+37,BS-NET (2m),Limbic,0.9824561403508771
+37,BS-NET (2m),Control,0.9827586206896551
+37,BS-NET (2m),Default Mode,1.0
+38,Raw FC (2m),Visual,1.0
+38,Raw FC (2m),Somatomotor,0.9661016949152542
+38,Raw FC (2m),Dorsal Attn,0.9473684210526315
+38,Raw FC (2m),Ventral Attn,0.9827586206896551
+38,Raw FC (2m),Limbic,1.0
+38,Raw FC (2m),Control,1.0
+38,Raw FC (2m),Default Mode,0.9661016949152542
+38,BS-NET (2m),Visual,1.0
+38,BS-NET (2m),Somatomotor,0.9661016949152542
+38,BS-NET (2m),Dorsal Attn,0.9473684210526315
+38,BS-NET (2m),Ventral Attn,0.9827586206896551
+38,BS-NET (2m),Limbic,1.0
+38,BS-NET (2m),Control,1.0
+38,BS-NET (2m),Default Mode,0.9661016949152542
+39,Raw FC (2m),Visual,1.0
+39,Raw FC (2m),Somatomotor,1.0
+39,Raw FC (2m),Dorsal Attn,1.0
+39,Raw FC (2m),Ventral Attn,1.0
+39,Raw FC (2m),Limbic,1.0
+39,Raw FC (2m),Control,1.0
+39,Raw FC (2m),Default Mode,1.0
+39,BS-NET (2m),Visual,0.5
+39,BS-NET (2m),Somatomotor,1.0
+39,BS-NET (2m),Dorsal Attn,1.0
+39,BS-NET (2m),Ventral Attn,1.0
+39,BS-NET (2m),Limbic,1.0
+39,BS-NET (2m),Control,0.5
+39,BS-NET (2m),Default Mode,1.0
+40,Raw FC (2m),Visual,1.0
+40,Raw FC (2m),Somatomotor,0.9824561403508771
+40,Raw FC (2m),Dorsal Attn,0.9827586206896551
+40,Raw FC (2m),Ventral Attn,1.0
+40,Raw FC (2m),Limbic,0.9827586206896551
+40,Raw FC (2m),Control,1.0
+40,Raw FC (2m),Default Mode,0.9827586206896551
+40,BS-NET (2m),Visual,1.0
+40,BS-NET (2m),Somatomotor,0.9824561403508771
+40,BS-NET (2m),Dorsal Attn,0.9827586206896551
+40,BS-NET (2m),Ventral Attn,1.0
+40,BS-NET (2m),Limbic,0.9827586206896551
+40,BS-NET (2m),Control,1.0
+40,BS-NET (2m),Default Mode,0.9827586206896551
+41,Raw FC (2m),Visual,0.9649122807017544
+41,Raw FC (2m),Somatomotor,1.0
+41,Raw FC (2m),Dorsal Attn,1.0
+41,Raw FC (2m),Ventral Attn,1.0
+41,Raw FC (2m),Limbic,0.9827586206896551
+41,Raw FC (2m),Control,0.9827586206896551
+41,Raw FC (2m),Default Mode,1.0
+41,BS-NET (2m),Visual,0.9649122807017544
+41,BS-NET (2m),Somatomotor,1.0
+41,BS-NET (2m),Dorsal Attn,1.0
+41,BS-NET (2m),Ventral Attn,1.0
+41,BS-NET (2m),Limbic,0.9827586206896551
+41,BS-NET (2m),Control,0.9827586206896551
+41,BS-NET (2m),Default Mode,1.0
+42,Raw FC (2m),Visual,1.0
+42,Raw FC (2m),Somatomotor,1.0
+42,Raw FC (2m),Dorsal Attn,0.9824561403508771
+42,Raw FC (2m),Ventral Attn,1.0
+42,Raw FC (2m),Limbic,1.0
+42,Raw FC (2m),Control,0.9827586206896551
+42,Raw FC (2m),Default Mode,1.0
+42,BS-NET (2m),Visual,1.0
+42,BS-NET (2m),Somatomotor,1.0
+42,BS-NET (2m),Dorsal Attn,0.9824561403508771
+42,BS-NET (2m),Ventral Attn,1.0
+42,BS-NET (2m),Limbic,1.0
+42,BS-NET (2m),Control,0.9827586206896551
+42,BS-NET (2m),Default Mode,1.0
+43,Raw FC (2m),Visual,0.9824561403508771
+43,Raw FC (2m),Somatomotor,0.9661016949152542
+43,Raw FC (2m),Dorsal Attn,0.9824561403508771
+43,Raw FC (2m),Ventral Attn,1.0
+43,Raw FC (2m),Limbic,1.0
+43,Raw FC (2m),Control,1.0
+43,Raw FC (2m),Default Mode,1.0
+43,BS-NET (2m),Visual,0.9824561403508771
+43,BS-NET (2m),Somatomotor,0.9661016949152542
+43,BS-NET (2m),Dorsal Attn,0.9824561403508771
+43,BS-NET (2m),Ventral Attn,1.0
+43,BS-NET (2m),Limbic,1.0
+43,BS-NET (2m),Control,1.0
+43,BS-NET (2m),Default Mode,1.0
+44,Raw FC (2m),Visual,1.0
+44,Raw FC (2m),Somatomotor,0.48695652173913045
+44,Raw FC (2m),Dorsal Attn,1.0
+44,Raw FC (2m),Ventral Attn,1.0
+44,Raw FC (2m),Limbic,0.5
+44,Raw FC (2m),Control,0.9827586206896551
+44,Raw FC (2m),Default Mode,0.9827586206896551
+44,BS-NET (2m),Visual,1.0
+44,BS-NET (2m),Somatomotor,0.9649122807017544
+44,BS-NET (2m),Dorsal Attn,1.0
+44,BS-NET (2m),Ventral Attn,1.0
+44,BS-NET (2m),Limbic,0.95
+44,BS-NET (2m),Control,0.9827586206896551
+44,BS-NET (2m),Default Mode,0.9655172413793104
+45,Raw FC (2m),Visual,1.0
+45,Raw FC (2m),Somatomotor,1.0
+45,Raw FC (2m),Dorsal Attn,0.9827586206896551
+45,Raw FC (2m),Ventral Attn,1.0
+45,Raw FC (2m),Limbic,0.9824561403508771
+45,Raw FC (2m),Control,1.0
+45,Raw FC (2m),Default Mode,1.0
+45,BS-NET (2m),Visual,1.0
+45,BS-NET (2m),Somatomotor,1.0
+45,BS-NET (2m),Dorsal Attn,0.9827586206896551
+45,BS-NET (2m),Ventral Attn,1.0
+45,BS-NET (2m),Limbic,0.9824561403508771
+45,BS-NET (2m),Control,1.0
+45,BS-NET (2m),Default Mode,1.0
+46,Raw FC (2m),Visual,1.0
+46,Raw FC (2m),Somatomotor,0.9824561403508771
+46,Raw FC (2m),Dorsal Attn,1.0
+46,Raw FC (2m),Ventral Attn,1.0
+46,Raw FC (2m),Limbic,1.0
+46,Raw FC (2m),Control,0.9827586206896551
+46,Raw FC (2m),Default Mode,1.0
+46,BS-NET (2m),Visual,1.0
+46,BS-NET (2m),Somatomotor,0.9824561403508771
+46,BS-NET (2m),Dorsal Attn,1.0
+46,BS-NET (2m),Ventral Attn,1.0
+46,BS-NET (2m),Limbic,1.0
+46,BS-NET (2m),Control,0.9827586206896551
+46,BS-NET (2m),Default Mode,1.0
+47,Raw FC (2m),Visual,1.0
+47,Raw FC (2m),Somatomotor,0.9661016949152542
+47,Raw FC (2m),Dorsal Attn,0.5181818181818182
+47,Raw FC (2m),Ventral Attn,1.0
+47,Raw FC (2m),Limbic,0.9491525423728814
+47,Raw FC (2m),Control,0.9661016949152542
+47,Raw FC (2m),Default Mode,0.4608695652173913
+47,BS-NET (2m),Visual,1.0
+47,BS-NET (2m),Somatomotor,0.9661016949152542
+47,BS-NET (2m),Dorsal Attn,0.5181818181818182
+47,BS-NET (2m),Ventral Attn,1.0
+47,BS-NET (2m),Limbic,0.9491525423728814
+47,BS-NET (2m),Control,0.9661016949152542
+47,BS-NET (2m),Default Mode,0.4608695652173913
+48,Raw FC (2m),Visual,1.0
+48,Raw FC (2m),Somatomotor,0.9824561403508771
+48,Raw FC (2m),Dorsal Attn,0.9827586206896551
+48,Raw FC (2m),Ventral Attn,1.0
+48,Raw FC (2m),Limbic,1.0
+48,Raw FC (2m),Control,1.0
+48,Raw FC (2m),Default Mode,1.0
+48,BS-NET (2m),Visual,1.0
+48,BS-NET (2m),Somatomotor,0.9824561403508771
+48,BS-NET (2m),Dorsal Attn,0.9827586206896551
+48,BS-NET (2m),Ventral Attn,1.0
+48,BS-NET (2m),Limbic,1.0
+48,BS-NET (2m),Control,1.0
+48,BS-NET (2m),Default Mode,1.0
+49,Raw FC (2m),Visual,1.0
+49,Raw FC (2m),Somatomotor,1.0
+49,Raw FC (2m),Dorsal Attn,0.9827586206896551
+49,Raw FC (2m),Ventral Attn,1.0
+49,Raw FC (2m),Limbic,0.9827586206896551
+49,Raw FC (2m),Control,0.9649122807017544
+49,Raw FC (2m),Default Mode,1.0
+49,BS-NET (2m),Visual,1.0
+49,BS-NET (2m),Somatomotor,1.0
+49,BS-NET (2m),Dorsal Attn,0.9827586206896551
+49,BS-NET (2m),Ventral Attn,1.0
+49,BS-NET (2m),Limbic,0.9827586206896551
+49,BS-NET (2m),Control,0.9649122807017544
+49,BS-NET (2m),Default Mode,1.0
+50,Raw FC (2m),Visual,0.5
+50,Raw FC (2m),Somatomotor,0.9827586206896551
+50,Raw FC (2m),Dorsal Attn,1.0
+50,Raw FC (2m),Ventral Attn,0.9824561403508771
+50,Raw FC (2m),Limbic,1.0
+50,Raw FC (2m),Control,0.5
+50,Raw FC (2m),Default Mode,1.0
+50,BS-NET (2m),Visual,0.5
+50,BS-NET (2m),Somatomotor,0.9827586206896551
+50,BS-NET (2m),Dorsal Attn,1.0
+50,BS-NET (2m),Ventral Attn,0.9824561403508771
+50,BS-NET (2m),Limbic,1.0
+50,BS-NET (2m),Control,0.5
+50,BS-NET (2m),Default Mode,1.0
+51,Raw FC (2m),Visual,0.9827586206896551
+51,Raw FC (2m),Somatomotor,1.0
+51,Raw FC (2m),Dorsal Attn,0.9649122807017544
+51,Raw FC (2m),Ventral Attn,0.9827586206896551
+51,Raw FC (2m),Limbic,0.9824561403508771
+51,Raw FC (2m),Control,1.0
+51,Raw FC (2m),Default Mode,1.0
+51,BS-NET (2m),Visual,0.9827586206896551
+51,BS-NET (2m),Somatomotor,1.0
+51,BS-NET (2m),Dorsal Attn,0.9649122807017544
+51,BS-NET (2m),Ventral Attn,0.9827586206896551
+51,BS-NET (2m),Limbic,0.9824561403508771
+51,BS-NET (2m),Control,1.0
+51,BS-NET (2m),Default Mode,1.0
+52,Raw FC (2m),Visual,0.9298245614035088
+52,Raw FC (2m),Somatomotor,1.0
+52,Raw FC (2m),Dorsal Attn,0.9661016949152542
+52,Raw FC (2m),Ventral Attn,1.0
+52,Raw FC (2m),Limbic,1.0
+52,Raw FC (2m),Control,0.9827586206896551
+52,Raw FC (2m),Default Mode,0.9830508474576272
+52,BS-NET (2m),Visual,0.9298245614035088
+52,BS-NET (2m),Somatomotor,1.0
+52,BS-NET (2m),Dorsal Attn,0.9661016949152542
+52,BS-NET (2m),Ventral Attn,1.0
+52,BS-NET (2m),Limbic,1.0
+52,BS-NET (2m),Control,0.9827586206896551
+52,BS-NET (2m),Default Mode,0.9830508474576272
+53,Raw FC (2m),Visual,1.0
+53,Raw FC (2m),Somatomotor,1.0
+53,Raw FC (2m),Dorsal Attn,1.0
+53,Raw FC (2m),Ventral Attn,1.0
+53,Raw FC (2m),Limbic,0.9827586206896551
+53,Raw FC (2m),Control,1.0
+53,Raw FC (2m),Default Mode,0.9827586206896551
+53,BS-NET (2m),Visual,1.0
+53,BS-NET (2m),Somatomotor,1.0
+53,BS-NET (2m),Dorsal Attn,1.0
+53,BS-NET (2m),Ventral Attn,1.0
+53,BS-NET (2m),Limbic,0.9827586206896551
+53,BS-NET (2m),Control,1.0
+53,BS-NET (2m),Default Mode,0.9827586206896551
+54,Raw FC (2m),Visual,0.5
+54,Raw FC (2m),Somatomotor,1.0
+54,Raw FC (2m),Dorsal Attn,1.0
+54,Raw FC (2m),Ventral Attn,1.0
+54,Raw FC (2m),Limbic,1.0
+54,Raw FC (2m),Control,0.5
+54,Raw FC (2m),Default Mode,1.0
+54,BS-NET (2m),Visual,1.0
+54,BS-NET (2m),Somatomotor,1.0
+54,BS-NET (2m),Dorsal Attn,1.0
+54,BS-NET (2m),Ventral Attn,1.0
+54,BS-NET (2m),Limbic,1.0
+54,BS-NET (2m),Control,1.0
+54,BS-NET (2m),Default Mode,1.0
+55,Raw FC (2m),Visual,1.0
+55,Raw FC (2m),Somatomotor,0.9824561403508771
+55,Raw FC (2m),Dorsal Attn,1.0
+55,Raw FC (2m),Ventral Attn,0.9827586206896551
+55,Raw FC (2m),Limbic,0.9655172413793104
+55,Raw FC (2m),Control,0.9827586206896551
+55,Raw FC (2m),Default Mode,0.9827586206896551
+55,BS-NET (2m),Visual,1.0
+55,BS-NET (2m),Somatomotor,0.9824561403508771
+55,BS-NET (2m),Dorsal Attn,1.0
+55,BS-NET (2m),Ventral Attn,0.9827586206896551
+55,BS-NET (2m),Limbic,0.9655172413793104
+55,BS-NET (2m),Control,0.9827586206896551
+55,BS-NET (2m),Default Mode,0.9827586206896551
+56,Raw FC (2m),Visual,1.0
+56,Raw FC (2m),Somatomotor,1.0
+56,Raw FC (2m),Dorsal Attn,1.0
+56,Raw FC (2m),Ventral Attn,1.0
+56,Raw FC (2m),Limbic,1.0
+56,Raw FC (2m),Control,1.0
+56,Raw FC (2m),Default Mode,1.0
+56,BS-NET (2m),Visual,1.0
+56,BS-NET (2m),Somatomotor,1.0
+56,BS-NET (2m),Dorsal Attn,1.0
+56,BS-NET (2m),Ventral Attn,1.0
+56,BS-NET (2m),Limbic,1.0
+56,BS-NET (2m),Control,1.0
+56,BS-NET (2m),Default Mode,1.0
+57,Raw FC (2m),Visual,1.0
+57,Raw FC (2m),Somatomotor,0.5
+57,Raw FC (2m),Dorsal Attn,0.5
+57,Raw FC (2m),Ventral Attn,1.0
+57,Raw FC (2m),Limbic,1.0
+57,Raw FC (2m),Control,1.0
+57,Raw FC (2m),Default Mode,1.0
+57,BS-NET (2m),Visual,1.0
+57,BS-NET (2m),Somatomotor,0.5
+57,BS-NET (2m),Dorsal Attn,0.5
+57,BS-NET (2m),Ventral Attn,1.0
+57,BS-NET (2m),Limbic,1.0
+57,BS-NET (2m),Control,1.0
+57,BS-NET (2m),Default Mode,1.0
+58,Raw FC (2m),Visual,0.49137931034482757
+58,Raw FC (2m),Somatomotor,0.9824561403508771
+58,Raw FC (2m),Dorsal Attn,1.0
+58,Raw FC (2m),Ventral Attn,0.9824561403508771
+58,Raw FC (2m),Limbic,1.0
+58,Raw FC (2m),Control,0.49137931034482757
+58,Raw FC (2m),Default Mode,1.0
+58,BS-NET (2m),Visual,0.49137931034482757
+58,BS-NET (2m),Somatomotor,0.9824561403508771
+58,BS-NET (2m),Dorsal Attn,1.0
+58,BS-NET (2m),Ventral Attn,0.9824561403508771
+58,BS-NET (2m),Limbic,1.0
+58,BS-NET (2m),Control,0.49137931034482757
+58,BS-NET (2m),Default Mode,1.0
+59,Raw FC (2m),Visual,1.0
+59,Raw FC (2m),Somatomotor,0.9661016949152542
+59,Raw FC (2m),Dorsal Attn,0.9655172413793104
+59,Raw FC (2m),Ventral Attn,0.9827586206896551
+59,Raw FC (2m),Limbic,0.9473684210526315
+59,Raw FC (2m),Control,1.0
+59,Raw FC (2m),Default Mode,1.0
+59,BS-NET (2m),Visual,1.0
+59,BS-NET (2m),Somatomotor,0.9661016949152542
+59,BS-NET (2m),Dorsal Attn,0.9655172413793104
+59,BS-NET (2m),Ventral Attn,0.9827586206896551
+59,BS-NET (2m),Limbic,0.9473684210526315
+59,BS-NET (2m),Control,1.0
+59,BS-NET (2m),Default Mode,1.0
+60,Raw FC (2m),Visual,1.0
+60,Raw FC (2m),Somatomotor,0.9824561403508771
+60,Raw FC (2m),Dorsal Attn,1.0
+60,Raw FC (2m),Ventral Attn,0.9827586206896551
+60,Raw FC (2m),Limbic,1.0
+60,Raw FC (2m),Control,1.0
+60,Raw FC (2m),Default Mode,1.0
+60,BS-NET (2m),Visual,1.0
+60,BS-NET (2m),Somatomotor,0.9824561403508771
+60,BS-NET (2m),Dorsal Attn,1.0
+60,BS-NET (2m),Ventral Attn,0.9827586206896551
+60,BS-NET (2m),Limbic,1.0
+60,BS-NET (2m),Control,1.0
+60,BS-NET (2m),Default Mode,1.0
+61,Raw FC (2m),Visual,1.0
+61,Raw FC (2m),Somatomotor,0.9824561403508771
+61,Raw FC (2m),Dorsal Attn,0.9827586206896551
+61,Raw FC (2m),Ventral Attn,1.0
+61,Raw FC (2m),Limbic,1.0
+61,Raw FC (2m),Control,1.0
+61,Raw FC (2m),Default Mode,1.0
+61,BS-NET (2m),Visual,1.0
+61,BS-NET (2m),Somatomotor,0.9824561403508771
+61,BS-NET (2m),Dorsal Attn,0.9827586206896551
+61,BS-NET (2m),Ventral Attn,1.0
+61,BS-NET (2m),Limbic,1.0
+61,BS-NET (2m),Control,1.0
+61,BS-NET (2m),Default Mode,1.0
+62,Raw FC (2m),Visual,1.0
+62,Raw FC (2m),Somatomotor,1.0
+62,Raw FC (2m),Dorsal Attn,1.0
+62,Raw FC (2m),Ventral Attn,1.0
+62,Raw FC (2m),Limbic,1.0
+62,Raw FC (2m),Control,1.0
+62,Raw FC (2m),Default Mode,1.0
+62,BS-NET (2m),Visual,1.0
+62,BS-NET (2m),Somatomotor,0.4956521739130435
+62,BS-NET (2m),Dorsal Attn,1.0
+62,BS-NET (2m),Ventral Attn,1.0
+62,BS-NET (2m),Limbic,1.0
+62,BS-NET (2m),Control,1.0
+62,BS-NET (2m),Default Mode,0.5043478260869565
+63,Raw FC (2m),Visual,1.0
+63,Raw FC (2m),Somatomotor,1.0
+63,Raw FC (2m),Dorsal Attn,1.0
+63,Raw FC (2m),Ventral Attn,1.0
+63,Raw FC (2m),Limbic,1.0
+63,Raw FC (2m),Control,1.0
+63,Raw FC (2m),Default Mode,1.0
+63,BS-NET (2m),Visual,1.0
+63,BS-NET (2m),Somatomotor,1.0
+63,BS-NET (2m),Dorsal Attn,1.0
+63,BS-NET (2m),Ventral Attn,1.0
+63,BS-NET (2m),Limbic,1.0
+63,BS-NET (2m),Control,1.0
+63,BS-NET (2m),Default Mode,1.0
+64,Raw FC (2m),Visual,0.9824561403508771
+64,Raw FC (2m),Somatomotor,1.0
+64,Raw FC (2m),Dorsal Attn,1.0
+64,Raw FC (2m),Ventral Attn,1.0
+64,Raw FC (2m),Limbic,1.0
+64,Raw FC (2m),Control,1.0
+64,Raw FC (2m),Default Mode,0.9830508474576272
+64,BS-NET (2m),Visual,0.9824561403508771
+64,BS-NET (2m),Somatomotor,1.0
+64,BS-NET (2m),Dorsal Attn,1.0
+64,BS-NET (2m),Ventral Attn,1.0
+64,BS-NET (2m),Limbic,1.0
+64,BS-NET (2m),Control,1.0
+64,BS-NET (2m),Default Mode,0.9830508474576272
+65,Raw FC (2m),Visual,1.0
+65,Raw FC (2m),Somatomotor,1.0
+65,Raw FC (2m),Dorsal Attn,1.0
+65,Raw FC (2m),Ventral Attn,1.0
+65,Raw FC (2m),Limbic,1.0
+65,Raw FC (2m),Control,1.0
+65,Raw FC (2m),Default Mode,1.0
+65,BS-NET (2m),Visual,1.0
+65,BS-NET (2m),Somatomotor,1.0
+65,BS-NET (2m),Dorsal Attn,1.0
+65,BS-NET (2m),Ventral Attn,1.0
+65,BS-NET (2m),Limbic,1.0
+65,BS-NET (2m),Control,1.0
+65,BS-NET (2m),Default Mode,1.0
+66,Raw FC (2m),Visual,1.0
+66,Raw FC (2m),Somatomotor,0.9661016949152542
+66,Raw FC (2m),Dorsal Attn,0.9824561403508771
+66,Raw FC (2m),Ventral Attn,1.0
+66,Raw FC (2m),Limbic,0.9827586206896551
+66,Raw FC (2m),Control,0.9649122807017544
+66,Raw FC (2m),Default Mode,1.0
+66,BS-NET (2m),Visual,1.0
+66,BS-NET (2m),Somatomotor,0.504424778761062
+66,BS-NET (2m),Dorsal Attn,0.9824561403508771
+66,BS-NET (2m),Ventral Attn,1.0
+66,BS-NET (2m),Limbic,0.9661016949152542
+66,BS-NET (2m),Control,0.49122807017543857
+66,BS-NET (2m),Default Mode,1.0
+67,Raw FC (2m),Visual,0.9491525423728814
+67,Raw FC (2m),Somatomotor,0.9827586206896551
+67,Raw FC (2m),Dorsal Attn,0.9827586206896551
+67,Raw FC (2m),Ventral Attn,1.0
+67,Raw FC (2m),Limbic,1.0
+67,Raw FC (2m),Control,1.0
+67,Raw FC (2m),Default Mode,0.9482758620689655
+67,BS-NET (2m),Visual,0.9491525423728814
+67,BS-NET (2m),Somatomotor,0.9827586206896551
+67,BS-NET (2m),Dorsal Attn,0.9827586206896551
+67,BS-NET (2m),Ventral Attn,1.0
+67,BS-NET (2m),Limbic,1.0
+67,BS-NET (2m),Control,1.0
+67,BS-NET (2m),Default Mode,0.9482758620689655
+68,Raw FC (2m),Visual,0.9824561403508771
+68,Raw FC (2m),Somatomotor,1.0
+68,Raw FC (2m),Dorsal Attn,1.0
+68,Raw FC (2m),Ventral Attn,1.0
+68,Raw FC (2m),Limbic,1.0
+68,Raw FC (2m),Control,0.9827586206896551
+68,Raw FC (2m),Default Mode,1.0
+68,BS-NET (2m),Visual,0.9824561403508771
+68,BS-NET (2m),Somatomotor,1.0
+68,BS-NET (2m),Dorsal Attn,1.0
+68,BS-NET (2m),Ventral Attn,1.0
+68,BS-NET (2m),Limbic,1.0
+68,BS-NET (2m),Control,0.9827586206896551
+68,BS-NET (2m),Default Mode,1.0
+69,Raw FC (2m),Visual,1.0
+69,Raw FC (2m),Somatomotor,1.0
+69,Raw FC (2m),Dorsal Attn,1.0
+69,Raw FC (2m),Ventral Attn,0.9827586206896551
+69,Raw FC (2m),Limbic,1.0
+69,Raw FC (2m),Control,1.0
+69,Raw FC (2m),Default Mode,0.9827586206896551
+69,BS-NET (2m),Visual,1.0
+69,BS-NET (2m),Somatomotor,1.0
+69,BS-NET (2m),Dorsal Attn,1.0
+69,BS-NET (2m),Ventral Attn,0.9827586206896551
+69,BS-NET (2m),Limbic,1.0
+69,BS-NET (2m),Control,1.0
+69,BS-NET (2m),Default Mode,0.9827586206896551
+70,Raw FC (2m),Visual,0.9824561403508771
+70,Raw FC (2m),Somatomotor,1.0
+70,Raw FC (2m),Dorsal Attn,1.0
+70,Raw FC (2m),Ventral Attn,1.0
+70,Raw FC (2m),Limbic,1.0
+70,Raw FC (2m),Control,0.9827586206896551
+70,Raw FC (2m),Default Mode,1.0
+70,BS-NET (2m),Visual,0.9824561403508771
+70,BS-NET (2m),Somatomotor,1.0
+70,BS-NET (2m),Dorsal Attn,1.0
+70,BS-NET (2m),Ventral Attn,1.0
+70,BS-NET (2m),Limbic,1.0
+70,BS-NET (2m),Control,0.9827586206896551
+70,BS-NET (2m),Default Mode,1.0
+71,Raw FC (2m),Visual,0.9827586206896551
+71,Raw FC (2m),Somatomotor,0.9473684210526315
+71,Raw FC (2m),Dorsal Attn,0.9661016949152542
+71,Raw FC (2m),Ventral Attn,0.4956521739130435
+71,Raw FC (2m),Limbic,0.9824561403508771
+71,Raw FC (2m),Control,0.4956521739130435
+71,Raw FC (2m),Default Mode,1.0
+71,BS-NET (2m),Visual,0.9827586206896551
+71,BS-NET (2m),Somatomotor,0.9473684210526315
+71,BS-NET (2m),Dorsal Attn,0.9661016949152542
+71,BS-NET (2m),Ventral Attn,0.4956521739130435
+71,BS-NET (2m),Limbic,0.9824561403508771
+71,BS-NET (2m),Control,0.4956521739130435
+71,BS-NET (2m),Default Mode,1.0
+72,Raw FC (2m),Visual,0.5
+72,Raw FC (2m),Somatomotor,0.9824561403508771
+72,Raw FC (2m),Dorsal Attn,1.0
+72,Raw FC (2m),Ventral Attn,0.5
+72,Raw FC (2m),Limbic,1.0
+72,Raw FC (2m),Control,1.0
+72,Raw FC (2m),Default Mode,0.9830508474576272
+72,BS-NET (2m),Visual,0.5
+72,BS-NET (2m),Somatomotor,0.9824561403508771
+72,BS-NET (2m),Dorsal Attn,1.0
+72,BS-NET (2m),Ventral Attn,0.5
+72,BS-NET (2m),Limbic,1.0
+72,BS-NET (2m),Control,1.0
+72,BS-NET (2m),Default Mode,0.9830508474576272
+73,Raw FC (2m),Visual,1.0
+73,Raw FC (2m),Somatomotor,0.9827586206896551
+73,Raw FC (2m),Dorsal Attn,1.0
+73,Raw FC (2m),Ventral Attn,0.9824561403508771
+73,Raw FC (2m),Limbic,1.0
+73,Raw FC (2m),Control,1.0
+73,Raw FC (2m),Default Mode,1.0
+73,BS-NET (2m),Visual,1.0
+73,BS-NET (2m),Somatomotor,0.9827586206896551
+73,BS-NET (2m),Dorsal Attn,1.0
+73,BS-NET (2m),Ventral Attn,0.9824561403508771
+73,BS-NET (2m),Limbic,1.0
+73,BS-NET (2m),Control,1.0
+73,BS-NET (2m),Default Mode,1.0
+74,Raw FC (2m),Visual,1.0
+74,Raw FC (2m),Somatomotor,0.5
+74,Raw FC (2m),Dorsal Attn,0.5
+74,Raw FC (2m),Ventral Attn,1.0
+74,Raw FC (2m),Limbic,0.9824561403508771
+74,Raw FC (2m),Control,0.9827586206896551
+74,Raw FC (2m),Default Mode,1.0
+74,BS-NET (2m),Visual,1.0
+74,BS-NET (2m),Somatomotor,1.0
+74,BS-NET (2m),Dorsal Attn,1.0
+74,BS-NET (2m),Ventral Attn,1.0
+74,BS-NET (2m),Limbic,0.9824561403508771
+74,BS-NET (2m),Control,0.9827586206896551
+74,BS-NET (2m),Default Mode,1.0
+75,Raw FC (2m),Visual,1.0
+75,Raw FC (2m),Somatomotor,0.9824561403508771
+75,Raw FC (2m),Dorsal Attn,1.0
+75,Raw FC (2m),Ventral Attn,1.0
+75,Raw FC (2m),Limbic,1.0
+75,Raw FC (2m),Control,0.9827586206896551
+75,Raw FC (2m),Default Mode,1.0
+75,BS-NET (2m),Visual,1.0
+75,BS-NET (2m),Somatomotor,0.9824561403508771
+75,BS-NET (2m),Dorsal Attn,1.0
+75,BS-NET (2m),Ventral Attn,1.0
+75,BS-NET (2m),Limbic,1.0
+75,BS-NET (2m),Control,0.9827586206896551
+75,BS-NET (2m),Default Mode,1.0
+76,Raw FC (2m),Visual,1.0
+76,Raw FC (2m),Somatomotor,1.0
+76,Raw FC (2m),Dorsal Attn,0.5
+76,Raw FC (2m),Ventral Attn,1.0
+76,Raw FC (2m),Limbic,1.0
+76,Raw FC (2m),Control,0.5
+76,Raw FC (2m),Default Mode,0.9827586206896551
+76,BS-NET (2m),Visual,1.0
+76,BS-NET (2m),Somatomotor,1.0
+76,BS-NET (2m),Dorsal Attn,0.5
+76,BS-NET (2m),Ventral Attn,1.0
+76,BS-NET (2m),Limbic,1.0
+76,BS-NET (2m),Control,0.5
+76,BS-NET (2m),Default Mode,0.9827586206896551
+77,Raw FC (2m),Visual,1.0
+77,Raw FC (2m),Somatomotor,0.9661016949152542
+77,Raw FC (2m),Dorsal Attn,0.9661016949152542
+77,Raw FC (2m),Ventral Attn,0.9122807017543859
+77,Raw FC (2m),Limbic,0.9047619047619048
+77,Raw FC (2m),Control,1.0
+77,Raw FC (2m),Default Mode,0.9137931034482759
+77,BS-NET (2m),Visual,1.0
+77,BS-NET (2m),Somatomotor,0.9661016949152542
+77,BS-NET (2m),Dorsal Attn,0.9661016949152542
+77,BS-NET (2m),Ventral Attn,0.9122807017543859
+77,BS-NET (2m),Limbic,0.9047619047619048
+77,BS-NET (2m),Control,1.0
+77,BS-NET (2m),Default Mode,0.9137931034482759
+78,Raw FC (2m),Visual,0.5
+78,Raw FC (2m),Somatomotor,1.0
+78,Raw FC (2m),Dorsal Attn,1.0
+78,Raw FC (2m),Ventral Attn,1.0
+78,Raw FC (2m),Limbic,0.5
+78,Raw FC (2m),Control,1.0
+78,Raw FC (2m),Default Mode,1.0
+78,BS-NET (2m),Visual,0.9661016949152542
+78,BS-NET (2m),Somatomotor,1.0
+78,BS-NET (2m),Dorsal Attn,1.0
+78,BS-NET (2m),Ventral Attn,1.0
+78,BS-NET (2m),Limbic,0.9649122807017544
+78,BS-NET (2m),Control,1.0
+78,BS-NET (2m),Default Mode,1.0
+79,Raw FC (2m),Visual,0.9661016949152542
+79,Raw FC (2m),Somatomotor,1.0
+79,Raw FC (2m),Dorsal Attn,1.0
+79,Raw FC (2m),Ventral Attn,0.9824561403508771
+79,Raw FC (2m),Limbic,0.9824561403508771
+79,Raw FC (2m),Control,1.0
+79,Raw FC (2m),Default Mode,1.0
+79,BS-NET (2m),Visual,0.9661016949152542
+79,BS-NET (2m),Somatomotor,1.0
+79,BS-NET (2m),Dorsal Attn,1.0
+79,BS-NET (2m),Ventral Attn,0.9824561403508771
+79,BS-NET (2m),Limbic,0.9824561403508771
+79,BS-NET (2m),Control,1.0
+79,BS-NET (2m),Default Mode,1.0
+80,Raw FC (2m),Visual,0.9827586206896551
+80,Raw FC (2m),Somatomotor,0.9824561403508771
+80,Raw FC (2m),Dorsal Attn,0.9824561403508771
+80,Raw FC (2m),Ventral Attn,0.49137931034482757
+80,Raw FC (2m),Limbic,1.0
+80,Raw FC (2m),Control,1.0
+80,Raw FC (2m),Default Mode,0.5
+80,BS-NET (2m),Visual,0.9827586206896551
+80,BS-NET (2m),Somatomotor,0.9824561403508771
+80,BS-NET (2m),Dorsal Attn,0.9824561403508771
+80,BS-NET (2m),Ventral Attn,0.49137931034482757
+80,BS-NET (2m),Limbic,1.0
+80,BS-NET (2m),Control,1.0
+80,BS-NET (2m),Default Mode,0.5
+81,Raw FC (2m),Visual,0.9824561403508771
+81,Raw FC (2m),Somatomotor,1.0
+81,Raw FC (2m),Dorsal Attn,1.0
+81,Raw FC (2m),Ventral Attn,1.0
+81,Raw FC (2m),Limbic,0.9827586206896551
+81,Raw FC (2m),Control,1.0
+81,Raw FC (2m),Default Mode,1.0
+81,BS-NET (2m),Visual,0.9824561403508771
+81,BS-NET (2m),Somatomotor,1.0
+81,BS-NET (2m),Dorsal Attn,1.0
+81,BS-NET (2m),Ventral Attn,1.0
+81,BS-NET (2m),Limbic,0.9827586206896551
+81,BS-NET (2m),Control,1.0
+81,BS-NET (2m),Default Mode,1.0
+82,Raw FC (2m),Visual,0.9661016949152542
+82,Raw FC (2m),Somatomotor,0.5
+82,Raw FC (2m),Dorsal Attn,1.0
+82,Raw FC (2m),Ventral Attn,0.5
+82,Raw FC (2m),Limbic,0.9827586206896551
+82,Raw FC (2m),Control,0.9473684210526315
+82,Raw FC (2m),Default Mode,1.0
+82,BS-NET (2m),Visual,0.9661016949152542
+82,BS-NET (2m),Somatomotor,0.49137931034482757
+82,BS-NET (2m),Dorsal Attn,1.0
+82,BS-NET (2m),Ventral Attn,0.49137931034482757
+82,BS-NET (2m),Limbic,0.9827586206896551
+82,BS-NET (2m),Control,0.9122807017543859
+82,BS-NET (2m),Default Mode,1.0
+83,Raw FC (2m),Visual,0.9649122807017544
+83,Raw FC (2m),Somatomotor,1.0
+83,Raw FC (2m),Dorsal Attn,1.0
+83,Raw FC (2m),Ventral Attn,0.95
+83,Raw FC (2m),Limbic,0.9824561403508771
+83,Raw FC (2m),Control,1.0
+83,Raw FC (2m),Default Mode,1.0
+83,BS-NET (2m),Visual,0.9649122807017544
+83,BS-NET (2m),Somatomotor,1.0
+83,BS-NET (2m),Dorsal Attn,1.0
+83,BS-NET (2m),Ventral Attn,0.95
+83,BS-NET (2m),Limbic,0.9824561403508771
+83,BS-NET (2m),Control,1.0
+83,BS-NET (2m),Default Mode,1.0
+84,Raw FC (2m),Visual,1.0
+84,Raw FC (2m),Somatomotor,0.9827586206896551
+84,Raw FC (2m),Dorsal Attn,1.0
+84,Raw FC (2m),Ventral Attn,0.9824561403508771
+84,Raw FC (2m),Limbic,1.0
+84,Raw FC (2m),Control,1.0
+84,Raw FC (2m),Default Mode,1.0
+84,BS-NET (2m),Visual,1.0
+84,BS-NET (2m),Somatomotor,0.9827586206896551
+84,BS-NET (2m),Dorsal Attn,1.0
+84,BS-NET (2m),Ventral Attn,0.9824561403508771
+84,BS-NET (2m),Limbic,1.0
+84,BS-NET (2m),Control,1.0
+84,BS-NET (2m),Default Mode,1.0
+85,Raw FC (2m),Visual,1.0
+85,Raw FC (2m),Somatomotor,0.9827586206896551
+85,Raw FC (2m),Dorsal Attn,1.0
+85,Raw FC (2m),Ventral Attn,1.0
+85,Raw FC (2m),Limbic,0.9661016949152542
+85,Raw FC (2m),Control,1.0
+85,Raw FC (2m),Default Mode,0.9482758620689655
+85,BS-NET (2m),Visual,1.0
+85,BS-NET (2m),Somatomotor,0.9827586206896551
+85,BS-NET (2m),Dorsal Attn,1.0
+85,BS-NET (2m),Ventral Attn,1.0
+85,BS-NET (2m),Limbic,0.9661016949152542
+85,BS-NET (2m),Control,1.0
+85,BS-NET (2m),Default Mode,0.9482758620689655
+86,Raw FC (2m),Visual,0.9824561403508771
+86,Raw FC (2m),Somatomotor,1.0
+86,Raw FC (2m),Dorsal Attn,1.0
+86,Raw FC (2m),Ventral Attn,1.0
+86,Raw FC (2m),Limbic,0.9827586206896551
+86,Raw FC (2m),Control,1.0
+86,Raw FC (2m),Default Mode,1.0
+86,BS-NET (2m),Visual,0.9824561403508771
+86,BS-NET (2m),Somatomotor,1.0
+86,BS-NET (2m),Dorsal Attn,1.0
+86,BS-NET (2m),Ventral Attn,1.0
+86,BS-NET (2m),Limbic,0.9827586206896551
+86,BS-NET (2m),Control,1.0
+86,BS-NET (2m),Default Mode,1.0
+87,Raw FC (2m),Visual,1.0
+87,Raw FC (2m),Somatomotor,1.0
+87,Raw FC (2m),Dorsal Attn,0.95
+87,Raw FC (2m),Ventral Attn,0.9824561403508771
+87,Raw FC (2m),Limbic,0.9827586206896551
+87,Raw FC (2m),Control,0.9827586206896551
+87,Raw FC (2m),Default Mode,0.9310344827586207
+87,BS-NET (2m),Visual,1.0
+87,BS-NET (2m),Somatomotor,1.0
+87,BS-NET (2m),Dorsal Attn,0.95
+87,BS-NET (2m),Ventral Attn,0.9824561403508771
+87,BS-NET (2m),Limbic,0.9827586206896551
+87,BS-NET (2m),Control,0.9827586206896551
+87,BS-NET (2m),Default Mode,0.9310344827586207
+88,Raw FC (2m),Visual,1.0
+88,Raw FC (2m),Somatomotor,0.9827586206896551
+88,Raw FC (2m),Dorsal Attn,0.9649122807017544
+88,Raw FC (2m),Ventral Attn,0.9827586206896551
+88,Raw FC (2m),Limbic,1.0
+88,Raw FC (2m),Control,1.0
+88,Raw FC (2m),Default Mode,1.0
+88,BS-NET (2m),Visual,1.0
+88,BS-NET (2m),Somatomotor,0.9827586206896551
+88,BS-NET (2m),Dorsal Attn,0.9649122807017544
+88,BS-NET (2m),Ventral Attn,0.9827586206896551
+88,BS-NET (2m),Limbic,1.0
+88,BS-NET (2m),Control,1.0
+88,BS-NET (2m),Default Mode,1.0
+89,Raw FC (2m),Visual,0.5
+89,Raw FC (2m),Somatomotor,1.0
+89,Raw FC (2m),Dorsal Attn,1.0
+89,Raw FC (2m),Ventral Attn,1.0
+89,Raw FC (2m),Limbic,0.5
+89,Raw FC (2m),Control,1.0
+89,Raw FC (2m),Default Mode,1.0
+89,BS-NET (2m),Visual,0.5
+89,BS-NET (2m),Somatomotor,1.0
+89,BS-NET (2m),Dorsal Attn,1.0
+89,BS-NET (2m),Ventral Attn,1.0
+89,BS-NET (2m),Limbic,0.5
+89,BS-NET (2m),Control,1.0
+89,BS-NET (2m),Default Mode,1.0
+90,Raw FC (2m),Visual,0.9824561403508771
+90,Raw FC (2m),Somatomotor,0.9827586206896551
+90,Raw FC (2m),Dorsal Attn,0.9827586206896551
+90,Raw FC (2m),Ventral Attn,1.0
+90,Raw FC (2m),Limbic,1.0
+90,Raw FC (2m),Control,1.0
+90,Raw FC (2m),Default Mode,0.9827586206896551
+90,BS-NET (2m),Visual,0.9824561403508771
+90,BS-NET (2m),Somatomotor,0.9827586206896551
+90,BS-NET (2m),Dorsal Attn,0.9827586206896551
+90,BS-NET (2m),Ventral Attn,1.0
+90,BS-NET (2m),Limbic,1.0
+90,BS-NET (2m),Control,1.0
+90,BS-NET (2m),Default Mode,0.9827586206896551
+91,Raw FC (2m),Visual,1.0
+91,Raw FC (2m),Somatomotor,0.9661016949152542
+91,Raw FC (2m),Dorsal Attn,1.0
+91,Raw FC (2m),Ventral Attn,1.0
+91,Raw FC (2m),Limbic,1.0
+91,Raw FC (2m),Control,0.9649122807017544
+91,Raw FC (2m),Default Mode,1.0
+91,BS-NET (2m),Visual,1.0
+91,BS-NET (2m),Somatomotor,0.9661016949152542
+91,BS-NET (2m),Dorsal Attn,1.0
+91,BS-NET (2m),Ventral Attn,1.0
+91,BS-NET (2m),Limbic,1.0
+91,BS-NET (2m),Control,0.9649122807017544
+91,BS-NET (2m),Default Mode,1.0
+92,Raw FC (2m),Visual,1.0
+92,Raw FC (2m),Somatomotor,1.0
+92,Raw FC (2m),Dorsal Attn,1.0
+92,Raw FC (2m),Ventral Attn,1.0
+92,Raw FC (2m),Limbic,1.0
+92,Raw FC (2m),Control,1.0
+92,Raw FC (2m),Default Mode,1.0
+92,BS-NET (2m),Visual,1.0
+92,BS-NET (2m),Somatomotor,1.0
+92,BS-NET (2m),Dorsal Attn,1.0
+92,BS-NET (2m),Ventral Attn,1.0
+92,BS-NET (2m),Limbic,1.0
+92,BS-NET (2m),Control,1.0
+92,BS-NET (2m),Default Mode,1.0
+93,Raw FC (2m),Visual,0.9827586206896551
+93,Raw FC (2m),Somatomotor,1.0
+93,Raw FC (2m),Dorsal Attn,1.0
+93,Raw FC (2m),Ventral Attn,1.0
+93,Raw FC (2m),Limbic,0.9824561403508771
+93,Raw FC (2m),Control,1.0
+93,Raw FC (2m),Default Mode,1.0
+93,BS-NET (2m),Visual,0.5
+93,BS-NET (2m),Somatomotor,1.0
+93,BS-NET (2m),Dorsal Attn,1.0
+93,BS-NET (2m),Ventral Attn,1.0
+93,BS-NET (2m),Limbic,0.5
+93,BS-NET (2m),Control,1.0
+93,BS-NET (2m),Default Mode,1.0
+94,Raw FC (2m),Visual,0.9827586206896551
+94,Raw FC (2m),Somatomotor,0.9473684210526315
+94,Raw FC (2m),Dorsal Attn,0.9827586206896551
+94,Raw FC (2m),Ventral Attn,0.9827586206896551
+94,Raw FC (2m),Limbic,1.0
+94,Raw FC (2m),Control,1.0
+94,Raw FC (2m),Default Mode,1.0
+94,BS-NET (2m),Visual,0.9827586206896551
+94,BS-NET (2m),Somatomotor,0.9473684210526315
+94,BS-NET (2m),Dorsal Attn,0.9827586206896551
+94,BS-NET (2m),Ventral Attn,0.9827586206896551
+94,BS-NET (2m),Limbic,1.0
+94,BS-NET (2m),Control,1.0
+94,BS-NET (2m),Default Mode,1.0
+95,Raw FC (2m),Visual,1.0
+95,Raw FC (2m),Somatomotor,1.0
+95,Raw FC (2m),Dorsal Attn,1.0
+95,Raw FC (2m),Ventral Attn,1.0
+95,Raw FC (2m),Limbic,1.0
+95,Raw FC (2m),Control,1.0
+95,Raw FC (2m),Default Mode,1.0
+95,BS-NET (2m),Visual,1.0
+95,BS-NET (2m),Somatomotor,1.0
+95,BS-NET (2m),Dorsal Attn,1.0
+95,BS-NET (2m),Ventral Attn,1.0
+95,BS-NET (2m),Limbic,1.0
+95,BS-NET (2m),Control,1.0
+95,BS-NET (2m),Default Mode,1.0
+96,Raw FC (2m),Visual,0.9824561403508771
+96,Raw FC (2m),Somatomotor,0.9824561403508771
+96,Raw FC (2m),Dorsal Attn,1.0
+96,Raw FC (2m),Ventral Attn,0.9827586206896551
+96,Raw FC (2m),Limbic,0.95
+96,Raw FC (2m),Control,1.0
+96,Raw FC (2m),Default Mode,0.9655172413793104
+96,BS-NET (2m),Visual,0.9824561403508771
+96,BS-NET (2m),Somatomotor,0.9824561403508771
+96,BS-NET (2m),Dorsal Attn,1.0
+96,BS-NET (2m),Ventral Attn,0.9827586206896551
+96,BS-NET (2m),Limbic,0.95
+96,BS-NET (2m),Control,1.0
+96,BS-NET (2m),Default Mode,0.9655172413793104
+97,Raw FC (2m),Visual,1.0
+97,Raw FC (2m),Somatomotor,0.5
+97,Raw FC (2m),Dorsal Attn,0.5
+97,Raw FC (2m),Ventral Attn,0.9827586206896551
+97,Raw FC (2m),Limbic,1.0
+97,Raw FC (2m),Control,0.9824561403508771
+97,Raw FC (2m),Default Mode,1.0
+97,BS-NET (2m),Visual,1.0
+97,BS-NET (2m),Somatomotor,0.5
+97,BS-NET (2m),Dorsal Attn,0.5
+97,BS-NET (2m),Ventral Attn,0.9827586206896551
+97,BS-NET (2m),Limbic,1.0
+97,BS-NET (2m),Control,0.9824561403508771
+97,BS-NET (2m),Default Mode,1.0
+98,Raw FC (2m),Visual,0.9827586206896551
+98,Raw FC (2m),Somatomotor,1.0
+98,Raw FC (2m),Dorsal Attn,1.0
+98,Raw FC (2m),Ventral Attn,0.9649122807017544
+98,Raw FC (2m),Limbic,0.9827586206896551
+98,Raw FC (2m),Control,1.0
+98,Raw FC (2m),Default Mode,1.0
+98,BS-NET (2m),Visual,0.9827586206896551
+98,BS-NET (2m),Somatomotor,1.0
+98,BS-NET (2m),Dorsal Attn,1.0
+98,BS-NET (2m),Ventral Attn,0.9649122807017544
+98,BS-NET (2m),Limbic,0.9827586206896551
+98,BS-NET (2m),Control,1.0
+98,BS-NET (2m),Default Mode,1.0
+99,Raw FC (2m),Visual,0.9649122807017544
+99,Raw FC (2m),Somatomotor,1.0
+99,Raw FC (2m),Dorsal Attn,1.0
+99,Raw FC (2m),Ventral Attn,0.9824561403508771
+99,Raw FC (2m),Limbic,0.9827586206896551
+99,Raw FC (2m),Control,0.9827586206896551
+99,Raw FC (2m),Default Mode,0.9830508474576272
+99,BS-NET (2m),Visual,0.9649122807017544
+99,BS-NET (2m),Somatomotor,1.0
+99,BS-NET (2m),Dorsal Attn,1.0
+99,BS-NET (2m),Ventral Attn,0.9824561403508771
+99,BS-NET (2m),Limbic,0.9827586206896551
+99,BS-NET (2m),Control,0.9827586206896551
+99,BS-NET (2m),Default Mode,0.9830508474576272
