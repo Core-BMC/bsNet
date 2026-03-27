@@ -44,7 +44,7 @@ class ConditionResult(NamedTuple):
 
 def run_full_pipeline(
     short_obs: np.ndarray,
-    fc_ground_truth: np.ndarray,
+    fc_reference: np.ndarray,
     block_size: int,
     n_bootstraps: int = 50,
 ) -> float:
@@ -57,7 +57,7 @@ def run_full_pipeline(
 
     Args:
         short_obs: Short observation time series (n_samples, n_rois).
-        fc_ground_truth: Ground truth FC vector (upper triangle).
+        fc_reference: Reference FC vector (upper triangle).
         block_size: Block size for bootstrap resampling.
         n_bootstraps: Number of bootstrap iterations.
 
@@ -75,9 +75,9 @@ def run_full_pipeline(
         )
         ts_b = short_obs[idx, :]
 
-        # Compute observed correlation with ground truth
+        # Compute observed correlation with reference FC
         fc_obs_t = get_fc_matrix(ts_b, vectorized=True, use_shrinkage=True)
-        r_obs_t = np.corrcoef(fc_ground_truth, fc_obs_t)[0, 1]
+        r_obs_t = np.corrcoef(fc_reference, fc_obs_t)[0, 1]
 
         # Compute split-half reliability
         r_split_t = compute_split_half_reliability(ts_b, use_shrinkage=True)
@@ -101,7 +101,7 @@ def run_full_pipeline(
 
 def run_no_sb_pipeline(
     short_obs: np.ndarray,
-    fc_ground_truth: np.ndarray,
+    fc_reference: np.ndarray,
     block_size: int,
     n_bootstraps: int = 50,
 ) -> float:
@@ -112,7 +112,7 @@ def run_no_sb_pipeline(
 
     Args:
         short_obs: Short observation time series (n_samples, n_rois).
-        fc_ground_truth: Ground truth FC vector (upper triangle).
+        fc_reference: Reference FC vector (upper triangle).
         block_size: Block size for bootstrap resampling.
         n_bootstraps: Number of bootstrap iterations.
 
@@ -130,9 +130,9 @@ def run_no_sb_pipeline(
         )
         ts_b = short_obs[idx, :]
 
-        # Compute observed correlation with ground truth
+        # Compute observed correlation with reference FC
         fc_obs_t = get_fc_matrix(ts_b, vectorized=True, use_shrinkage=True)
-        r_obs_t = np.corrcoef(fc_ground_truth, fc_obs_t)[0, 1]
+        r_obs_t = np.corrcoef(fc_reference, fc_obs_t)[0, 1]
 
         # Compute split-half reliability
         r_split_t = compute_split_half_reliability(ts_b, use_shrinkage=True)
@@ -154,7 +154,7 @@ def run_no_sb_pipeline(
 
 def run_no_lw_pipeline(
     short_obs: np.ndarray,
-    fc_ground_truth: np.ndarray,
+    fc_reference: np.ndarray,
     block_size: int,
     n_bootstraps: int = 50,
 ) -> float:
@@ -165,7 +165,7 @@ def run_no_lw_pipeline(
 
     Args:
         short_obs: Short observation time series (n_samples, n_rois).
-        fc_ground_truth: Ground truth FC vector (upper triangle).
+        fc_reference: Reference FC vector (upper triangle).
         block_size: Block size for bootstrap resampling.
         n_bootstraps: Number of bootstrap iterations.
 
@@ -185,7 +185,7 @@ def run_no_lw_pipeline(
 
         # Compute observed correlation without shrinkage
         fc_obs_t = get_fc_matrix(ts_b, vectorized=True, use_shrinkage=False)
-        r_obs_t = np.corrcoef(fc_ground_truth, fc_obs_t)[0, 1]
+        r_obs_t = np.corrcoef(fc_reference, fc_obs_t)[0, 1]
 
         # Compute split-half reliability without shrinkage
         r_split_t = compute_split_half_reliability(ts_b, use_shrinkage=False)
@@ -208,7 +208,7 @@ def run_no_lw_pipeline(
 
 def run_no_boot_pipeline(
     short_obs: np.ndarray,
-    fc_ground_truth: np.ndarray,
+    fc_reference: np.ndarray,
 ) -> float:
     """
     Remove bootstrap resampling (L_no_boot).
@@ -217,7 +217,7 @@ def run_no_boot_pipeline(
 
     Args:
         short_obs: Short observation time series (n_samples, n_rois).
-        fc_ground_truth: Ground truth FC vector (upper triangle).
+        fc_reference: Reference FC vector (upper triangle).
 
     Returns:
         float: Single prediction (no distribution).
@@ -226,7 +226,7 @@ def run_no_boot_pipeline(
 
     # Single sample (no bootstrap)
     fc_obs_t = get_fc_matrix(short_obs, vectorized=True, use_shrinkage=True)
-    r_obs_t = np.corrcoef(fc_ground_truth, fc_obs_t)[0, 1]
+    r_obs_t = np.corrcoef(fc_reference, fc_obs_t)[0, 1]
 
     # Compute split-half reliability
     r_split_t = compute_split_half_reliability(short_obs, use_shrinkage=True)
@@ -248,7 +248,7 @@ def run_no_boot_pipeline(
 
 def run_no_prior_pipeline(
     short_obs: np.ndarray,
-    fc_ground_truth: np.ndarray,
+    fc_reference: np.ndarray,
     block_size: int,
     n_bootstraps: int = 50,
 ) -> float:
@@ -259,7 +259,7 @@ def run_no_prior_pipeline(
 
     Args:
         short_obs: Short observation time series (n_samples, n_rois).
-        fc_ground_truth: Ground truth FC vector (upper triangle).
+        fc_reference: Reference FC vector (upper triangle).
         block_size: Block size for bootstrap resampling.
         n_bootstraps: Number of bootstrap iterations.
 
@@ -276,9 +276,9 @@ def run_no_prior_pipeline(
         )
         ts_b = short_obs[idx, :]
 
-        # Compute observed correlation with ground truth
+        # Compute observed correlation with reference FC
         fc_obs_t = get_fc_matrix(ts_b, vectorized=True, use_shrinkage=True)
-        r_obs_t = np.corrcoef(fc_ground_truth, fc_obs_t)[0, 1]
+        r_obs_t = np.corrcoef(fc_reference, fc_obs_t)[0, 1]
 
         # Compute split-half reliability
         r_split_t = compute_split_half_reliability(ts_b, use_shrinkage=True)
@@ -301,7 +301,7 @@ def run_no_prior_pipeline(
 
 def run_no_atten_pipeline(
     short_obs: np.ndarray,
-    fc_ground_truth: np.ndarray,
+    fc_reference: np.ndarray,
     block_size: int,
     n_bootstraps: int = 50,
 ) -> float:
@@ -313,7 +313,7 @@ def run_no_atten_pipeline(
 
     Args:
         short_obs: Short observation time series (n_samples, n_rois).
-        fc_ground_truth: Ground truth FC vector (upper triangle).
+        fc_reference: Reference FC vector (upper triangle).
         block_size: Block size for bootstrap resampling.
         n_bootstraps: Number of bootstrap iterations.
 
@@ -333,7 +333,7 @@ def run_no_atten_pipeline(
 
         # Compute raw correlation between FC vectors
         fc_obs_t = get_fc_matrix(ts_b, vectorized=True, use_shrinkage=True)
-        r_raw = np.corrcoef(fc_ground_truth, fc_obs_t)[0, 1]
+        r_raw = np.corrcoef(fc_reference, fc_obs_t)[0, 1]
 
         # Apply Spearman-Brown to scale the raw correlation
         r_scaled = spearman_brown(r_raw, k)
@@ -356,7 +356,7 @@ def main() -> None:
     )
 
     # Parameters
-    seeds = [42, 123, 777, 2026, 9999]
+    seeds = [42, 123, 777, 2026, 9999, 314, 628, 1414, 2718, 3141]
     n_rois = 50
     short_duration = 120
     target_duration = 900
@@ -376,7 +376,7 @@ def main() -> None:
         np.random.seed(seed)
 
         # Generate synthetic data
-        # Full 900 samples for ground truth
+        # Full 900 samples for reference FC
         full_obs, full_signal = generate_synthetic_timeseries(
             target_duration, n_rois, noise_level=noise_level, ar1=ar1
         )
@@ -385,10 +385,10 @@ def main() -> None:
             short_duration, n_rois, noise_level=noise_level, ar1=ar1
         )
 
-        # Compute ground truth FC from noise-free full signal
+        # Compute reference FC from noise-free full signal
         # generate_synthetic_timeseries returns (n_rois, n_samples)
         # get_fc_matrix expects (n_samples, n_rois)
-        fc_ground_truth = get_fc_matrix(
+        fc_reference = get_fc_matrix(
             full_signal.T, vectorized=True, use_shrinkage=False
         )
 
@@ -403,35 +403,35 @@ def main() -> None:
         # Run all conditions
         logger.info("Running L_full (full pipeline)")
         rho_full = run_full_pipeline(
-            short_obs, fc_ground_truth, block_size, n_bootstraps
+            short_obs, fc_reference, block_size, n_bootstraps
         )
         results.append(ConditionResult("L_full", seed, rho_full))
 
         logger.info("Running L_no_sb (no Spearman-Brown)")
         rho_no_sb = run_no_sb_pipeline(
-            short_obs, fc_ground_truth, block_size, n_bootstraps
+            short_obs, fc_reference, block_size, n_bootstraps
         )
         results.append(ConditionResult("L_no_sb", seed, rho_no_sb))
 
         logger.info("Running L_no_lw (no Ledoit-Wolf)")
         rho_no_lw = run_no_lw_pipeline(
-            short_obs, fc_ground_truth, block_size, n_bootstraps
+            short_obs, fc_reference, block_size, n_bootstraps
         )
         results.append(ConditionResult("L_no_lw", seed, rho_no_lw))
 
         logger.info("Running L_no_boot (no bootstrap)")
-        rho_no_boot = run_no_boot_pipeline(short_obs, fc_ground_truth)
+        rho_no_boot = run_no_boot_pipeline(short_obs, fc_reference)
         results.append(ConditionResult("L_no_boot", seed, rho_no_boot))
 
         logger.info("Running L_no_prior (no Bayesian prior)")
         rho_no_prior = run_no_prior_pipeline(
-            short_obs, fc_ground_truth, block_size, n_bootstraps
+            short_obs, fc_reference, block_size, n_bootstraps
         )
         results.append(ConditionResult("L_no_prior", seed, rho_no_prior))
 
         logger.info("Running L_no_atten (no attenuation correction)")
         rho_no_atten = run_no_atten_pipeline(
-            short_obs, fc_ground_truth, block_size, n_bootstraps
+            short_obs, fc_reference, block_size, n_bootstraps
         )
         results.append(ConditionResult("L_no_atten", seed, rho_no_atten))
 

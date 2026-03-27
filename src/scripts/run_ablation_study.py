@@ -346,11 +346,11 @@ def run_single_trial(
     full_obs = full_obs.T
     full_true = full_true.T
 
-    # Ground truth: correlation between true signal FC matrices (noiseless)
+    # Reference FC: correlation between true signal FC matrices (noiseless)
     fc_short_true = get_fc_matrix(short_true, vectorized=True, use_shrinkage=True)
     fc_full_true = get_fc_matrix(full_true, vectorized=True, use_shrinkage=True)
-    ground_truth = np.corrcoef(fc_short_true, fc_full_true)[0, 1]
-    ground_truth = np.clip(ground_truth, -1.0, 1.0)
+    fc_reference = np.corrcoef(fc_short_true, fc_full_true)[0, 1]
+    fc_reference = np.clip(fc_reference, -1.0, 1.0)
 
     # Define ablation levels
     levels = [
@@ -367,7 +367,7 @@ def run_single_trial(
     for level, method_name, func in levels:
         try:
             predicted_rho = func(short_obs, full_obs, config)
-            mae = abs(predicted_rho - ground_truth)
+            mae = abs(predicted_rho - fc_reference)
             pass_flag = 1 if predicted_rho >= 0.80 else 0
 
             results.append(
@@ -378,7 +378,7 @@ def run_single_trial(
                     "rho_hat_T": predicted_rho,
                     "mae": mae,
                     "pass": pass_flag,
-                    "ground_truth": ground_truth,
+                    "fc_reference": fc_reference,
                 }
             )
         except Exception as e:
@@ -394,7 +394,7 @@ def run_single_trial(
                     "rho_hat_T": np.nan,
                     "mae": np.nan,
                     "pass": 0,
-                    "ground_truth": ground_truth,
+                    "fc_reference": fc_reference,
                 }
             )
 

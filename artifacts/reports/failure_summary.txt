@@ -1,0 +1,21 @@
+======================================================================
+FAILURE ANALYSIS SUMMARY
+======================================================================
+Total subjects: 100
+Pass (rho_hat_T >= 0.8): 100
+Fail (rho_hat_T <  0.8): 0 (0.0%)
+
+Metric                    Pass (mean+-SD)      Fail (mean+-SD)      Effect
+----------------------------------------------------------------------
+rho_hat_T                  0.9999 +- 0.0000    0.0000 +- 0.0000   -0.9999
+r_fc (FC agreement)        0.8177 +- 0.0203    0.0000 +- 0.0000   -0.8177
+Split-half reliability     0.4461 +- 0.0524    0.0000 +- 0.0000   -0.4461
+SNR (signal/noise var)     3.8751 +- 0.2271    0.0000 +- 0.0000   -3.8751
+Mean AR(1)                 0.4571 +- 0.0191    0.0000 +- 0.0000   -0.4571
+Mean |FC|                  0.1431 +- 0.0070    0.0000 +- 0.0000   -0.1431
+Temporal variance          1.1545 +- 0.0507    0.0000 +- 0.0000   -1.1545
+======================================================================
+
+NO FAILURES DETECTED at current noise/ROI settings. All subjects pass the rho_hat_T >= 0.80 threshold.
+This suggests the 9% failure rate observed in prior experiments may be specific to higher noise conditions or different ROI counts.
+======================================================================

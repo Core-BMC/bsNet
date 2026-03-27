@@ -96,8 +96,8 @@ def run_single_condition(
     signal_full_t = signal_full.T  # (900, n_rois)
     observed_full_t = observed_full.T  # (900, n_rois)
 
-    # Compute ground truth FC from noise-free full signal, vectorized
-    fc_ground_truth = get_fc_matrix(signal_full_t, vectorized=True, use_shrinkage=False)
+    # Compute reference FC from noise-free full signal, vectorized
+    fc_reference = get_fc_matrix(signal_full_t, vectorized=True, use_shrinkage=False)
 
     # Extract short observation
     observed_short = observed_full_t[:short_duration, :]  # (short_duration, n_rois)
@@ -112,7 +112,7 @@ def run_single_condition(
     )
 
     # Run bootstrap prediction
-    result = run_bootstrap_prediction(observed_short, fc_ground_truth, config)
+    result = run_bootstrap_prediction(observed_short, fc_reference, config)
 
     return result.predicted_rho, result.ci_lower, result.ci_upper
 

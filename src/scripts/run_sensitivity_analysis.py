@@ -1,12 +1,20 @@
 """
-Sensitivity analysis script for BS-NET hardcoded parameters.
+Sensitivity analysis script for BS-NET hardcoded parameters (Redesigned).
 
-Performs a two-phase parameter sweep to identify how key parameters
-(reliability_coeff, observation_var, prior_mean, prior_var) affect
-the bootstrap prediction accuracy (predicted_rho) and reliability.
+Tests hyperparameter robustness by sweeping key parameters through the
+**actual bootstrap pipeline path** (not an oracle shortcut).
+
+Design:
+  1. Generate synthetic data (900 samples noisy + 120 samples short)
+  2. Reference FC = Pearson FC from full 900-sample noisy observation
+  3. For each parameter combo, run a custom bootstrap prediction loop
+  4. Evaluate: ρ̂T stability across parameter ranges → low CV = robust
 
 Phase 1: Sweep reliability_coeff × observation_var (prior fixed)
 Phase 2: Sweep prior_mean × prior_var (reliability and obs_var fixed)
+
+Previous version flaw: reference FC was noise-free signal FC, and
+metric was compared against self-correlation (trivially 1.0).
 """
 
 from __future__ import annotations
@@ -23,6 +31,7 @@ from src.core.bootstrap import (
     estimate_optimal_block_length,
     fisher_z,
     fisher_z_inv,
+    spearman_brown,
 )
 from src.core.simulate import generate_synthetic_timeseries
 from src.data.data_loader import get_fc_matrix
@@ -39,39 +48,34 @@ class SensitivityResult(NamedTuple):
     param2_name: str
     param2_val: float
     rho_hat_T: float
-    mae: float
+    r_fc: float
     pass_: bool
 
 
-def compute_split_half_reliability(time_series: np.ndarray) -> float:
-    """
-    Compute split-half reliability from time series data.
-
-    Splits the time series into two halves, computes functional connectivity
-    matrices for each half, and returns their correlation.
+def compute_split_half_reliability(
+    time_series: np.ndarray, use_shrinkage: bool = True
+) -> float:
+    """Compute split-half reliability from time series data.
 
     Args:
         time_series: Time series data with shape (n_samples, n_rois).
+        use_shrinkage: Whether to use Ledoit-Wolf shrinkage.
 
     Returns:
         float: Correlation between split halves, clipped to [0.001, 0.999].
     """
     n_split = time_series.shape[0] // 2
-
     fc_split1 = get_fc_matrix(
-        time_series[:n_split, :], vectorized=True, use_shrinkage=False
+        time_series[:n_split, :], vectorized=True, use_shrinkage=use_shrinkage
     )
     fc_split2 = get_fc_matrix(
-        time_series[n_split:, :], vectorized=True, use_shrinkage=False
+        time_series[n_split:, :], vectorized=True, use_shrinkage=use_shrinkage
     )
-
     r_split = np.corrcoef(fc_split1, fc_split2)[0, 1]
-    r_split = np.clip(r_split, 0.001, 0.999)
-
-    return r_split
+    return float(np.clip(r_split, 0.001, 0.999))
 
 
-def run_simplified_bootstrap_prediction(
+def run_pipeline_with_params(
     short_obs: np.ndarray,
     fc_reference: np.ndarray,
     reliability_coeff: float,
@@ -79,57 +83,56 @@ def run_simplified_bootstrap_prediction(
     observation_var: float,
     k_factor: float,
     n_bootstraps: int = 30,
-) -> float:
-    """
-    Simplified bootstrap prediction loop for sensitivity analysis.
+) -> tuple[float, np.ndarray]:
+    """Run bootstrap prediction with custom parameters through actual pipeline path.
 
-    Mirrors the pipeline.py logic but accepts custom parameter values
-    without modifying the config globally.
+    This mirrors the real pipeline logic (bootstrap → split-half → SB →
+    Bayesian prior → attenuation correction) but with swappable parameters.
 
     Args:
         short_obs: Short observation time series (n_samples, n_rois).
-        fc_reference: Reference functional connectivity vector.
-        reliability_coeff: Assumed reliability coefficient.
-        empirical_prior: Tuple of (mean, variance) for Bayesian prior.
+        fc_reference: Reference FC vector from full-length noisy observation.
+        reliability_coeff: Within-session scanner reliability to test.
+        empirical_prior: (mean, var) tuple for Bayesian prior.
         observation_var: Observation variance for Bayesian weighting.
-        k_factor: Scaling factor for Spearman-Brown correction.
+        k_factor: Spearman-Brown scaling factor (target/short).
         n_bootstraps: Number of bootstrap iterations.
 
     Returns:
-        float: Predicted correlation (median of bootstrap distribution).
+        Tuple of (rho_hat_T, fc_predicted_vector) where fc_predicted_vector
+        is the median FC from bootstrap samples.
     """
     t_samples = short_obs.shape[0]
-
-    # Estimate optimal block length
     block_size = estimate_optimal_block_length(short_obs)
 
     rho_hat_b = []
+    fc_bootstrap_samples = []
 
     for _b in range(n_bootstraps):
-        # Block bootstrap resampling
         idx = block_bootstrap_indices(
             t_samples, block_size, n_blocks=max(1, t_samples // block_size)
         )
         ts_b = short_obs[idx, :]
 
-        # Compute observed correlation
-        fc_obs_t = get_fc_matrix(ts_b, vectorized=True, use_shrinkage=False)
+        # FC from bootstrap sample (with shrinkage, matching real pipeline)
+        fc_obs_t = get_fc_matrix(ts_b, vectorized=True, use_shrinkage=True)
+        fc_bootstrap_samples.append(fc_obs_t)
+
+        # Observed correlation between reference and bootstrap FC
         r_obs_t = np.corrcoef(fc_reference, fc_obs_t)[0, 1]
 
-        # Compute split-half reliability
-        r_split_t = compute_split_half_reliability(ts_b)
+        # Split-half reliability (with shrinkage, matching real pipeline)
+        r_split_t = compute_split_half_reliability(ts_b, use_shrinkage=True)
 
-        # Custom attenuation correction with modified observation_var
+        # Bayesian prior stabilization of split-half estimate
         prior_mean, prior_var = empirical_prior
         weight = prior_var / (prior_var + observation_var)
-        r_real_t_adjusted = weight * r_split_t + (1 - weight) * prior_mean
+        r_real_t = weight * r_split_t + (1 - weight) * prior_mean
 
-        # Apply attenuation correction with custom reliability
+        # Attenuation correction
         min_rel = 0.05
         r_hat_t = max(reliability_coeff, min_rel)
-        r_real_t = max(r_real_t_adjusted, min_rel)
-
-        from src.core.bootstrap import spearman_brown
+        r_real_t = max(r_real_t, min_rel)
 
         r_true_t = r_obs_t / np.sqrt(r_hat_t * r_real_t)
 
@@ -139,16 +142,15 @@ def run_simplified_bootstrap_prediction(
         rho_est_T = r_true_t * np.sqrt(r_hat_T * r_real_T)
         rho_est_T = np.clip(rho_est_T, -1.0, 1.0)
 
-        # Fisher-z transformation
         rho_hat_b.append(fisher_z(rho_est_T))
 
     rho_hat_b = np.array(rho_hat_b)
+    rho_hat_T = float(fisher_z_inv(np.nanmedian(rho_hat_b)))
 
-    # Point estimate as median
-    rho_hat_T_z = np.nanmedian(rho_hat_b)
-    predicted_rho = fisher_z_inv(rho_hat_T_z)
+    # Median FC vector from bootstrap samples → for rFC computation
+    fc_pred = np.median(np.array(fc_bootstrap_samples), axis=0)
 
-    return float(predicted_rho)
+    return rho_hat_T, fc_pred
 
 
 def run_phase1(
@@ -161,10 +163,10 @@ def run_phase1(
     n_bootstraps: int = 30,
     seeds: list[int] | None = None,
 ) -> list[SensitivityResult]:
-    """
-    Phase 1: Sweep reliability_coeff × observation_var.
+    """Phase 1: Sweep reliability_coeff x observation_var.
 
-    Keeps empirical_prior fixed at (0.25, 0.05).
+    Reference FC is computed from full 900-sample NOISY observation
+    (not noise-free signal), making this a realistic test.
 
     Args:
         output_path: Path to save CSV results.
@@ -187,19 +189,32 @@ def run_phase1(
     prior_mean, prior_var = 0.25, 0.05
     k_factor = target_samples / short_samples
 
-    results = []
+    results: list[SensitivityResult] = []
     total_combos = len(reliability_coeffs) * len(observation_vars) * len(seeds)
     combo_count = 0
 
     print("\n" + "=" * 70)
-    print("PHASE 1: Sweep reliability_coeff × observation_var")
+    print("PHASE 1: Sweep reliability_coeff x observation_var")
     print("=" * 70)
     print(f"Fixed prior: mean={prior_mean}, var={prior_var}")
+    print("Reference FC: Pearson from 900-sample noisy observation")
     print(f"Total combinations: {total_combos}")
     print()
 
     for seed_val in seeds:
         np.random.seed(seed_val)
+
+        # Generate synthetic data ONCE per seed
+        long_obs, _ = generate_synthetic_timeseries(
+            target_samples, n_rois, noise_level=noise_level, ar1=ar1
+        )
+        long_obs = long_obs.T  # (target_samples, n_rois)
+
+        # Reference FC from full noisy observation (realistic, not oracle)
+        fc_reference = get_fc_matrix(long_obs, vectorized=True, use_shrinkage=False)
+
+        # Short observation = first 120 samples
+        short_obs = long_obs[:short_samples, :]
 
         for rel_coeff in reliability_coeffs:
             for obs_var in observation_vars:
@@ -212,26 +227,9 @@ def run_phase1(
                     flush=True,
                 )
 
-                # Generate synthetic data
-                long_obs, long_signal = generate_synthetic_timeseries(
-                    target_samples,
-                    n_rois,
-                    noise_level=noise_level,
-                    ar1=ar1,
-                )
-                long_obs = long_obs.T  # (target_samples, n_rois)
-                long_signal = long_signal.T
-
-                # Ground truth FC from noise-free signal
-                fc_true_T = get_fc_matrix(long_signal, vectorized=True)
-
-                # Short observation
-                short_obs = long_obs[:short_samples, :]
-
-                # Run simplified bootstrap prediction
-                predicted_rho = run_simplified_bootstrap_prediction(
+                rho_hat_T, fc_pred = run_pipeline_with_params(
                     short_obs,
-                    fc_true_T,
+                    fc_reference,
                     reliability_coeff=rel_coeff,
                     empirical_prior=(prior_mean, prior_var),
                     observation_var=obs_var,
@@ -239,10 +237,9 @@ def run_phase1(
                     n_bootstraps=n_bootstraps,
                 )
 
-                # Compute metrics
-                true_rho = np.corrcoef(fc_true_T, fc_true_T)[0, 1]  # Should be 1.0
-                mae = abs(predicted_rho - true_rho)
-                pass_result = predicted_rho >= 0.80
+                # rFC: correlation between predicted FC and reference FC
+                r_fc = float(np.corrcoef(fc_reference, fc_pred)[0, 1])
+                pass_result = rho_hat_T >= 0.80
 
                 result = SensitivityResult(
                     seed=seed_val,
@@ -250,14 +247,17 @@ def run_phase1(
                     param1_val=rel_coeff,
                     param2_name="observation_var",
                     param2_val=obs_var,
-                    rho_hat_T=predicted_rho,
-                    mae=mae,
+                    rho_hat_T=rho_hat_T,
+                    r_fc=r_fc,
                     pass_=pass_result,
                 )
                 results.append(result)
 
-                status = "✓ PASS" if pass_result else "✗ FAIL"
-                print(f"ρ̂T={predicted_rho:.4f}, mae={mae:.4f} {status}")
+                status = "PASS" if pass_result else "FAIL"
+                print(
+                    f"rho_hat_T={rho_hat_T:.4f}, "
+                    f"r_fc={r_fc:.4f} {status}"
+                )
 
     return results
 
@@ -272,10 +272,9 @@ def run_phase2(
     n_bootstraps: int = 30,
     seeds: list[int] | None = None,
 ) -> list[SensitivityResult]:
-    """
-    Phase 2: Sweep prior_mean × prior_var.
+    """Phase 2: Sweep prior_mean x prior_var.
 
-    Keeps reliability_coeff fixed at 0.98 and observation_var fixed at 0.15.
+    Keeps reliability_coeff=0.98 and observation_var=0.15 fixed.
 
     Args:
         output_path: Path to save CSV results.
@@ -299,19 +298,28 @@ def run_phase2(
     observation_var = 0.15
     k_factor = target_samples / short_samples
 
-    results = []
+    results: list[SensitivityResult] = []
     total_combos = len(prior_means) * len(prior_vars) * len(seeds)
     combo_count = 0
 
     print("\n" + "=" * 70)
-    print("PHASE 2: Sweep prior_mean × prior_var")
+    print("PHASE 2: Sweep prior_mean x prior_var")
     print("=" * 70)
     print(f"Fixed reliability_coeff={reliability_coeff}, observation_var={observation_var}")
+    print("Reference FC: Pearson from 900-sample noisy observation")
     print(f"Total combinations: {total_combos}")
     print()
 
     for seed_val in seeds:
         np.random.seed(seed_val)
+
+        long_obs, _ = generate_synthetic_timeseries(
+            target_samples, n_rois, noise_level=noise_level, ar1=ar1
+        )
+        long_obs = long_obs.T
+
+        fc_reference = get_fc_matrix(long_obs, vectorized=True, use_shrinkage=False)
+        short_obs = long_obs[:short_samples, :]
 
         for prior_mean in prior_means:
             for prior_var in prior_vars:
@@ -324,26 +332,9 @@ def run_phase2(
                     flush=True,
                 )
 
-                # Generate synthetic data
-                long_obs, long_signal = generate_synthetic_timeseries(
-                    target_samples,
-                    n_rois,
-                    noise_level=noise_level,
-                    ar1=ar1,
-                )
-                long_obs = long_obs.T
-                long_signal = long_signal.T
-
-                # Ground truth FC from noise-free signal
-                fc_true_T = get_fc_matrix(long_signal, vectorized=True)
-
-                # Short observation
-                short_obs = long_obs[:short_samples, :]
-
-                # Run simplified bootstrap prediction
-                predicted_rho = run_simplified_bootstrap_prediction(
+                rho_hat_T, fc_pred = run_pipeline_with_params(
                     short_obs,
-                    fc_true_T,
+                    fc_reference,
                     reliability_coeff=reliability_coeff,
                     empirical_prior=(prior_mean, prior_var),
                     observation_var=observation_var,
@@ -351,10 +342,8 @@ def run_phase2(
                     n_bootstraps=n_bootstraps,
                 )
 
-                # Compute metrics
-                true_rho = np.corrcoef(fc_true_T, fc_true_T)[0, 1]
-                mae = abs(predicted_rho - true_rho)
-                pass_result = predicted_rho >= 0.80
+                r_fc = float(np.corrcoef(fc_reference, fc_pred)[0, 1])
+                pass_result = rho_hat_T >= 0.80
 
                 result = SensitivityResult(
                     seed=seed_val,
@@ -362,14 +351,17 @@ def run_phase2(
                     param1_val=prior_mean,
                     param2_name="prior_var",
                     param2_val=prior_var,
-                    rho_hat_T=predicted_rho,
-                    mae=mae,
+                    rho_hat_T=rho_hat_T,
+                    r_fc=r_fc,
                     pass_=pass_result,
                 )
                 results.append(result)
 
-                status = "✓ PASS" if pass_result else "✗ FAIL"
-                print(f"ρ̂T={predicted_rho:.4f}, mae={mae:.4f} {status}")
+                status = "PASS" if pass_result else "FAIL"
+                print(
+                    f"rho_hat_T={rho_hat_T:.4f}, "
+                    f"r_fc={r_fc:.4f} {status}"
+                )
 
     return results
 
@@ -377,8 +369,7 @@ def run_phase2(
 def save_results_to_csv(
     results: list[SensitivityResult], output_path: Path
 ) -> None:
-    """
-    Save sensitivity analysis results to CSV file.
+    """Save sensitivity analysis results to CSV file.
 
     Args:
         results: List of SensitivityResult tuples.
@@ -389,29 +380,13 @@ def save_results_to_csv(
     with open(output_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
-            [
-                "seed",
-                "param1_name",
-                "param1_val",
-                "param2_name",
-                "param2_val",
-                "rho_hat_T",
-                "mae",
-                "pass",
-            ]
+            ["seed", "param1_name", "param1_val", "param2_name",
+             "param2_val", "rho_hat_T", "r_fc", "pass"]
         )
-        for result in results:
+        for r in results:
             writer.writerow(
-                [
-                    result.seed,
-                    result.param1_name,
-                    result.param1_val,
-                    result.param2_name,
-                    result.param2_val,
-                    result.rho_hat_T,
-                    result.mae,
-                    result.pass_,
-                ]
+                [r.seed, r.param1_name, r.param1_val, r.param2_name,
+                 r.param2_val, r.rho_hat_T, r.r_fc, r.pass_]
             )
 
     print(f"\nResults saved to: {output_path}")
@@ -420,8 +395,7 @@ def save_results_to_csv(
 def print_summary_statistics(
     results: list[SensitivityResult], phase_name: str
 ) -> None:
-    """
-    Print summary statistics for sensitivity analysis results.
+    """Print summary statistics for sensitivity analysis results.
 
     Args:
         results: List of SensitivityResult tuples.
@@ -431,18 +405,24 @@ def print_summary_statistics(
         print(f"\nNo results for {phase_name}")
         return
 
-    rho_hat_Ts = [r.rho_hat_T for r in results]
-    maes = [r.mae for r in results]
+    rho_vals = [r.rho_hat_T for r in results]
+    r_fc_vals = [r.r_fc for r in results]
     pass_count = sum(1 for r in results if r.pass_)
     total_count = len(results)
+    cv = np.std(rho_vals) / np.mean(rho_vals) if np.mean(rho_vals) > 0 else float("inf")
 
-    print(f"\n{phase_name} Summary Statistics:")
+    print(f"\n{'=' * 70}")
+    print(f"{phase_name} Summary Statistics:")
+    print(f"{'=' * 70}")
     print(f"  Total combinations: {total_count}")
-    print(f"  Pass rate (ρ̂T >= 0.80): {pass_count}/{total_count} ({100*pass_count/total_count:.1f}%)")
-    print(f"  Predicted ρ̂T - Mean: {np.mean(rho_hat_Ts):.4f}, "
-          f"Std: {np.std(rho_hat_Ts):.4f}")
-    print(f"  MAE - Mean: {np.mean(maes):.4f}, Std: {np.std(maes):.4f}")
-    print(f"  MAE - Min: {np.min(maes):.4f}, Max: {np.max(maes):.4f}")
+    print(f"  Pass rate (rho_hat_T >= 0.80): {pass_count}/{total_count} "
+          f"({100 * pass_count / total_count:.1f}%)")
+    print(f"  rho_hat_T — Mean: {np.mean(rho_vals):.4f}, "
+          f"SD: {np.std(rho_vals):.4f}, CV: {cv:.4f}")
+    print(f"  rho_hat_T — Range: [{np.min(rho_vals):.4f}, {np.max(rho_vals):.4f}]")
+    print(f"  r_fc      — Mean: {np.mean(r_fc_vals):.4f}, "
+          f"SD: {np.std(r_fc_vals):.4f}")
+    print(f"{'=' * 70}")
 
 
 def main() -> None:
@@ -458,21 +438,21 @@ def main() -> None:
 
     seeds = [42, 123, 456]
 
-    # Phase 1: reliability_coeff × observation_var
+    # Phase 1: reliability_coeff x observation_var
     results_phase1 = run_phase1(output_path_phase1, seeds=seeds)
     save_results_to_csv(results_phase1, output_path_phase1)
-    print_summary_statistics(results_phase1, "PHASE 1 (reliability_coeff × observation_var)")
+    print_summary_statistics(
+        results_phase1, "PHASE 1 (reliability_coeff x observation_var)"
+    )
 
-    # Phase 2: prior_mean × prior_var
+    # Phase 2: prior_mean x prior_var
     results_phase2 = run_phase2(output_path_phase2, seeds=seeds)
     save_results_to_csv(results_phase2, output_path_phase2)
-    print_summary_statistics(results_phase2, "PHASE 2 (prior_mean × prior_var)")
+    print_summary_statistics(results_phase2, "PHASE 2 (prior_mean x prior_var)")
 
-    print("\n" + "=" * 70)
-    print("Sensitivity analysis complete!")
+    print("\nSensitivity analysis complete!")
     print(f"Phase 1 results: {output_path_phase1}")
     print(f"Phase 2 results: {output_path_phase2}")
-    print("=" * 70)
 
 
 if __name__ == "__main__":

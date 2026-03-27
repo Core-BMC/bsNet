@@ -3,7 +3,7 @@ Shrinkage covariance estimator comparison for FC estimation from short scans.
 
 Compares Ledoit-Wolf vs OAS vs Pearson correlation for functional connectivity
 (FC) estimation from short fMRI scans across different numbers of ROIs and
-random seeds. Evaluates ground truth FC from long scans (900 samples) and
+random seeds. Evaluates reference FC from long scans (900 samples) and
 compares estimation quality using correlation, mean absolute error, Frobenius
 norm, and condition number metrics.
 """
@@ -121,10 +121,10 @@ def compute_fc_metrics(
     fc_true: np.ndarray, fc_estimated: np.ndarray
 ) -> dict[str, float]:
     """
-    Compute metrics comparing estimated FC to ground truth.
+    Compute metrics comparing estimated FC to reference FC.
 
     Args:
-        fc_true: Ground truth FC matrix (p, p).
+        fc_true: Reference FC matrix (p, p).
         fc_estimated: Estimated FC matrix (p, p).
 
     Returns:
@@ -211,10 +211,10 @@ def run_shrinkage_comparison() -> None:
     Run comprehensive shrinkage method comparison across ROI counts and seeds.
 
     For each (n_rois, seed) pair:
-      1. Generate synthetic data (900 samples for ground truth, 120 for short)
-      2. Compute ground truth FC from 900 samples using Pearson
+      1. Generate synthetic data (900 samples for reference FC, 120 for short)
+      2. Compute reference FC from 900 samples using Pearson
       3. Compute short-scan FC using 3 methods: Pearson, Ledoit-Wolf, OAS
-      4. Compare each method's FC to ground truth using rho, MAE, Frobenius,
+      4. Compare each method's FC to reference FC using rho, MAE, Frobenius,
          and condition number
       5. Save results to artifacts/reports/shrinkage_comparison.csv
       6. Print formatted comparison table grouped by n_rois
@@ -224,7 +224,7 @@ def run_shrinkage_comparison() -> None:
     n_rois_list = [20, 50, 100, 200]
     seeds = [42, 123, 777]
 
-    # Ground truth uses 900 samples (900/120 = 7.5x longer than short scan)
+    # Reference FC uses 900 samples (900/120 = 7.5x longer than short scan)
     n_samples_long = 900
     n_samples_short = 120
 
@@ -247,13 +247,13 @@ def run_shrinkage_comparison() -> None:
         for seed in seeds:
             np.random.seed(seed)
 
-            # Generate long data (ground truth)
+            # Generate long data (reference FC)
             long_data, _ = generate_synthetic_timeseries(
                 n_samples_long, n_rois, noise_level=0.25, ar1=0.6
             )
             long_data = long_data.T  # Shape: (n_samples, n_rois)
 
-            # Compute ground truth FC from long data using Pearson
+            # Compute reference FC from long data using Pearson
             fc_true = estimate_fc_pearson(long_data)
 
             # Generate short data

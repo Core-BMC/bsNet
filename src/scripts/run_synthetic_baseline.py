@@ -35,7 +35,7 @@ def run_simulation(
         f"T = {T_samples} samples ({target_len_min}m)"
     )
 
-    # 1. Generate Ground Truth Long Data (T)
+    # 1. Generate Reference FC from Long Data (T)
     # Applying advanced denoise assumptions: XCP-D drops intrinsic noise variance
     long_obs, long_signal = generate_synthetic_timeseries(
         T_samples, n_rois, noise_level=0.25, ar1=0.6

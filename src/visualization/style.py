@@ -23,7 +23,7 @@ _logger = logging.getLogger(__name__)
 PALETTE: dict[str, str] = {
     "bsnet": "#4A90E2",  # BS-NET predictions (blue)
     "raw": "#E27396",  # Raw 2-min FC (pink/red)
-    "true": "#2c7bb6",  # Ground truth 15-min (dark blue)
+    "true": "#2c7bb6",  # Reference FC 15-min (dark blue)
     "highlight": "#d7191c",  # Emphasis/threshold markers (red)
     "accent": "#fdae61",  # Secondary accent (amber)
     "ci_fill": "#abd9e9",  # Confidence interval fill (light blue)

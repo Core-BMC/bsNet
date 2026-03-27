@@ -142,6 +142,7 @@ def run_bootstrap_prediction(
         r_split_t = compute_split_half_reliability(ts_b, use_shrinkage=True)
 
         # Attenuation correction with Bayesian prior
+        # reliability_coeff: within-session scanner reliability (Friedman 2008)
         rho_est_T = correct_attenuation(
             r_obs_t,
             config.reliability_coeff,

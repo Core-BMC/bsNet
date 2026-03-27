@@ -1,7 +1,12 @@
-"""Generate Figure 4: Network-specific integrity and community detection validation.
+"""Generate Figure 4: Network-specific integrity and community detection (10-seed).
 
 Analyzes Jaccard overlap between predicted and true community structures
 across individual networks, with global modularity continuity metrics.
+
+Design: 10 seeds x 20 subjects x 100 ROIs
+  - Cross-seed variability captured via Seed column
+  - Boxplots pool all (seed x subject) observations
+  - Summary statistics (mean +/- SD across seed-level means) reported
 """
 
 import warnings
@@ -31,39 +36,41 @@ from src.visualization.style import MODEL_PALETTE, apply_bsnet_theme, save_figur
 
 warnings.filterwarnings("ignore")
 
+# Reproducible 10-seed set (shared across all figures)
+SEEDS: list[int] = [42, 123, 777, 2026, 9999, 314, 628, 1414, 2718, 3141]
 
-def main() -> None:
-    """Generate and save Figure 4: Network integrity analysis.
 
-    Creates two visualizations:
-    - Panel A: Global modularity continuity (Adjusted Rand Index)
-    - Panel B: Per-network Jaccard similarity across models
+def run_single_seed(
+    seed: int,
+    config: BSNetConfig,
+    n_subjects: int = 20,
+    n_rois: int = 100,
+    t_samples_long: int = 450,
+    t_samples_short: int = 60,
+) -> tuple[list[dict], list[dict], list[dict]]:
+    """Run network integrity analysis for a single seed.
+
+    Args:
+        seed: Random seed for reproducibility.
+        config: BS-NET configuration.
+        n_subjects: Number of subjects per seed.
+        n_rois: Number of ROIs per subject.
+        t_samples_long: Full-scan sample count.
+        t_samples_short: Short-scan sample count.
 
     Returns:
-        None
+        Tuple of (community_results, ari_results, jaccard_results).
     """
-    print("--- Phase 5: Network-Specific Integrity Validation ---")
-    config = BSNetConfig()
-    out_dir = Path(config.artifacts_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    figure_dir = Path(config.figure_dir)
-    figure_dir.mkdir(parents=True, exist_ok=True)
+    np.random.seed(seed)
+    community_results: list[dict] = []
+    ari_results: list[dict] = []
+    jaccard_results: list[dict] = []
 
-    n_subjects = 100
-    n_rois = 100
-    t_samples_long = 450
-    t_samples_short = 60
+    true_communities = compute_network_block_assignments(n_rois, config.n_networks)
 
-    results = []
-    ari_results = []
-
-    print(f"Tracking {config.n_networks} Canonical Networks for {n_subjects} "
-          f"Subjects...")
     for sub in range(n_subjects):
-        if sub % 5 == 0:
-            print(f" > Processing Topologies: Subject {sub}/{n_subjects}...")
         ts, _ = generate_synthetic_timeseries(t_samples_long, n_rois)
-        ts = ts.T
+        ts = ts.T  # (samples, rois)
 
         fc_true = get_fc_matrix(ts, vectorized=False, use_shrinkage=True)
         ts_short = ts[:t_samples_short, :]
@@ -71,6 +78,7 @@ def main() -> None:
 
         true_overlap = np.corrcoef(fc_raw.flatten(), fc_true.flatten())[0, 1]
 
+        # BS-NET prediction
         rho_hat_b = []
         n_split = ts_short.shape[0] // 2
         for _b in range(5):
@@ -95,6 +103,7 @@ def main() -> None:
         fc_pred_z = fisher_z(fc_raw) * min(inflation_ratio, 1.5)
         fc_pred = fisher_z_inv(fc_pred_z)
 
+        # Community detection
         adj_true = threshold_matrix(fc_true, density=config.fc_density)
         labels_true = get_communities(adj_true)
 
@@ -102,8 +111,10 @@ def main() -> None:
             adj = threshold_matrix(fc_mat, density=config.fc_density)
             labels = get_communities(adj)
             ari = adjusted_rand_score(labels_true, labels)
-            results.append(
+
+            community_results.append(
                 {
+                    "Seed": seed,
                     "Subject": sub,
                     "Model": name,
                     "Community Labels": labels,
@@ -111,50 +122,15 @@ def main() -> None:
             )
             ari_results.append(
                 {
+                    "Seed": seed,
                     "Subject": sub,
                     "Model": name,
                     "ARI": ari,
                 }
             )
 
-    df = pd.DataFrame(results)
-    df_ari = pd.DataFrame(ari_results)
-    df_ari.to_csv(out_dir / "subnetwork_ari_results_yeo100.csv", index=False)
-
-    # Plot global ARI
-    apply_bsnet_theme()
-    fig = plt.figure(figsize=(8, 6))
-    sns.boxplot(
-        data=df_ari,
-        x="Model",
-        y="ARI",
-        palette=MODEL_PALETTE,
-        showfliers=False,
-        width=0.5,
-    )
-    sns.stripplot(
-        data=df_ari, x="Model", y="ARI", color="black", alpha=0.4, jitter=True
-    )
-    plt.title(
-        "Global Overlap Continuity (Schaefer 400 Parcellation)",
-        fontweight="bold",
-        pad=15,
-    )
-    plt.ylabel("Adjusted Rand Index (ARI)")
-    plt.tight_layout()
-    save_figure(fig, "Figure4_Overall_ARI.png")
-
-    # Compute per-network Jaccard overlap
-    true_communities = compute_network_block_assignments(n_rois, config.n_networks)
-
-    jaccard_results = []
-    for sub in range(n_subjects):
-        for model in ["Raw FC (2m)", "BS-NET (2m)"]:
-            labels = df[(df["Subject"] == sub) & (df["Model"] == model)][
-                "Community Labels"
-            ].iloc[0]
-
-            pred_comms = {}
+            # Per-network Jaccard overlap
+            pred_comms: dict[int, set[int]] = {}
             for node, lbl in enumerate(labels):
                 pred_comms.setdefault(lbl, set()).add(node)
 
@@ -170,65 +146,155 @@ def main() -> None:
 
                 jaccard_results.append(
                     {
+                        "Seed": seed,
                         "Subject": sub,
-                        "Model": model,
+                        "Model": name,
                         "Network": NETWORK_NAMES[net_idx],
                         "Jaccard Overlap": best_jaccard,
                     }
                 )
 
-    df_net = pd.DataFrame(jaccard_results)
-    df_net.to_csv(out_dir / "per_network_jaccard_results_yeo100.csv", index=False)
+    return community_results, ari_results, jaccard_results
 
-    print("\n--- [Targeted Network Jaccard Overlap Check] ---")
+
+def main() -> None:
+    """Generate and save Figure 4: Network integrity analysis.
+
+    Runs 10 seeds x 20 subjects x 100 ROIs, creates:
+    - ARI boxplot (global modularity continuity)
+    - Per-network Jaccard similarity boxplot
+    Both include cross-seed error markers.
+    """
+    print("--- Phase 5: Network-Specific Integrity (10-seed design) ---")
+    config = BSNetConfig()
+    out_dir = Path(config.artifacts_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    figure_dir = Path(config.figure_dir)
+    figure_dir.mkdir(parents=True, exist_ok=True)
+
+    all_ari: list[dict] = []
+    all_jaccard: list[dict] = []
+
+    for i, seed in enumerate(SEEDS):
+        print(f"  Seed {i + 1}/{len(SEEDS)} (seed={seed})...")
+        _, ari_results, jaccard_results = run_single_seed(
+            seed, config, n_subjects=20, n_rois=100,
+        )
+        all_ari.extend(ari_results)
+        all_jaccard.extend(jaccard_results)
+
+    df_ari = pd.DataFrame(all_ari)
+    df_net = pd.DataFrame(all_jaccard)
+
+    df_ari.to_csv(out_dir / "subnetwork_ari_results.csv", index=False)
+    df_net.to_csv(out_dir / "per_network_jaccard_results.csv", index=False)
+
+    # Print cross-seed summary
+    print("\n--- [ARI — Cross-seed Summary] ---")
+    for model in ["Raw FC (2m)", "BS-NET (2m)"]:
+        seed_means = (
+            df_ari[df_ari["Model"] == model].groupby("Seed")["ARI"].mean()
+        )
+        print(
+            f"  {model}: ARI = {seed_means.mean():.3f} +/- {seed_means.std():.3f}"
+        )
+
+    print("\n--- [Targeted Network Jaccard — Cross-seed Summary] ---")
     for net in ["Visual", "Default Mode"]:
-        raw_jm = df_net[
-            (df_net["Network"] == net) & (df_net["Model"] == "Raw FC (2m)")
-        ]["Jaccard Overlap"].mean()
-        pred_jm = df_net[
-            (df_net["Network"] == net) & (df_net["Model"] == "BS-NET (2m)")
-        ]["Jaccard Overlap"].mean()
-        print(f"{net} => Raw 2m: {raw_jm:.3f} | BS-NET 2m: {pred_jm:.3f}")
+        for model in ["Raw FC (2m)", "BS-NET (2m)"]:
+            seed_means = (
+                df_net[
+                    (df_net["Network"] == net) & (df_net["Model"] == model)
+                ]
+                .groupby("Seed")["Jaccard Overlap"]
+                .mean()
+            )
+            print(
+                f"  {net} / {model}: "
+                f"{seed_means.mean():.3f} +/- {seed_means.std():.3f}"
+            )
 
-    # Plot per-network Jaccard
-    fig = plt.figure(figsize=(12, 6))
-    sns.boxplot(
-        data=df_net,
-        x="Network",
-        y="Jaccard Overlap",
-        hue="Model",
-        palette=MODEL_PALETTE,
-        showfliers=False,
-        width=0.6,
+    # --- Plot 1: Global ARI (violin + swarm + mean±SD) ---
+    apply_bsnet_theme()
+    ari_models = ["Raw FC (2m)", "BS-NET (2m)"]
+    swarm_pal = ["#9C1C3D", "#0A4D8D"]
+
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111)
+    sns.violinplot(
+        data=df_ari, x="Model", y="ARI", order=ari_models,
+        palette=MODEL_PALETTE, inner="box", linewidth=1, width=0.7, ax=ax,
     )
-    sns.stripplot(
-        data=df_net,
-        x="Network",
-        y="Jaccard Overlap",
-        hue="Model",
-        dodge=True,
-        color="black",
-        alpha=0.3,
-        jitter=True,
-        legend=False,
+    sns.swarmplot(
+        data=df_ari, x="Model", y="ARI", order=ari_models,
+        palette=swarm_pal, alpha=0.7, size=3,
+        edgecolor="white", linewidth=0.4, ax=ax,
     )
 
-    plt.title(
-        "Smoothed Network Jaccard Curve (Schaefer 400 Parcellation)",
-        fontweight="bold",
-        pad=15,
+    # Cross-seed mean±SD diamond markers
+    for i, model in enumerate(ari_models):
+        seed_means = (
+            df_ari[df_ari["Model"] == model].groupby("Seed")["ARI"].mean()
+        )
+        ax.errorbar(
+            i, seed_means.mean(), yerr=seed_means.std(),
+            fmt="D", color="red", markersize=7, capsize=6, capthick=1.5,
+            zorder=10, label="Seed mean +/- SD" if i == 0 else None,
+        )
+
+    ax.set_title(
+        "Global Overlap Continuity (100-ROI Parcellation)",
+        fontweight="bold", pad=15,
     )
-    plt.ylabel("Jaccard Similarity w/ True 15m Network")
-    plt.xlabel("")
-    plt.xticks(rotation=15)
-    plt.axhline(
-        y=1.0,
-        color="r",
-        linestyle="--",
-        alpha=0.3,
+    ax.set_ylabel("Adjusted Rand Index (ARI)", fontweight="bold")
+    ax.set_xlabel("")
+    ax.legend(loc="lower right", fontsize=9)
+    plt.tight_layout()
+    save_figure(fig, "Figure4_Overall_ARI.png")
+
+    # --- Plot 2: Per-network Jaccard (violin + swarm + mean±SD) ---
+    fig = plt.figure(figsize=(14, 7))
+    ax = fig.add_subplot(111)
+    sns.violinplot(
+        data=df_net, x="Network", y="Jaccard Overlap", hue="Model",
+        palette=MODEL_PALETTE, inner="box", linewidth=1, width=0.8, ax=ax,
+    )
+    sns.swarmplot(
+        data=df_net, x="Network", y="Jaccard Overlap", hue="Model",
+        palette=swarm_pal, dodge=True, alpha=0.7, size=2.5,
+        edgecolor="white", linewidth=0.3, ax=ax, legend=False,
+    )
+
+    # Per-network mean±SD overlay
+    networks = df_net["Network"].unique()
+    for net_i, net in enumerate(networks):
+        for m_i, model in enumerate(ari_models):
+            seed_means = (
+                df_net[(df_net["Network"] == net) & (df_net["Model"] == model)]
+                .groupby("Seed")["Jaccard Overlap"]
+                .mean()
+            )
+            offset = -0.2 + m_i * 0.4  # dodge offset
+            ax.errorbar(
+                net_i + offset, seed_means.mean(), yerr=seed_means.std(),
+                fmt="D", color="red", markersize=5, capsize=4, capthick=1.2,
+                zorder=10,
+                label="Seed mean +/- SD" if (net_i == 0 and m_i == 0) else None,
+            )
+
+    ax.axhline(
+        y=1.0, color="r", linestyle="--", alpha=0.3,
         label="Perfect Structural Match",
     )
-    plt.legend(loc="lower right", title="Modality")
+    ax.set_title(
+        "Network Jaccard Similarity (100-ROI Parcellation)",
+        fontweight="bold", pad=15,
+    )
+    ax.set_ylabel("Jaccard Similarity w/ Reference FC 15m Network", fontweight="bold")
+    ax.set_xlabel("")
+    plt.xticks(rotation=15)
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles[:3], labels[:3], loc="lower right", title="Modality")
 
     plt.tight_layout()
     save_figure(fig, "Figure4_Subnetworks.png")
@@ -236,5 +302,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    np.random.seed(42)
     main()

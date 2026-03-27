@@ -24,6 +24,12 @@
 
 ## 5. 개발 계획 및 유지보수 (Development Plans)
 - **`5.1_plan_refactoring.md`**: 코드 구조 분석 및 리팩토링 계획서. 중복 코드 추출, 매직 넘버 중앙화, 시각화 통합, 프로젝트 정리 등 4단계 로드맵.
+- **`5.2_review_critical_analysis.md`**: Critical review — 통계, 실험 설계, 스토리라인 전반의 13개 이슈 (CRITICAL 4, MAJOR 7, MINOR 2) 및 DOI 16건.
+- **`5.3_defense_plan.md`**: 방어 실험 계획서. Track A–D 4개 병렬 트랙 설계.
+- **`5.4_defense_responses.md`**: 방어 실험 결과 및 코멘트 대응. Track A–F 6개 실험 결과, 해석, 논문 반영 방향.
+- **`5.5_methods_preprocessing.md`**: Methods 섹션용 전처리 파이프라인 상세 기술 (fMRIPrep, XCP-D, Schaefer 400, LW shrinkage). DOI 8건.
+- **`5.6_failure_characterization.md`**: 9% 실패 피험자 특성 분석. N=300 (3 noise levels) 시뮬레이션, SNR≈1:1까지 100% pass 확인.
+- **`5.7_stationarity_discussion.md`**: Stationarity test 결과 논문 반영 방식 확정. Cheng et al. (2021) 선례 기반 방어 논증 3단계.
 
 ---
 
@@ -36,3 +42,4 @@
 | Fig 2 | `Figure2_Validation.png` | N=100 코호트 실증 (Scatter, KDE, Error, Pass Rate) |
 | Fig 3 | `Figure3_Topology.png` | Schaefer 400 토폴로지 보존 (Degree, Path Length) |
 | Fig 4 | `Figure4_*.png` | ARI, Modularity, Subnetwork Jaccard (Yeo-7 / Yeo-100) |
+| Fig 5 | `Figure_ComponentNecessity.png` | Component Necessity Analysis — ρ̂T per condition + Δρ waterfall |

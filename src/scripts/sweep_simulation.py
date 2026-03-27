@@ -24,7 +24,7 @@ def run_duration_sweep() -> None:
     n_rois = 50
 
     sweep_seconds = [30, 60, 90, 120, 150, 180, 210, 240]
-    seeds = [42, 123, 777, 2026, 9999]
+    seeds = [42, 123, 777, 2026, 9999, 314, 628, 1414, 2718, 3141]
 
     print("--- BS-NET Time Duration Sweep (Multi-Seed Validation) ---")
     print(f"Full Target: {t_minutes} minutes ({T_samples} TRs, TR={tr}s)")
@@ -78,9 +78,15 @@ def run_duration_sweep() -> None:
                 }
             )
 
-    # Aggregate results over seeds
+    # Aggregate results over seeds (mean ± SD)
     df = pd.DataFrame(all_results)
-    agg_df = df.groupby("Duration (s)").mean().reset_index()
+    agg_mean = df.groupby("Duration (s)").mean(numeric_only=True).reset_index()
+    agg_std = df.groupby("Duration (s)").std(numeric_only=True).reset_index()
+    agg_df = agg_mean.copy()
+    agg_df["Predicted_SD"] = agg_std["Predicted"]
+    agg_df["Error_SD"] = agg_std["Error"]
+    agg_df["CI_Lower_SD"] = agg_std["CI Lower"]
+    agg_df["CI_Upper_SD"] = agg_std["CI Upper"]
 
     print(
         f"{'Dur(s)':<8} | {'Pred_Mean':<10} | {'Err_Mean':<10} | "

@@ -1,0 +1,7 @@
+Condition,ρ̂T (mean ± SD),Δρ̂T,N,Interpretation
+Full Pipeline,0.880 ± 0.048,—,10,Baseline (all components)
+w/o Spearman-Brown,0.578 ± 0.029,-0.302 ± 0.020,10,CRITICAL: largest drop (Δρ ≈ −0.31)
+w/o Ledoit-Wolf,0.886 ± 0.042,+0.006 ± 0.012,10,Negligible effect (short TS already benefits from shrinkage in other steps)
+w/o Bootstrap,0.991 ± 0.016,+0.111 ± 0.039,10,Inflated ρ̂T without resampling variance
+w/o Bayesian Prior,0.696 ± 0.036,-0.184 ± 0.018,10,CRITICAL: second largest drop (Δρ ≈ −0.19)
+w/o Attenuation Corr.,0.910 ± 0.010,+0.030 ± 0.038,10,Modest effect; attenuation correction refines estimate

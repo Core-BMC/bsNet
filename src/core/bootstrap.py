@@ -14,6 +14,22 @@ def spearman_brown(r_t, k):
     return (k * r_t) / (1 + (k - 1) * r_t)
 
 def correct_attenuation(r_obs_t, r_hat_t, r_real_t, k, empirical_prior=None):
+    """Correct attenuation in observed correlation and extrapolate to target duration.
+
+    Args:
+        r_obs_t: Observed correlation between reference FC and bootstrap sample FC.
+        r_hat_t: Within-session scanner measurement reliability (default 0.98).
+            Represents fMRI scanner precision per Friedman et al. (2008),
+            DOI: 10.1016/j.neuroimage.2008.02.005.
+        r_real_t: Split-half reliability of the bootstrap sample.
+        k: Spearman-Brown scaling factor (target_duration / short_duration).
+        empirical_prior: Optional (mean, var) tuple for Bayesian stabilization
+            of split-half reliability estimates.
+
+    Returns:
+        float: Attenuation-corrected, Spearman-Brown extrapolated reliability ρ̂T,
+            clipped to [-1.0, 1.0].
+    """
     min_rel = 0.05
 
     # Bayesian Prior Update (Stabilizing split-half calculation bias)

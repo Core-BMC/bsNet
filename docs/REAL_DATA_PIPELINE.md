@@ -1,0 +1,229 @@
+# BS-NET Real Data Pipeline Guide
+
+BS-NET 논문 실증 분석을 위한 실제 데이터 파이프라인.
+OpenNeuro HC 100명 → fMRIPrep → BS-NET → 결과 요약.
+
+## Architecture Overview
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Step 1-2       │     │  Step 3          │     │  Step 4-5       │
+│  Index+Download │────▶│  fMRIPrep        │────▶│  BS-NET         │
+│  (로컬 OK)      │     │  (워크스테이션)    │     │  (로컬 OK)      │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+  ~30 min               ~2h/subject              ~15 sec/subject
+  인터넷 필요            Docker + GPU 권장         CPU only
+```
+
+## Quick Start
+
+```bash
+# 전체 파이프라인 (한 머신에서 모두 수행)
+./src/scripts/run_all_pipeline.sh
+
+# 또는 단계별 실행
+./src/scripts/run_all_pipeline.sh --step 1   # HC 인덱싱
+./src/scripts/run_all_pipeline.sh --step 2   # 다운로드
+./src/scripts/run_all_pipeline.sh --step 3   # fMRIPrep
+./src/scripts/run_all_pipeline.sh --step 4   # BS-NET
+./src/scripts/run_all_pipeline.sh --step 5   # 결과 요약
+
+# Dry-run (실행 없이 명령어만 확인)
+./src/scripts/run_all_pipeline.sh --dry-run
+```
+
+## 환경별 권장 워크플로우
+
+### A. 단일 워크스테이션 (Docker 가능)
+
+모든 단계를 한 머신에서 수행:
+
+```bash
+# 1. 환경 설정
+./src/scripts/setup_local_env.sh --venv
+source .venv/bin/activate
+
+# 2. 전체 실행
+./src/scripts/run_all_pipeline.sh
+```
+
+### B. 랩탑(로컬) + 워크스테이션(fMRIPrep) 분리
+
+fMRIPrep은 메모리/CPU 집약적이므로 워크스테이션에서 수행하고,
+나머지는 로컬에서 수행하는 패턴.
+
+**로컬 (Steps 0-2):**
+```bash
+# 환경 설정 + 인덱싱 + 다운로드
+./src/scripts/run_all_pipeline.sh --step 0
+./src/scripts/run_all_pipeline.sh --step 1
+./src/scripts/run_all_pipeline.sh --step 2
+
+# 워크스테이션으로 데이터 전송
+rsync -avz --progress \
+    data/openneuro/ \
+    workstation:/path/to/bsNet/data/openneuro/
+
+# 필수 파일도 전송
+scp data/hc_100_selection.csv workstation:/path/to/bsNet/data/
+scp fs_license.txt workstation:/path/to/bsNet/
+```
+
+**워크스테이션 (Step 3):**
+```bash
+# fMRIPrep 일괄 실행 (Docker)
+./src/scripts/run_fmriprep_batch.sh \
+    --csv data/hc_100_selection.csv \
+    --ncpus 8 --mem-mb 32000
+
+# 또는 병렬 실행 (충분한 자원이 있을 때)
+./src/scripts/run_fmriprep_batch.sh \
+    --csv data/hc_100_selection.csv \
+    --ncpus 4 --mem-mb 16000 --max-parallel 4
+
+# tmux/screen에서 실행 권장 (수 시간 소요)
+tmux new-session -s fmriprep
+./src/scripts/run_fmriprep_batch.sh --csv data/hc_100_selection.csv
+# Ctrl+B, D 로 detach
+```
+
+**로컬로 결과 전송 후 BS-NET (Steps 4-5):**
+```bash
+# fMRIPrep 결과만 가져오기 (work dir 제외)
+rsync -avz --progress \
+    workstation:/path/to/bsNet/data/derivatives/fmriprep/ \
+    data/derivatives/fmriprep/
+
+# BS-NET 실행 + 요약
+./src/scripts/run_all_pipeline.sh --step 4
+./src/scripts/run_all_pipeline.sh --step 5
+```
+
+### C. HPC 클러스터 (Singularity + SLURM)
+
+```bash
+# Singularity 이미지 빌드 (1회)
+singularity build fmriprep-24.1.1.sif docker://nipreps/fmriprep:24.1.1
+
+# SLURM array job으로 실행
+./src/scripts/run_fmriprep_batch.sh \
+    --csv data/hc_100_selection.csv \
+    --singularity
+
+# 또는 SLURM sbatch 직접 작성 (아래 참조)
+```
+
+SLURM 예시 (`submit_fmriprep.sbatch`):
+```bash
+#!/bin/bash
+#SBATCH --job-name=fmriprep
+#SBATCH --array=1-100
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --time=4:00:00
+#SBATCH --output=logs/fmriprep_%a.log
+
+SUB=$(sed -n "${SLURM_ARRAY_TASK_ID}p" data/hc_100_subjects.txt)
+DS=$(sed -n "${SLURM_ARRAY_TASK_ID}p" data/hc_100_datasets.txt)
+
+./src/scripts/run_fmriprep_batch.sh \
+    --subject "$SUB" --dataset "$DS" --singularity
+```
+
+## 스크립트 상세
+
+### 파일 구조
+
+```
+src/scripts/
+├── setup_local_env.sh       # Step 0: 환경 설정 (venv/conda + packages + atlas)
+├── index_openneuro_hc.py    # Step 1: 7 datasets에서 HC adult 인덱싱
+├── download_hc_100.py       # Step 2: 100명 균형 다운로드 (openneuro-py)
+├── run_fmriprep_batch.sh    # Step 3: fMRIPrep Docker/Singularity 일괄 실행
+├── run_fmriprep_bsnet.py    # Step 4: fMRIPrep → BS-NET 분석
+└── run_all_pipeline.sh      # 마스터 러너 (Step 0-5)
+```
+
+### 데이터 구조
+
+```
+data/
+├── hc_adult_index.csv         # Step 1 출력: 546 HC adults
+├── hc_100_selection.csv       # Step 2 출력: 100명 선택 목록
+├── openneuro/                 # Step 2 출력: raw BIDS data
+│   ├── ds000030/
+│   │   ├── sub-10159/{anat,func}
+│   │   └── ...
+│   ├── ds000243/
+│   └── ...
+├── derivatives/
+│   ├── fmriprep/              # Step 3 출력: fMRIPrep 결과
+│   │   ├── sub-10159/
+│   │   │   └── func/
+│   │   │       ├── *_space-MNI152NLin6Asym_res-2_desc-preproc_bold.nii.gz
+│   │   │       ├── *_desc-confounds_timeseries.tsv
+│   │   │       └── *_desc-brain_mask.nii.gz
+│   │   └── sub-10159.html     # QC report
+│   └── bsnet/                 # Step 4 출력: BS-NET 결과
+│       ├── sub-10159/
+│       │   ├── sub-10159_fc_full.npy
+│       │   ├── sub-10159_fc_predicted.npy
+│       │   └── sub-10159_bsnet_results.json
+│       └── bsnet_results_summary.csv
+└── logs/                      # 파이프라인 로그
+```
+
+## 환경 변수
+
+| 변수 | 기본값 | 설명 |
+|------|--------|------|
+| `BSNET_NCPUS` | 4 | fMRIPrep CPU 수/subject |
+| `BSNET_MEM_MB` | 16000 | fMRIPrep 메모리 (MB) |
+| `BSNET_MAX_PARALLEL` | 1 | 동시 fMRIPrep 실행 수 |
+| `FS_LICENSE` | `./fs_license.txt` | FreeSurfer 라이선스 경로 |
+| `FMRIPREP_SIF` | `./fmriprep-24.1.1.sif` | Singularity 이미지 경로 |
+
+## 자원 요구사항
+
+| 단계 | CPU | RAM | 디스크 | 시간/subject |
+|------|-----|-----|--------|-------------|
+| Step 2: Download | 1 | 1 GB | ~2 GB/subject | ~5 min |
+| Step 3: fMRIPrep | 4+ | 16 GB+ | ~5 GB work/subject | ~2 hours |
+| Step 4: BS-NET | 1 | 4 GB | ~10 MB/subject | ~15 sec |
+
+fMRIPrep work dir는 처리 완료 후 자동 삭제됨.
+100명 전체: 다운로드 ~200 GB, fMRIPrep 결과 ~50 GB, BS-NET 결과 ~1 GB.
+
+## Proof-of-Concept 결과 (N=1, sub-10159)
+
+```
+BOLD: 152 vols, TR=2.0s, 5.1 min total
+Short scan: 60 vols (2.0 min)
+
+r_FC (raw 2min vs full):   0.8252
+rho_hat_T (BS-NET):        0.9475  [95% CI: 0.73, 1.00]
+ARI (community):           0.5170
+```
+
+## Troubleshooting
+
+### FreeSurfer 라이선스
+무료 등록: https://surfer.nmr.mgh.harvard.edu/registration.html
+다운로드한 `license.txt`를 프로젝트 루트에 `fs_license.txt`로 저장.
+
+### Docker 메모리 부족
+Docker Desktop → Settings → Resources → Memory를 최소 16 GB로 설정.
+Apple Silicon: Rosetta emulation으로 약 2배 느림.
+
+### fMRIPrep "PermissionError: dataset_description.json"
+BIDS 입력이 read-only로 마운트되어 발생. 무해한 경고이며 결과에 영향 없음.
+
+### openneuro-py 다운로드 실패
+일부 데이터셋(ds001386 등)은 간헐적 실패. 재시도하거나 `download_hc_100.py` 재실행.
+
+### BS-NET "Atlas not found"
+`setup_local_env.sh`를 실행하거나, Schaefer atlas를 수동 배치:
+```bash
+mkdir -p data/atlas
+# templateflow 또는 GitHub에서 다운로드
+```

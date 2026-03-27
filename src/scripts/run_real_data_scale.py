@@ -138,7 +138,7 @@ def run_scale_up_pipeline() -> None:
             short_len_min = 2.0
             t_samples = int(short_len_min * 60 / tr)
 
-            # Ground truth metrics
+            # Reference FC metrics
             fc_true_T = get_fc_matrix(time_series, vectorized=True)
             short_obs = time_series[:t_samples, :]
 
