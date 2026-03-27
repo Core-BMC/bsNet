@@ -1,13 +1,25 @@
-import nilearn.datasets
 import numpy as np
-from nilearn.maskers import NiftiLabelsMasker
-from sklearn.covariance import LedoitWolf
+
+try:
+    import nilearn.datasets
+    from nilearn.maskers import NiftiLabelsMasker
+    HAS_NILEARN = True
+except ImportError:
+    HAS_NILEARN = False
+
+try:
+    from sklearn.covariance import LedoitWolf
+    HAS_SKLEARN = True
+except ImportError:
+    HAS_SKLEARN = False
 
 
 def fetch_schaefer_atlas(n_rois=400, resolution=2, yeo_networks=7):
     """
     Fetch Schaefer 2018 atlas using nilearn.
     """
+    if not HAS_NILEARN:
+        raise ImportError("nilearn is required for fetch_schaefer_atlas")
     print(f"Fetching Schaefer 2018 atlas (ROIs: {n_rois}, Networks: {yeo_networks}, Resolution: {resolution}mm)...")
     atlas = nilearn.datasets.fetch_atlas_schaefer_2018(
         n_rois=n_rois,
@@ -20,6 +32,8 @@ def create_masker(atlas_img, standardize="zscore_sample", detrend=True, low_pass
     """
     Create a NiftiLabelsMasker object with standard preprocessing.
     """
+    if not HAS_NILEARN:
+        raise ImportError("nilearn is required for create_masker")
     masker = NiftiLabelsMasker(
         labels_img=atlas_img,
         standardize=standardize,
@@ -36,6 +50,7 @@ def get_fc_matrix(time_series, vectorized=True, use_shrinkage=False):
     Compute Pearson correlation matrix (FC) from time series.
     Assumes time_series is shape (n_samples, n_rois).
     If use_shrinkage is True, use Ledoit-Wolf estimation for robustness on short data.
+    Falls back to np.corrcoef if sklearn is unavailable.
     """
     if time_series.shape[0] < 3:
         # Edge case: avoid breaking
@@ -44,7 +59,7 @@ def get_fc_matrix(time_series, vectorized=True, use_shrinkage=False):
             return res[np.triu_indices_from(res, k=1)]
         return res
 
-    if use_shrinkage:
+    if use_shrinkage and HAS_SKLEARN:
         lw = LedoitWolf()
         cov_matrix = lw.fit(time_series).covariance_
         d = np.sqrt(np.diag(cov_matrix))

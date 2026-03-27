@@ -24,17 +24,18 @@ logger = logging.getLogger(__name__)
 
 
 class BootstrapResult(NamedTuple):
-    """
-    Result container for bootstrap prediction analysis.
+    """Result container for bootstrap extrapolation analysis.
 
     Attributes:
-        predicted_rho: Point estimate of correlation (median of bootstrap distribution).
+        rho_hat_T: Extrapolated reliability — point estimate of the
+            attenuation-corrected, Spearman-Brown projected reliability
+            at target duration T (median of bootstrap distribution).
         ci_lower: Lower bound of 95% confidence interval.
         ci_upper: Upper bound of 95% confidence interval.
         z_scores: Raw Fisher-z transformed bootstrap distribution.
     """
 
-    predicted_rho: float
+    rho_hat_T: float
     ci_lower: float
     ci_upper: float
     z_scores: np.ndarray
@@ -156,7 +157,7 @@ def run_bootstrap_prediction(
 
     # Compute point estimate as median of bootstrap distribution
     rho_hat_T_z = np.nanmedian(rho_hat_b)
-    predicted_rho = fisher_z_inv(rho_hat_T_z)
+    rho_hat_T = fisher_z_inv(rho_hat_T_z)
 
     # Compute 95% confidence interval
     z_lower, z_upper = np.percentile(rho_hat_b, [2.5, 97.5])
@@ -164,12 +165,12 @@ def run_bootstrap_prediction(
     ci_upper = fisher_z_inv(z_upper)
 
     logger.info(
-        f"Bootstrap complete: predicted_rho={predicted_rho:.4f}, "
+        f"Bootstrap complete: rho_hat_T={rho_hat_T:.4f}, "
         f"95% CI=[{ci_lower:.4f}, {ci_upper:.4f}]"
     )
 
     return BootstrapResult(
-        predicted_rho=float(predicted_rho),
+        rho_hat_T=float(rho_hat_T),
         ci_lower=float(ci_lower),
         ci_upper=float(ci_upper),
         z_scores=rho_hat_b,

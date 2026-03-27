@@ -71,21 +71,21 @@ def run_simulation(
 
     print("========== [Final Results] ==========")
     print(f"True Oracle ρ*(T):      {actual_rho_T:.4f}")
-    if result.predicted_rho > 0.8:
+    if result.rho_hat_T > 0.8:
         print(
-            f"Predicted ρ*(T):       {result.predicted_rho:.4f}  "
+            f"Predicted ρ̂T:         {result.rho_hat_T:.4f}  "
             "✅ (>80% Target Goal Reached)"
         )
     else:
         print(
-            f"Predicted ρ*(T):       {result.predicted_rho:.4f}  "
+            f"Predicted ρ̂T:         {result.rho_hat_T:.4f}  "
             "⚠️ (Below 80% target)"
         )
 
     print(
         f"95% Confidence Interval: [{result.ci_lower:.4f}, {result.ci_upper:.4f}]"
     )
-    print(f"Absolute Prediction Error: {abs(actual_rho_T - result.predicted_rho):.4f}")
+    print(f"Absolute Prediction Error: {abs(actual_rho_T - result.rho_hat_T):.4f}")
     print("=====================================")
 
 

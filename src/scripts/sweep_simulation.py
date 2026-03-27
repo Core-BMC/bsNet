@@ -65,13 +65,13 @@ def run_duration_sweep() -> None:
             result = run_bootstrap_prediction(short_obs, fc_pred_t, config)
 
             actual_rho_T = np.corrcoef(fc_pred_t, fc_true_T)[0, 1]
-            error = abs(actual_rho_T - result.predicted_rho)
+            error = abs(actual_rho_T - result.rho_hat_T)
 
             all_results.append(
                 {
                     "Seed": seed,
                     "Duration (s)": t_sec,
-                    "Predicted": result.predicted_rho,
+                    "Predicted": result.rho_hat_T,
                     "Error": error,
                     "CI Lower": result.ci_lower,
                     "CI Upper": result.ci_upper,

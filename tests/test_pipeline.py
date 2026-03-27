@@ -6,7 +6,11 @@ import numpy as np
 import pytest
 
 from src.core.config import BSNetConfig
-from src.core.pipeline import BootstrapResult, compute_split_half_reliability, run_bootstrap_prediction
+from src.core.pipeline import (
+    BootstrapResult,
+    compute_split_half_reliability,
+    run_bootstrap_prediction,
+)
 from src.data.data_loader import get_fc_matrix
 
 
@@ -15,12 +19,12 @@ class TestBootstrapResult:
 
     def test_fields(self) -> None:
         r = BootstrapResult(
-            predicted_rho=0.85,
+            rho_hat_T=0.85,
             ci_lower=0.80,
             ci_upper=0.90,
             z_scores=np.array([1.0, 1.1, 1.2]),
         )
-        assert r.predicted_rho == 0.85
+        assert r.rho_hat_T == 0.85
         assert r.ci_lower == 0.80
         assert r.ci_upper == 0.90
         assert len(r.z_scores) == 3
@@ -72,14 +76,14 @@ class TestRunBootstrapPrediction:
         result = run_bootstrap_prediction(short_obs, fc_ref, quick_config)
         assert isinstance(result, BootstrapResult)
 
-    def test_predicted_rho_finite(
+    def test_rho_hat_T_finite(
         self, synthetic_ts: np.ndarray, quick_config: BSNetConfig
     ) -> None:
         short_obs = synthetic_ts[:60, :]
         fc_ref = get_fc_matrix(synthetic_ts, vectorized=True)
         result = run_bootstrap_prediction(short_obs, fc_ref, quick_config)
-        assert np.isfinite(result.predicted_rho)
-        assert -1.0 <= result.predicted_rho <= 1.0
+        assert np.isfinite(result.rho_hat_T)
+        assert -1.0 <= result.rho_hat_T <= 1.0
 
     def test_ci_ordering(
         self, synthetic_ts: np.ndarray, quick_config: BSNetConfig
@@ -87,7 +91,7 @@ class TestRunBootstrapPrediction:
         short_obs = synthetic_ts[:60, :]
         fc_ref = get_fc_matrix(synthetic_ts, vectorized=True)
         result = run_bootstrap_prediction(short_obs, fc_ref, quick_config)
-        assert result.ci_lower <= result.predicted_rho <= result.ci_upper
+        assert result.ci_lower <= result.rho_hat_T <= result.ci_upper
 
     def test_z_scores_length(
         self, synthetic_ts: np.ndarray, quick_config: BSNetConfig
@@ -104,7 +108,7 @@ class TestRunBootstrapPrediction:
         # Override just bootstrap count via a minimal config
         cfg = BSNetConfig(n_bootstraps=3)
         result = run_bootstrap_prediction(short_obs, fc_ref, cfg)
-        assert np.isfinite(result.predicted_rho)
+        assert np.isfinite(result.rho_hat_T)
 
     def test_type_validation(self) -> None:
         with pytest.raises(TypeError, match="numpy array"):

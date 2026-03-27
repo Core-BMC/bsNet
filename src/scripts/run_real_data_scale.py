@@ -160,11 +160,11 @@ def run_scale_up_pipeline() -> None:
 
             logger.info(
                 f"Subject {sub_key}: True={true_rho:.4f}, "
-                f"Pred={result.predicted_rho:.4f}"
+                f"Pred={result.rho_hat_T:.4f}"
             )
             print(
                 f" => True Oracle: {true_rho:.4f} | "
-                f"Predicted: {result.predicted_rho:.4f}"
+                f"Predicted: {result.rho_hat_T:.4f}"
             )
 
             results.append(
@@ -174,9 +174,9 @@ def run_scale_up_pipeline() -> None:
                     "scan_min": total_min,
                     "tr": tr,
                     "true_rho": true_rho,
-                    "pred_rho": result.predicted_rho,
-                    "error": abs(true_rho - result.predicted_rho),
-                    "is_above_80": result.predicted_rho >= 0.8,
+                    "pred_rho": result.rho_hat_T,
+                    "error": abs(true_rho - result.rho_hat_T),
+                    "is_above_80": result.rho_hat_T >= 0.8,
                 }
             )
 

@@ -43,7 +43,7 @@ target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
-ignore = ["E501"]  # line length는 black이 관리
+ignore = ["E501", "N815"]  # E501: black 관리, N815: domain 변수 (rho_hat_T)
 
 [tool.ruff.lint.per-file-ignores]
 # N806: neuroimaging 도메인 관례 변수 (fc_true_T, G, C, L 등)
@@ -52,3 +52,4 @@ ignore = ["E501"]  # line length는 black이 관리
 "src/core/graph_metrics.py" = ["N806"]
 "src/scripts/*.py" = ["N806"]
 "src/visualization/*.py" = ["N806"]
+"tests/*.py" = ["N802", "N803", "N806"]

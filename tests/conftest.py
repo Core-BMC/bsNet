@@ -28,7 +28,7 @@ _sklearn_cov = MagicMock()
 class _FakeLW:
     """Minimal Ledoit-Wolf stub for get_fc_matrix."""
 
-    def fit(self, X: np.ndarray) -> "_FakeLW":
+    def fit(self, X: np.ndarray) -> _FakeLW:
         self.covariance_ = np.cov(X, rowvar=False)
         return self
 
