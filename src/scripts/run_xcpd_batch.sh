@@ -14,6 +14,7 @@
 #
 # 사전 요구사항:
 #   - Docker (또는 Singularity)
+#     `docker pull pennlinc/xcp_d:latest`
 #   - fMRIPrep 결과: data/derivatives/fmriprep/
 #
 # 사용법:
