@@ -37,10 +37,11 @@ OPENNEURO_DIR="$DATA_DIR/openneuro"
 DERIV_DIR="$DATA_DIR/derivatives/fmriprep"
 
 # fMRIPrep settings
-FMRIPREP_VERSION="24.1.1"
-N_CPUS="${BSNET_NCPUS:-4}"
-MEM_MB="${BSNET_MEM_MB:-16000}"
+FMRIPREP_VERSION="25.0.0"
+N_CPUS="${BSNET_NCPUS:-8}"
+MEM_MB="${BSNET_MEM_MB:-24000}"
 OUTPUT_SPACES="MNI152NLin6Asym:res-2"
+TASK_FILTER="rest"
 FS_LICENSE="${FS_LICENSE:-$PROJECT_ROOT/fs_license.txt}"
 
 # Singularity image path (HPC)
@@ -222,6 +223,7 @@ run_fmriprep_one() {
             "$SINGULARITY_IMG"
             /data /out participant
             --participant-label "${sub_id#sub-}"
+            -t "$TASK_FILTER"
             --output-spaces "$OUTPUT_SPACES"
             --nprocs "$N_CPUS"
             --mem-mb "$MEM_MB"
@@ -242,6 +244,7 @@ run_fmriprep_one() {
             nipreps/fmriprep:"$FMRIPREP_VERSION"
             /data /out participant
             --participant-label "${sub_id#sub-}"
+            -t "$TASK_FILTER"
             --output-spaces "$OUTPUT_SPACES"
             --nprocs "$N_CPUS"
             --mem-mb "$MEM_MB"

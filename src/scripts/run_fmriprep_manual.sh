@@ -34,10 +34,11 @@ DATA_DIR="$PROJECT_ROOT/data"
 OPENNEURO_DIR="$DATA_DIR/openneuro"
 DERIV_DIR="$DATA_DIR/derivatives/fmriprep"
 
-FMRIPREP_VERSION="24.1.1"
-N_CPUS="${BSNET_NCPUS:-4}"
-MEM_MB="${BSNET_MEM_MB:-16000}"
+FMRIPREP_VERSION="25.2.5"
+N_CPUS="${BSNET_NCPUS:-8}"
+MEM_MB="${BSNET_MEM_MB:-24000}"
 OUTPUT_SPACES="MNI152NLin6Asym:res-2"
+TASK_FILTER="rest"
 FS_LICENSE="${FS_LICENSE:-$PROJECT_ROOT/fs_license.txt}"
 SINGULARITY_IMG="${FMRIPREP_SIF:-$PROJECT_ROOT/fmriprep-${FMRIPREP_VERSION}.sif}"
 
@@ -280,6 +281,7 @@ build_fmriprep_cmd() {
         echo "  ${SINGULARITY_IMG} \\"
         echo "  /data /out participant \\"
         echo "  --participant-label ${sub_id#sub-} \\"
+        echo "  -t ${TASK_FILTER} \\"
         echo "  --output-spaces ${OUTPUT_SPACES} \\"
         echo "  --nprocs ${N_CPUS} --mem-mb ${MEM_MB} \\"
         echo "  --work-dir /work \\"
@@ -295,6 +297,7 @@ build_fmriprep_cmd() {
         echo "  nipreps/fmriprep:${FMRIPREP_VERSION} \\"
         echo "  /data /out participant \\"
         echo "  --participant-label ${sub_id#sub-} \\"
+        echo "  -t ${TASK_FILTER} \\"
         echo "  --output-spaces ${OUTPUT_SPACES} \\"
         echo "  --nprocs ${N_CPUS} --mem-mb ${MEM_MB} \\"
         echo "  --work-dir /work \\"
@@ -317,13 +320,32 @@ cleanup_subject() {
     echo ""
     echo "── Cleanup: $sub_id ──"
 
+    # Helper: Docker가 root로 생성한 파일은 rm이 실패하므로
+    # docker run --rm busybox 로 삭제 시도, 실패 시 sudo rm 시도
+    force_rm() {
+        local target="$1"
+        if rm -rf "$target" 2>/dev/null; then
+            return 0
+        fi
+        # Docker root 파일 → Docker로 삭제
+        if command -v docker &>/dev/null; then
+            docker run --rm -v "$(dirname "$target")":/cleanup busybox \
+                rm -rf "/cleanup/$(basename "$target")" 2>/dev/null && return 0
+        fi
+        # 마지막 수단: sudo
+        sudo rm -rf "$target" 2>/dev/null && return 0
+        warn "Cannot remove $target (permission denied)"
+        return 1
+    }
+
     # 1) Work dir 삭제 (가장 큼, 10~30GB)
     if [ -d "$work_dir" ]; then
         local work_size
         work_size=$(du -sm "$work_dir" 2>/dev/null | awk '{print $1}')
-        rm -rf "$work_dir"
-        freed=$((freed + work_size))
-        ok "Work dir removed (${work_size}MB)"
+        if force_rm "$work_dir"; then
+            freed=$((freed + ${work_size:-0}))
+            ok "Work dir removed (${work_size:-?}MB)"
+        fi
     fi
 
     # 2) FreeSurfer recon-all 출력 삭제 (~300MB/subject, BS-NET 불필요)
@@ -331,16 +353,17 @@ cleanup_subject() {
     if [ -d "$fs_dir" ]; then
         local fs_size
         fs_size=$(du -sm "$fs_dir" 2>/dev/null | awk '{print $1}')
-        rm -rf "$fs_dir"
-        freed=$((freed + fs_size))
-        ok "FreeSurfer outputs removed (${fs_size}MB)"
+        if force_rm "$fs_dir"; then
+            freed=$((freed + ${fs_size:-0}))
+            ok "FreeSurfer outputs removed (${fs_size:-?}MB)"
+        fi
     fi
 
     # 3) derivatives 내 불필요 파일 정리 (필요한 것만 유지)
     #    유지 목록:
     #      func/*MNI152NLin6Asym*_desc-preproc_bold.nii.gz  (전처리된 BOLD)
     #      func/*MNI152NLin6Asym*_boldref.nii.gz            (BOLD reference)
-    #      func/*MNI152NLin6Asym*_brain_mask.nii.gz         (brain mask)
+    #      func/*MNI152NLin6Asym*_desc-brain_mask.nii.gz    (brain mask)
     #      func/*_desc-confounds_timeseries.tsv              (XCP-D 입력)
     #      func/*_desc-confounds_timeseries.json             (confounds 메타)
     #      *.html (QC report)
@@ -349,51 +372,64 @@ cleanup_subject() {
         local before_size
         before_size=$(du -sm "$sub_deriv" 2>/dev/null | awk '{print $1}')
 
-        # func/ 내 불필요 파일 삭제
-        if [ -d "$sub_deriv/func" ]; then
-            find "$sub_deriv/func" -type f \
-                ! -name '*MNI152NLin6Asym*_desc-preproc_bold.nii.gz' \
-                ! -name '*MNI152NLin6Asym*_boldref.nii.gz' \
-                ! -name '*MNI152NLin6Asym*_desc-brain_mask.nii.gz' \
-                ! -name '*_desc-confounds_timeseries.tsv' \
-                ! -name '*_desc-confounds_timeseries.json' \
-                -delete 2>/dev/null
-        fi
-
-        # anat/ 내 불필요 파일 삭제 (MNI space T1w만 유지)
-        if [ -d "$sub_deriv/anat" ]; then
-            find "$sub_deriv/anat" -type f \
-                ! -name '*MNI152NLin6Asym*' \
-                -delete 2>/dev/null
-        fi
-
-        # ses-*/func, ses-*/anat 도 동일 처리
-        for ses_dir in "$sub_deriv"/ses-*; do
-            [ -d "$ses_dir" ] || continue
-            if [ -d "$ses_dir/func" ]; then
-                find "$ses_dir/func" -type f \
+        # Docker root 파일 문제 → Docker 컨테이너 안에서 정리
+        # 유지할 패턴 외 전부 삭제
+        if command -v docker &>/dev/null; then
+            docker run --rm -v "$sub_deriv":/deriv busybox sh -c '
+                # func/ 정리
+                for func_dir in /deriv/func /deriv/ses-*/func; do
+                    [ -d "$func_dir" ] || continue
+                    for f in "$func_dir"/*; do
+                        [ -f "$f" ] || continue
+                        base=$(basename "$f")
+                        case "$base" in
+                            *MNI152NLin6Asym*_desc-preproc_bold.nii.gz) continue ;;
+                            *MNI152NLin6Asym*_boldref.nii.gz) continue ;;
+                            *MNI152NLin6Asym*_desc-brain_mask.nii.gz) continue ;;
+                            *_desc-confounds_timeseries.tsv) continue ;;
+                            *_desc-confounds_timeseries.json) continue ;;
+                            *) rm -f "$f" ;;
+                        esac
+                    done
+                done
+                # anat/ 정리 (MNI space만 유지)
+                for anat_dir in /deriv/anat /deriv/ses-*/anat; do
+                    [ -d "$anat_dir" ] || continue
+                    for f in "$anat_dir"/*; do
+                        [ -f "$f" ] || continue
+                        case "$(basename "$f")" in
+                            *MNI152NLin6Asym*) continue ;;
+                            *) rm -f "$f" ;;
+                        esac
+                    done
+                done
+                # 빈 디렉토리 정리
+                find /deriv -type d -empty -delete 2>/dev/null
+            ' 2>/dev/null
+        else
+            # Singularity 환경 또는 Docker 없는 경우 → 직접 삭제 시도
+            for func_dir in "$sub_deriv"/func "$sub_deriv"/ses-*/func; do
+                [ -d "$func_dir" ] || continue
+                find "$func_dir" -type f \
                     ! -name '*MNI152NLin6Asym*_desc-preproc_bold.nii.gz' \
                     ! -name '*MNI152NLin6Asym*_boldref.nii.gz' \
                     ! -name '*MNI152NLin6Asym*_desc-brain_mask.nii.gz' \
                     ! -name '*_desc-confounds_timeseries.tsv' \
                     ! -name '*_desc-confounds_timeseries.json' \
                     -delete 2>/dev/null
-            fi
-            if [ -d "$ses_dir/anat" ]; then
-                find "$ses_dir/anat" -type f \
-                    ! -name '*MNI152NLin6Asym*' \
-                    -delete 2>/dev/null
-            fi
-        done
-
-        # 빈 디렉토리 정리
-        find "$sub_deriv" -type d -empty -delete 2>/dev/null
+            done
+            for anat_dir in "$sub_deriv"/anat "$sub_deriv"/ses-*/anat; do
+                [ -d "$anat_dir" ] || continue
+                find "$anat_dir" -type f ! -name '*MNI152NLin6Asym*' -delete 2>/dev/null
+            done
+            find "$sub_deriv" -type d -empty -delete 2>/dev/null
+        fi
 
         local after_size
         after_size=$(du -sm "$sub_deriv" 2>/dev/null | awk '{print $1}')
-        local deriv_freed=$((before_size - after_size))
+        local deriv_freed=$(( ${before_size:-0} - ${after_size:-0} ))
         freed=$((freed + deriv_freed))
-        ok "Derivatives trimmed: ${before_size}MB → ${after_size}MB (saved ${deriv_freed}MB)"
+        ok "Derivatives trimmed: ${before_size:-?}MB → ${after_size:-?}MB (saved ${deriv_freed}MB)"
     fi
 
     info "Total freed: ${freed}MB"
@@ -444,6 +480,7 @@ run_one_subject() {
             "$SINGULARITY_IMG"
             /data /out participant
             --participant-label "${sub_id#sub-}"
+            -t "$TASK_FILTER"
             --output-spaces "$OUTPUT_SPACES"
             --nprocs "$N_CPUS" --mem-mb "$MEM_MB"
             --work-dir /work
@@ -461,6 +498,7 @@ run_one_subject() {
             nipreps/fmriprep:"$FMRIPREP_VERSION"
             /data /out participant
             --participant-label "${sub_id#sub-}"
+            -t "$TASK_FILTER"
             --output-spaces "$OUTPUT_SPACES"
             --nprocs "$N_CPUS" --mem-mb "$MEM_MB"
             --work-dir /work
@@ -495,8 +533,8 @@ run_one_subject() {
         if [ -d "$work_dir" ]; then
             local work_size
             work_size=$(du -sm "$work_dir" 2>/dev/null | awk '{print $1}')
-            rm -rf "$work_dir"
-            info "Failed work dir removed (${work_size}MB freed)"
+            force_rm "$work_dir"
+            info "Failed work dir removed (${work_size:-?}MB freed)"
         fi
         return 1
     fi
