@@ -303,6 +303,101 @@ build_fmriprep_cmd() {
 }
 
 # ============================================================================
+# 후처리 정리: 필요한 파일만 유지, 나머지 삭제
+# ============================================================================
+cleanup_subject() {
+    local sub_id="$1"
+    local ds_id="$2"
+    local work_dir="$DATA_DIR/fmriprep_work/${ds_id}_${sub_id}"
+    local sub_deriv="$DERIV_DIR/$sub_id"
+    local freed=0
+
+    echo ""
+    echo "── Cleanup: $sub_id ──"
+
+    # 1) Work dir 삭제 (가장 큼, 10~30GB)
+    if [ -d "$work_dir" ]; then
+        local work_size
+        work_size=$(du -sm "$work_dir" 2>/dev/null | awk '{print $1}')
+        rm -rf "$work_dir"
+        freed=$((freed + work_size))
+        ok "Work dir removed (${work_size}MB)"
+    fi
+
+    # 2) FreeSurfer recon-all 출력 삭제 (~300MB/subject, BS-NET 불필요)
+    local fs_dir="$DERIV_DIR/sourcedata/freesurfer/$sub_id"
+    if [ -d "$fs_dir" ]; then
+        local fs_size
+        fs_size=$(du -sm "$fs_dir" 2>/dev/null | awk '{print $1}')
+        rm -rf "$fs_dir"
+        freed=$((freed + fs_size))
+        ok "FreeSurfer outputs removed (${fs_size}MB)"
+    fi
+
+    # 3) derivatives 내 불필요 파일 정리 (필요한 것만 유지)
+    #    유지 목록:
+    #      func/*MNI152NLin6Asym*_desc-preproc_bold.nii.gz  (전처리된 BOLD)
+    #      func/*MNI152NLin6Asym*_boldref.nii.gz            (BOLD reference)
+    #      func/*MNI152NLin6Asym*_brain_mask.nii.gz         (brain mask)
+    #      func/*_desc-confounds_timeseries.tsv              (XCP-D 입력)
+    #      func/*_desc-confounds_timeseries.json             (confounds 메타)
+    #      *.html (QC report)
+    #      figures/ (QC figures, 작음)
+    if [ -d "$sub_deriv" ]; then
+        local before_size
+        before_size=$(du -sm "$sub_deriv" 2>/dev/null | awk '{print $1}')
+
+        # func/ 내 불필요 파일 삭제
+        if [ -d "$sub_deriv/func" ]; then
+            find "$sub_deriv/func" -type f \
+                ! -name '*MNI152NLin6Asym*_desc-preproc_bold.nii.gz' \
+                ! -name '*MNI152NLin6Asym*_boldref.nii.gz' \
+                ! -name '*MNI152NLin6Asym*_desc-brain_mask.nii.gz' \
+                ! -name '*_desc-confounds_timeseries.tsv' \
+                ! -name '*_desc-confounds_timeseries.json' \
+                -delete 2>/dev/null
+        fi
+
+        # anat/ 내 불필요 파일 삭제 (MNI space T1w만 유지)
+        if [ -d "$sub_deriv/anat" ]; then
+            find "$sub_deriv/anat" -type f \
+                ! -name '*MNI152NLin6Asym*' \
+                -delete 2>/dev/null
+        fi
+
+        # ses-*/func, ses-*/anat 도 동일 처리
+        for ses_dir in "$sub_deriv"/ses-*; do
+            [ -d "$ses_dir" ] || continue
+            if [ -d "$ses_dir/func" ]; then
+                find "$ses_dir/func" -type f \
+                    ! -name '*MNI152NLin6Asym*_desc-preproc_bold.nii.gz' \
+                    ! -name '*MNI152NLin6Asym*_boldref.nii.gz' \
+                    ! -name '*MNI152NLin6Asym*_desc-brain_mask.nii.gz' \
+                    ! -name '*_desc-confounds_timeseries.tsv' \
+                    ! -name '*_desc-confounds_timeseries.json' \
+                    -delete 2>/dev/null
+            fi
+            if [ -d "$ses_dir/anat" ]; then
+                find "$ses_dir/anat" -type f \
+                    ! -name '*MNI152NLin6Asym*' \
+                    -delete 2>/dev/null
+            fi
+        done
+
+        # 빈 디렉토리 정리
+        find "$sub_deriv" -type d -empty -delete 2>/dev/null
+
+        local after_size
+        after_size=$(du -sm "$sub_deriv" 2>/dev/null | awk '{print $1}')
+        local deriv_freed=$((before_size - after_size))
+        freed=$((freed + deriv_freed))
+        ok "Derivatives trimmed: ${before_size}MB → ${after_size}MB (saved ${deriv_freed}MB)"
+    fi
+
+    info "Total freed: ${freed}MB"
+}
+
+# ============================================================================
 # 단일 subject 실행
 # ============================================================================
 run_one_subject() {
@@ -382,7 +477,7 @@ run_one_subject() {
     if "${cmd[@]}" > "$log_file" 2>&1; then
         local elapsed=$(( $(date +%s) - start_time ))
         ok "$sub_id completed (${elapsed}s)"
-        rm -rf "$work_dir"
+        cleanup_subject "$sub_id" "$ds_id"
         return 0
     else
         local elapsed=$(( $(date +%s) - start_time ))
@@ -392,6 +487,13 @@ run_one_subject() {
         tail -20 "$log_file" 2>/dev/null
         echo ""
         info "Full log: $log_file"
+        # 실패해도 work dir은 정리 (디스크 회수)
+        if [ -d "$work_dir" ]; then
+            local work_size
+            work_size=$(du -sm "$work_dir" 2>/dev/null | awk '{print $1}')
+            rm -rf "$work_dir"
+            info "Failed work dir removed (${work_size}MB freed)"
+        fi
         return 1
     fi
 }
