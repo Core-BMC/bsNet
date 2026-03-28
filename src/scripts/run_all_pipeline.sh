@@ -26,6 +26,10 @@
 #
 #   # Dry-run (전체)
 #   ./src/scripts/run_all_pipeline.sh --dry-run
+#
+#   # 점진적 처리: 데이터셋 단위로 download→fMRIPrep→BS-NET (다운로드 대기 불필요)
+#   ./src/scripts/run_all_pipeline.sh --incremental
+#   ./src/scripts/run_all_pipeline.sh --incremental --max-subjects 5  # PoC
 # ============================================================================
 set -euo pipefail
 
@@ -36,6 +40,8 @@ DATA_DIR="$PROJECT_ROOT/data"
 # ---- Parse arguments ----
 STEP=""
 DRY_RUN=0
+INCREMENTAL=0
+MAX_SUBJECTS_FLAG=""
 SINGULARITY_FLAG=""
 MAX_PARALLEL_FLAG=""
 EXTRA_ARGS=()
@@ -44,10 +50,12 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --step)          STEP="$2"; shift 2 ;;
         --dry-run)       DRY_RUN=1; shift ;;
+        --incremental)   INCREMENTAL=1; shift ;;
+        --max-subjects)  MAX_SUBJECTS_FLAG="--max-subjects $2"; shift 2 ;;
         --singularity)   SINGULARITY_FLAG="--singularity"; shift ;;
         --max-parallel)  MAX_PARALLEL_FLAG="--max-parallel $2"; shift 2 ;;
         -h|--help)
-            head -30 "$0" | grep "^#" | sed 's/^# //'
+            head -34 "$0" | grep "^#" | sed 's/^# //'
             exit 0
             ;;
         *)               EXTRA_ARGS+=("$1"); shift ;;
@@ -176,22 +184,81 @@ step3_fmriprep() {
     eval "$fmriprep_cmd" 2>&1 | tee -a "$LOG_FILE"
 }
 
+step3b_xcpd() {
+    log "━━━ Step 3b: XCP-D Post-Processing ━━━"
+
+    local fmriprep_dir="$DATA_DIR/derivatives/fmriprep"
+    local xcpd_dir="$DATA_DIR/derivatives/xcp_d"
+    local selection_csv="$DATA_DIR/hc_100_selection.csv"
+
+    # Count fMRIPrep-done but XCP-D-missing subjects
+    local todo=0
+    local done=0
+    if [ -d "$fmriprep_dir" ]; then
+        for sub_dir in "$fmriprep_dir"/sub-*; do
+            [ -d "$sub_dir" ] || continue
+            local sub_id
+            sub_id=$(basename "$sub_dir")
+            if ls "$xcpd_dir/$sub_id"/func/*Schaefer*timeseries* &>/dev/null 2>&1; then
+                done=$((done + 1))
+            elif ls "$sub_dir"/func/*MNI*bold* &>/dev/null 2>&1; then
+                todo=$((todo + 1))
+            fi
+        done
+    fi
+    log "  XCP-D status: $done done, $todo pending"
+
+    if [ "$todo" -eq 0 ]; then
+        log "  All subjects processed or no fMRIPrep outputs. Skipping."
+        return 0
+    fi
+
+    local xcpd_cmd="bash $SCRIPT_DIR/run_xcpd_batch.sh --all"
+    [ -n "$SINGULARITY_FLAG" ] && xcpd_cmd="$xcpd_cmd --singularity"
+    [ -n "$MAX_PARALLEL_FLAG" ] && xcpd_cmd="$xcpd_cmd $MAX_PARALLEL_FLAG"
+
+    if [ "$DRY_RUN" -eq 1 ]; then
+        log "  [DRY-RUN] $xcpd_cmd"
+        return 0
+    fi
+
+    log "  Running XCP-D batch..."
+    eval "$xcpd_cmd" 2>&1 | tee -a "$LOG_FILE"
+}
+
 step4_bsnet() {
     log "━━━ Step 4: BS-NET Pipeline ━━━"
 
     local fmriprep_dir="$DATA_DIR/derivatives/fmriprep"
+    local xcpd_dir="$DATA_DIR/derivatives/xcp_d"
     local bsnet_dir="$DATA_DIR/derivatives/bsnet"
     local selection_csv="$DATA_DIR/hc_100_selection.csv"
 
-    # Count available fMRIPrep outputs
-    local available=0
-    if [ -d "$fmriprep_dir" ]; then
-        available=$(find "$fmriprep_dir" -name "*MNI*bold*" -type f 2>/dev/null | wc -l)
+    # Detect input mode: prefer XCP-D if available
+    local input_mode="fmriprep"
+    if [ -d "$xcpd_dir" ] && ls "$xcpd_dir"/sub-*/func/*Schaefer*timeseries* &>/dev/null 2>&1; then
+        input_mode="xcpd"
     fi
-    log "  fMRIPrep outputs available: $available subjects"
+    log "  Input mode: $input_mode"
+
+    # Count available outputs
+    local available=0
+    if [ "$input_mode" = "xcpd" ]; then
+        for sub_dir in "$xcpd_dir"/sub-*; do
+            [ -d "$sub_dir" ] || continue
+            if ls "$sub_dir"/func/*Schaefer*timeseries* &>/dev/null 2>&1; then
+                available=$((available + 1))
+            fi
+        done
+    else
+        if [ -d "$fmriprep_dir" ]; then
+            available=$(find "$fmriprep_dir" -name "*MNI*bold*" -type f 2>/dev/null | wc -l)
+        fi
+    fi
+    log "  Preprocessed outputs available: $available subjects"
 
     if [ "$available" -eq 0 ]; then
-        log "  ERROR: No fMRIPrep outputs found. Run Step 3 first."
+        log "  ERROR: No preprocessed outputs found. Run Step 3/3b first."
         return 1
     fi
 
@@ -202,9 +269,9 @@ step4_bsnet() {
     fi
     log "  BS-NET processed: $bsnet_done subjects"
 
-    local bsnet_cmd="python $SCRIPT_DIR/run_fmriprep_bsnet.py --run-all --verbose"
+    local bsnet_cmd="python $SCRIPT_DIR/run_fmriprep_bsnet.py --run-all --input-mode $input_mode --verbose"
     if [ -f "$selection_csv" ]; then
-        bsnet_cmd="python $SCRIPT_DIR/run_fmriprep_bsnet.py --run-selection $selection_csv --verbose"
+        bsnet_cmd="python $SCRIPT_DIR/run_fmriprep_bsnet.py --run-selection $selection_csv --input-mode $input_mode --verbose"
     fi
 
     if [ "$DRY_RUN" -eq 1 ]; then
@@ -277,23 +344,40 @@ log "Project: $PROJECT_ROOT"
 log "Log: $LOG_FILE"
 log ""
 
-if [ -n "$STEP" ]; then
+if [ "$INCREMENTAL" -eq 1 ]; then
+    # Incremental mode: dataset 단위 점진적 처리
+    log "Mode: INCREMENTAL (per-dataset pipeline)"
+    step0_setup
+    step1_index
+
+    # Delegate to run_dataset_pipeline.sh --auto
+    INC_CMD="bash $SCRIPT_DIR/run_dataset_pipeline.sh --auto"
+    [ "$DRY_RUN" -eq 1 ] && INC_CMD="$INC_CMD --dry-run"
+    [ -n "$SINGULARITY_FLAG" ] && INC_CMD="$INC_CMD $SINGULARITY_FLAG"
+    [ -n "$MAX_SUBJECTS_FLAG" ] && INC_CMD="$INC_CMD $MAX_SUBJECTS_FLAG"
+    [ -n "$MAX_PARALLEL_FLAG" ] && INC_CMD="$INC_CMD $MAX_PARALLEL_FLAG"
+
+    log "Delegating to per-dataset pipeline: $INC_CMD"
+    eval "$INC_CMD"
+elif [ -n "$STEP" ]; then
     # Single step
     case "$STEP" in
-        0) step0_setup ;;
-        1) step1_index ;;
-        2) step2_download ;;
-        3) step3_fmriprep ;;
-        4) step4_bsnet ;;
-        5) step5_summarize ;;
-        *) log "ERROR: Unknown step $STEP (valid: 0-5)"; exit 1 ;;
+        0)  step0_setup ;;
+        1)  step1_index ;;
+        2)  step2_download ;;
+        3)  step3_fmriprep ;;
+        3b) step3b_xcpd ;;
+        4)  step4_bsnet ;;
+        5)  step5_summarize ;;
+        *)  log "ERROR: Unknown step $STEP (valid: 0-5, 3b)"; exit 1 ;;
     esac
 else
-    # Full pipeline
+    # Full pipeline (sequential)
     step0_setup
     step1_index
     step2_download
     step3_fmriprep
+    step3b_xcpd
     step4_bsnet
     step5_summarize
 fi

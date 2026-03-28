@@ -1,6 +1,6 @@
 # BS-NET Documentation Directory
 
-이 폴더(`docs/`)는 BS-NET 파이프라인의 핵심 이론부터 최종 논문화 보고서까지 모든 문서를 **4개 카테고리(1~4) × 하위 목차(X.Y)** 형태로 구조화한 인덱스입니다.
+이 폴더(`docs/`)는 BS-NET 파이프라인의 핵심 이론부터 최종 논문화 보고서까지 모든 문서를 **6개 카테고리(1~6) × 하위 목차(X.Y)** 형태로 구조화한 인덱스입니다.
 
 ---
 
@@ -20,8 +20,6 @@
 - **`4.1_pub_report_academic.md`**: BS-NET의 Phase 1~4(이론 증명, 대규모 실증, 토폴로지 검증) 전 과정을 피어리뷰 학술 저널 형식으로 정리한 영문 학술 보고서.
 - **`4.2_pub_report_general.md`**: 비전문 대중/경영진 대상의 한국어 브리핑 보고서. 2분 스캔으로 15분 결과를 재현하는 BS-NET의 임상적 의의를 풀어 설명.
 
----
-
 ## 5. 개발 계획 및 유지보수 (Development Plans)
 - **`5.1_plan_refactoring.md`**: 코드 구조 분석 및 리팩토링 계획서. 중복 코드 추출, 매직 넘버 중앙화, 시각화 통합, 프로젝트 정리 등 4단계 로드맵.
 - **`5.2_review_critical_analysis.md`**: Critical review — 통계, 실험 설계, 스토리라인 전반의 13개 이슈 (CRITICAL 4, MAJOR 7, MINOR 2) 및 DOI 16건.
@@ -31,10 +29,14 @@
 - **`5.6_failure_characterization.md`**: 9% 실패 피험자 특성 분석. N=300 (3 noise levels) 시뮬레이션, SNR≈1:1까지 100% pass 확인.
 - **`5.7_stationarity_discussion.md`**: Stationarity test 결과 논문 반영 방식 확정. Cheng et al. (2021) 선례 기반 방어 논증 3단계.
 
+## 6. 운영 및 파이프라인 가이드 (Operations & Pipeline)
+- **`6.1_ops_local_setup.md`**: 로컬 환경 설정 가이드. Python venv/conda, 의존성 설치, Schaefer atlas 배치, FreeSurfer 라이선스 등.
+- **`6.2_ops_real_data_pipeline.md`**: OpenNeuro HC 100명 실증 분석 전체 파이프라인. Step 0(환경) ~ Step 5(요약) 및 환경별 워크플로우(단일 머신, 랩탑+워크스테이션, HPC).
+
 ---
 
 ### 부속 자산 (Assets)
-- **`figure/`**: Figure 1~4 최종 렌더링 이미지 (PNG). `artifacts/reports/`에서 복사된 배포용 사본.
+- **`figure/`**: Figure 1~5 최종 렌더링 이미지 (PNG). `artifacts/reports/`에서 복사된 배포용 사본.
 
 | Figure | 파일명 | 내용 |
 |--------|--------|------|
