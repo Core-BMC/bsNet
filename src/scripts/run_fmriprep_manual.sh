@@ -284,6 +284,7 @@ build_fmriprep_cmd() {
         echo "  --nprocs ${N_CPUS} --mem-mb ${MEM_MB} \\"
         echo "  --work-dir /work \\"
         echo "  --skip-bids-validation --notrack \\"
+        echo "  --fs-no-reconall \\"
         echo "  --ignore fieldmaps slicetiming"
     else
         echo "docker run --rm \\"
@@ -298,6 +299,7 @@ build_fmriprep_cmd() {
         echo "  --nprocs ${N_CPUS} --mem-mb ${MEM_MB} \\"
         echo "  --work-dir /work \\"
         echo "  --skip-bids-validation --notrack \\"
+        echo "  --fs-no-reconall \\"
         echo "  --ignore fieldmaps slicetiming"
     fi
 }
@@ -446,6 +448,7 @@ run_one_subject() {
             --nprocs "$N_CPUS" --mem-mb "$MEM_MB"
             --work-dir /work
             --skip-bids-validation --notrack
+            --fs-no-reconall
             --ignore fieldmaps slicetiming
         )
     else
@@ -462,6 +465,7 @@ run_one_subject() {
             --nprocs "$N_CPUS" --mem-mb "$MEM_MB"
             --work-dir /work
             --skip-bids-validation --notrack
+            --fs-no-reconall
             --ignore fieldmaps slicetiming
         )
     fi

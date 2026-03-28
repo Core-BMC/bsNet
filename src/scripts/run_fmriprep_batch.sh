@@ -228,6 +228,7 @@ run_fmriprep_one() {
             --work-dir /work
             --skip-bids-validation
             --notrack
+            --fs-no-reconall
             --ignore fieldmaps slicetiming
         )
     else
@@ -247,6 +248,7 @@ run_fmriprep_one() {
             --work-dir /work
             --skip-bids-validation
             --notrack
+            --fs-no-reconall
             --ignore fieldmaps slicetiming
         )
     fi
