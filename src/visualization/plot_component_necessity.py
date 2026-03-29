@@ -169,13 +169,17 @@ def plot_component_necessity(
         width=0.7,
     )
 
-    # Value annotations
-    for i, (val, _err) in enumerate(zip(delta_df["mean_delta"], delta_df["std_delta"])):
-        offset = -0.02 if val < 0 else 0.02
-        va = "top" if val < 0 else "bottom"
+    # Value annotations — place above error bar cap to avoid overlap
+    for i, (val, err) in enumerate(zip(delta_df["mean_delta"], delta_df["std_delta"])):
+        if val >= 0:
+            y_label = val + err + 0.012
+            va = "bottom"
+        else:
+            y_label = val - err - 0.012
+            va = "top"
         ax2.text(
             i,
-            val + (offset * np.sign(val) if abs(val) > 0.05 else offset),
+            y_label,
             f"{val:+.3f}",
             ha="center",
             va=va,
@@ -188,6 +192,10 @@ def plot_component_necessity(
         delta_df["label"], rotation=35, ha="right", fontsize=FONT["legend_small"],
     )
     ax2.axhline(0, color="black", linewidth=0.8)
+    # Expand y-axis to give margin for text labels above/below error bars
+    y_lo = min(delta_df["mean_delta"] - delta_df["std_delta"]) - 0.08
+    y_hi = max(delta_df["mean_delta"] + delta_df["std_delta"]) + 0.08
+    ax2.set_ylim(y_lo, y_hi)
     style_axis(
         ax2,
         title="B. Component Contribution (Leave-One-Out)",
