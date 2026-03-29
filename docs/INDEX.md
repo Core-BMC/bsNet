@@ -12,6 +12,7 @@
 - **`2.1_log_experiment_20260326.md`**: 1차 튜닝. 단일 가상 모델 지표 산출, 로컬 캐시 구조 개선, 120초 기반 예측 시계열 최적화 등 초기 시뮬레이터 가동 기록.
 - **`2.2_log_experiment_20260327.md`**: 2차 실증. N=100 대규모 Scale-Up(OpenNeuro) 검증 로직 가동 기록, KDE Bias 편향 보정, Figure 2 시각화 완료 로그.
 - **`2.3_log_sessions.log`**: 토폴로지 검증(Phase 4~7) 세션별 실행 이력. Schaefer 400 전환, ARI/Jaccard 산출, Violin plot 생성 등 단문 기록.
+- **`2.4_log_experiment_20260328_30.md`**: 3차 실증 (3일분 통합). 방어 실험 Track A–G 완성, Ceiling effect 발견 및 Fisher z 해소, ABIDE N=468 CC200/CC400 검증, ADHD-200 N=40 그룹 비교, Track E 배치 리팩토링.
 
 ## 3. 정량 분석 결과 및 시각화 캡션 (Validation Results & Legends)
 - **`3.1_res_figure_legends.md`**: Figure 1~4 전체에 대한 통합 아카데믹 레전드. 패널별 축·통계량·해석을 포함한 마스터 캡션 문서.
