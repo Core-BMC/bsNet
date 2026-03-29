@@ -16,6 +16,7 @@ Results are saved to artifacts/reports/ablation_results.csv
 
 from __future__ import annotations
 
+import argparse
 import logging
 from pathlib import Path
 
@@ -29,8 +30,7 @@ from src.core.bootstrap import (
     spearman_brown,
 )
 from src.core.config import BSNetConfig
-from src.core.simulate import generate_synthetic_timeseries
-from src.data.data_loader import get_fc_matrix
+from src.data.data_loader import get_fc_matrix, load_timeseries_data
 
 logger = logging.getLogger(__name__)
 
@@ -257,6 +257,7 @@ def ablation_l5_full(
     full_obs: np.ndarray,
     config: BSNetConfig,
     n_bootstrap: int = 30,
+    method: str = "fisher_z",
 ) -> float:
     """
     L5 (BS-NET full): Full attenuation correction pipeline.
@@ -266,6 +267,7 @@ def ablation_l5_full(
         full_obs: Full duration time series.
         config: Configuration object.
         n_bootstrap: Number of bootstrap iterations.
+        method: Attenuation correction method (original, fisher_z, partial, soft_clamp).
 
     Returns:
         float: Median of fully corrected estimates.
@@ -298,6 +300,7 @@ def ablation_l5_full(
             r_split,
             k=config.k_factor,
             empirical_prior=empirical_prior,
+            method=method,
         )
 
         rho_estimates.append(np.clip(rho_est, -1.0, 1.0))
@@ -313,6 +316,8 @@ def run_single_trial(
     noise_level: float,
     ar1: float,
     config: BSNetConfig,
+    input_npy: str | None = None,
+    correction_method: str = "fisher_z",
 ) -> dict:
     """
     Run a single ablation trial across all levels.
@@ -325,30 +330,42 @@ def run_single_trial(
         noise_level: Standard deviation of added Gaussian noise.
         ar1: AR(1) autocorrelation coefficient.
         config: Configuration object.
+        input_npy: Optional path to .npy file for real data. If None, use synthetic.
+        correction_method: Attenuation correction method for L5 (original, fisher_z, partial, soft_clamp).
 
     Returns:
         dict: Results dictionary with level, method, seed, predicted_rho, mae, pass.
     """
     np.random.seed(seed)
 
-    # Generate synthetic data - both short and full use the same random generator state
-    # simulate returns (n_rois, n_samples), but get_fc_matrix expects (n_samples, n_rois)
-    short_obs, short_true = generate_synthetic_timeseries(
-        short_samples, n_rois, noise_level=noise_level, ar1=ar1
-    )
-    full_obs, full_true = generate_synthetic_timeseries(
-        full_samples, n_rois, noise_level=noise_level, ar1=ar1
-    )
-
-    # Transpose to (n_samples, n_rois) for get_fc_matrix
-    short_obs = short_obs.T
-    short_true = short_true.T
-    full_obs = full_obs.T
-    full_true = full_true.T
+    if input_npy is not None:
+        # Real data: load from .npy file
+        ts_full, short_obs, ts_signal = load_timeseries_data(
+            input_npy=input_npy, short_samples=short_samples
+        )
+        full_obs = ts_full
+        full_true = ts_signal
+        short_true = ts_signal[:short_samples, :]
+    else:
+        # Synthetic data: generate single full time series, then slice short from it
+        ts_signal, _ = load_timeseries_data(
+            short_samples=None,
+            n_samples=full_samples,
+            n_rois=n_rois,
+            noise_level=noise_level,
+            ar1=ar1,
+        )
+        full_obs = ts_signal
+        full_true = ts_signal
+        short_obs = ts_signal[:short_samples, :]
+        short_true = ts_signal[:short_samples, :]
 
     # Reference FC: correlation between true signal FC matrices (noiseless)
-    fc_short_true = get_fc_matrix(short_true, vectorized=True, use_shrinkage=True)
-    fc_full_true = get_fc_matrix(full_true, vectorized=True, use_shrinkage=True)
+    # Real data: use shrinkage on full, noise-free on short
+    # Synthetic: noise-free, no shrinkage for both (use_shrinkage=False for signal)
+    use_shrink_true = input_npy is not None
+    fc_short_true = get_fc_matrix(short_true, vectorized=True, use_shrinkage=use_shrink_true)
+    fc_full_true = get_fc_matrix(full_true, vectorized=True, use_shrinkage=use_shrink_true)
     fc_reference = np.corrcoef(fc_short_true, fc_full_true)[0, 1]
     fc_reference = np.clip(fc_reference, -1.0, 1.0)
 
@@ -366,7 +383,12 @@ def run_single_trial(
 
     for level, method_name, func in levels:
         try:
-            predicted_rho = func(short_obs, full_obs, config)
+            if level == "L5":
+                predicted_rho = func(
+                    short_obs, full_obs, config, method=correction_method
+                )
+            else:
+                predicted_rho = func(short_obs, full_obs, config)
             mae = abs(predicted_rho - fc_reference)
             pass_flag = 1 if predicted_rho >= 0.80 else 0
 
@@ -405,8 +427,40 @@ def main() -> None:
     """
     Execute ablation study and save results to CSV.
     """
+    parser = argparse.ArgumentParser(
+        description="BS-NET Ablation Study: Quantify component contribution."
+    )
+    parser.add_argument(
+        "--input-npy",
+        type=str,
+        default=None,
+        help="Path to .npy file for real data. If None, use synthetic data.",
+    )
+    parser.add_argument(
+        "--n-bootstraps",
+        type=int,
+        default=50,
+        help="Number of bootstrap iterations (default: 50).",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging.",
+    )
+    parser.add_argument(
+        "--correction-method",
+        type=str,
+        default="fisher_z",
+        choices=["original", "fisher_z", "partial", "soft_clamp"],
+        help="Attenuation correction method for L5 (default: fisher_z).",
+    )
+
+    args = parser.parse_args()
+
+    log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
-        level=logging.INFO,
+        level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
@@ -435,6 +489,9 @@ def main() -> None:
     logger.info(f"  noise_level: {config.noise_level}")
     logger.info(f"  ar1: {config.ar1}")
     logger.info(f"  k_factor (scaling): {config.k_factor:.2f}")
+    logger.info(f"  correction_method (L5): {args.correction_method}")
+    logger.info(f"  n_bootstraps: {args.n_bootstraps}")
+    logger.info(f"  input_npy: {args.input_npy}")
     logger.info(f"  seeds: {seeds}")
     logger.info("=" * 70)
 
@@ -450,6 +507,8 @@ def main() -> None:
             noise_level=config.noise_level,
             ar1=config.ar1,
             config=config,
+            input_npy=args.input_npy,
+            correction_method=args.correction_method,
         )
         all_results.extend(trial_results)
 

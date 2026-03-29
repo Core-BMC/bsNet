@@ -8,6 +8,7 @@ degradation boundary where prediction performance decays.
 
 from __future__ import annotations
 
+import argparse
 import csv
 import logging
 from dataclasses import dataclass
@@ -17,8 +18,7 @@ import numpy as np
 
 from src.core.config import BSNetConfig
 from src.core.pipeline import run_bootstrap_prediction
-from src.core.simulate import generate_synthetic_timeseries
-from src.data.data_loader import get_fc_matrix
+from src.data.data_loader import get_fc_matrix, load_timeseries_data
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +66,9 @@ def run_single_condition(
     n_rois: int,
     short_duration: int,
     seed: int,
+    input_npy: str | None = None,
+    n_bootstraps: int = 30,
+    correction_method: str = "fisher_z",
 ) -> tuple[float, float, float]:
     """
     Run a single test condition and return predicted_rho, ci_lower, ci_upper.
@@ -75,6 +78,9 @@ def run_single_condition(
         n_rois: Number of regions of interest.
         short_duration: Short observation duration in samples.
         seed: Random seed.
+        input_npy: Path to real data .npy file. If provided, uses real data mode.
+        n_bootstraps: Number of bootstrap resamples.
+        correction_method: Attenuation correction method.
 
     Returns:
         Tuple of (predicted_rho, ci_lower, ci_upper).
@@ -84,41 +90,64 @@ def run_single_condition(
     # Full target length (900 samples = 15 min at 1 TR/s)
     full_length = 900
 
-    # Generate synthetic data (full and short observation)
-    observed_full, signal_full = generate_synthetic_timeseries(
-        n_samples=full_length,
-        n_rois=n_rois,
-        noise_level=noise_level,
-        ar1=0.6,
-    )
-
-    # Transpose: (n_rois, n_samples) → (n_samples, n_rois)
-    signal_full_t = signal_full.T  # (900, n_rois)
-    observed_full_t = observed_full.T  # (900, n_rois)
+    # Load or generate data
+    if input_npy is not None:
+        # Real data mode
+        ts_full, ts_short, ts_signal = load_timeseries_data(
+            input_npy=input_npy,
+            short_samples=short_duration,
+        )
+        # For real data, use ts_full as signal
+        signal_full_t = ts_full  # (n_samples, n_rois)
+        use_shrinkage_ref = True
+    else:
+        # Synthetic data mode
+        ts_full, ts_short, ts_signal = load_timeseries_data(
+            input_npy=None,
+            n_samples=full_length,
+            n_rois=n_rois,
+            noise_level=noise_level,
+            ar1=0.6,
+            short_samples=short_duration,
+            seed=seed,
+        )
+        signal_full_t = ts_signal  # (n_samples, n_rois)
+        use_shrinkage_ref = False
 
     # Compute reference FC from noise-free full signal, vectorized
-    fc_reference = get_fc_matrix(signal_full_t, vectorized=True, use_shrinkage=False)
+    fc_reference = get_fc_matrix(
+        signal_full_t, vectorized=True, use_shrinkage=use_shrinkage_ref
+    )
 
     # Extract short observation
-    observed_short = observed_full_t[:short_duration, :]  # (short_duration, n_rois)
+    observed_short = ts_short  # (short_duration, n_rois)
 
     # Create config with this condition's parameters
     config = BSNetConfig(
-        n_rois=n_rois,
+        n_rois=observed_short.shape[1],
         noise_level=noise_level,
         short_duration_sec=short_duration,
-        n_bootstraps=30,
+        n_bootstraps=n_bootstraps,
         seed=seed,
     )
 
     # Run bootstrap prediction
-    result = run_bootstrap_prediction(observed_short, fc_reference, config)
+    result = run_bootstrap_prediction(
+        observed_short, fc_reference, config,
+        correction_method=correction_method,
+    )
 
     return result.predicted_rho, result.ci_lower, result.ci_upper
 
 
 def sweep_noise_level(
-    noise_levels: list[float], n_rois: int = 50, short_duration: int = 120, seeds: list[int] | None = None
+    noise_levels: list[float],
+    n_rois: int = 50,
+    short_duration: int = 120,
+    seeds: list[int] | None = None,
+    input_npy: str | None = None,
+    n_bootstraps: int = 100,
+    correction_method: str = "fisher_z",
 ) -> list[NoiseCondition]:
     """
     Sweep across noise levels with fixed ROI count and short duration.
@@ -128,6 +157,9 @@ def sweep_noise_level(
         n_rois: Fixed number of ROIs.
         short_duration: Fixed short duration in samples.
         seeds: List of random seeds.
+        input_npy: Path to real data .npy file (optional).
+        n_bootstraps: Number of bootstrap resamples.
+        correction_method: Attenuation correction method.
 
     Returns:
         List of NoiseCondition results.
@@ -145,6 +177,9 @@ def sweep_noise_level(
                     n_rois=n_rois,
                     short_duration=short_duration,
                     seed=seed,
+                    input_npy=input_npy,
+                    n_bootstraps=n_bootstraps,
+                    correction_method=correction_method,
                 )
                 condition = NoiseCondition(
                     dimension="noise_level",
@@ -164,7 +199,13 @@ def sweep_noise_level(
 
 
 def sweep_n_rois(
-    n_rois_list: list[int], noise_level: float = 0.25, short_duration: int = 120, seeds: list[int] | None = None
+    n_rois_list: list[int],
+    noise_level: float = 0.25,
+    short_duration: int = 120,
+    seeds: list[int] | None = None,
+    input_npy: str | None = None,
+    n_bootstraps: int = 100,
+    correction_method: str = "fisher_z",
 ) -> list[NoiseCondition]:
     """
     Sweep across ROI counts with fixed noise and short duration.
@@ -174,6 +215,9 @@ def sweep_n_rois(
         noise_level: Fixed noise level.
         short_duration: Fixed short duration in samples.
         seeds: List of random seeds.
+        input_npy: Path to real data .npy file (optional).
+        n_bootstraps: Number of bootstrap resamples.
+        correction_method: Attenuation correction method.
 
     Returns:
         List of NoiseCondition results.
@@ -191,6 +235,9 @@ def sweep_n_rois(
                     n_rois=n_rois,
                     short_duration=short_duration,
                     seed=seed,
+                    input_npy=input_npy,
+                    n_bootstraps=n_bootstraps,
+                    correction_method=correction_method,
                 )
                 condition = NoiseCondition(
                     dimension="n_rois",
@@ -210,7 +257,13 @@ def sweep_n_rois(
 
 
 def sweep_short_duration(
-    short_durations: list[int], n_rois: int = 50, noise_level: float = 0.25, seeds: list[int] | None = None
+    short_durations: list[int],
+    n_rois: int = 50,
+    noise_level: float = 0.25,
+    seeds: list[int] | None = None,
+    input_npy: str | None = None,
+    n_bootstraps: int = 100,
+    correction_method: str = "fisher_z",
 ) -> list[NoiseCondition]:
     """
     Sweep across short scan durations with fixed ROI count and noise.
@@ -220,6 +273,9 @@ def sweep_short_duration(
         n_rois: Fixed number of ROIs.
         noise_level: Fixed noise level.
         seeds: List of random seeds.
+        input_npy: Path to real data .npy file (optional).
+        n_bootstraps: Number of bootstrap resamples.
+        correction_method: Attenuation correction method.
 
     Returns:
         List of NoiseCondition results.
@@ -237,6 +293,9 @@ def sweep_short_duration(
                     n_rois=n_rois,
                     short_duration=short_duration,
                     seed=seed,
+                    input_npy=input_npy,
+                    n_bootstraps=n_bootstraps,
+                    correction_method=correction_method,
                 )
                 condition = NoiseCondition(
                     dimension="short_duration",
@@ -344,12 +403,49 @@ def main() -> None:
     Runs three independent sweeps (noise, n_rois, short_duration) and produces
     summary tables and a CSV output.
     """
+    parser = argparse.ArgumentParser(
+        description="BS-NET noise degradation analysis for robustness testing."
+    )
+    parser.add_argument(
+        "--input-npy",
+        type=str,
+        default=None,
+        help="Path to real data .npy file (n_samples, n_rois). If provided, uses real data mode.",
+    )
+    parser.add_argument(
+        "--n-bootstraps",
+        type=int,
+        default=100,
+        help="Number of bootstrap resamples (default: 100).",
+    )
+    parser.add_argument(
+        "--correction-method",
+        type=str,
+        default="fisher_z",
+        choices=["original", "fisher_z", "partial", "soft_clamp"],
+        help="Attenuation correction method (default: fisher_z).",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging.",
+    )
+    args = parser.parse_args()
+
+    log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
-        level=logging.INFO,
+        level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     logger.info("Starting BS-NET noise degradation analysis...")
+    if args.input_npy:
+        logger.info(f"Using real data from: {args.input_npy}")
+    else:
+        logger.info("Using synthetic data generation.")
+    logger.info(f"Bootstrap resamples: {args.n_bootstraps}")
+    logger.info(f"Correction method: {args.correction_method}")
 
     # Define sweep parameters
     noise_levels = [0.05, 0.10, 0.25, 0.50, 0.75, 1.00, 1.50, 2.00]
@@ -357,15 +453,39 @@ def main() -> None:
     short_durations = [30, 60, 90, 120, 180, 240]
     seeds = [42, 123, 777]
 
-    # Run sweeps
+    # Run sweeps with real or synthetic data
     logger.info("Dimension 1: Noise level sweep...")
-    results_noise = sweep_noise_level(noise_levels, n_rois=50, short_duration=120, seeds=seeds)
+    results_noise = sweep_noise_level(
+        noise_levels,
+        n_rois=50,
+        short_duration=120,
+        seeds=seeds,
+        input_npy=args.input_npy,
+        n_bootstraps=args.n_bootstraps,
+        correction_method=args.correction_method,
+    )
 
     logger.info("Dimension 2: ROI count sweep...")
-    results_n_rois = sweep_n_rois(n_rois_list, noise_level=0.25, short_duration=120, seeds=seeds)
+    results_n_rois = sweep_n_rois(
+        n_rois_list,
+        noise_level=0.25,
+        short_duration=120,
+        seeds=seeds,
+        input_npy=args.input_npy,
+        n_bootstraps=args.n_bootstraps,
+        correction_method=args.correction_method,
+    )
 
     logger.info("Dimension 3: Short duration sweep...")
-    results_short = sweep_short_duration(short_durations, n_rois=50, noise_level=0.25, seeds=seeds)
+    results_short = sweep_short_duration(
+        short_durations,
+        n_rois=50,
+        noise_level=0.25,
+        seeds=seeds,
+        input_npy=args.input_npy,
+        n_bootstraps=args.n_bootstraps,
+        correction_method=args.correction_method,
+    )
 
     # Combine all results
     all_results = results_noise + results_n_rois + results_short

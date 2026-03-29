@@ -18,6 +18,7 @@ Output: artifacts/reports/failure_analysis.csv
 
 from __future__ import annotations
 
+import argparse
 import csv
 import logging
 from pathlib import Path
@@ -26,8 +27,7 @@ import numpy as np
 
 from src.core.config import BSNetConfig
 from src.core.pipeline import run_bootstrap_prediction
-from src.core.simulate import generate_synthetic_timeseries
-from src.data.data_loader import get_fc_matrix
+from src.data.data_loader import get_fc_matrix, load_timeseries_data
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +105,8 @@ def run_failure_analysis(
     noise_level: float = 0.25,
     ar1: float = 0.6,
     n_bootstraps: int = 50,
+    input_npy: str | None = None,
+    correction_method: str = "fisher_z",
 ) -> list[dict]:
     """Simulate N subjects and characterize pass/fail outcomes.
 
@@ -116,6 +118,9 @@ def run_failure_analysis(
         noise_level: Base noise level.
         ar1: AR(1) coefficient.
         n_bootstraps: Bootstrap iterations per subject.
+        input_npy: Path to preprocessed .npy timeseries (optional).
+        correction_method: Attenuation correction method.
+            Choices: 'original', 'fisher_z', 'partial', 'soft_clamp'.
 
     Returns:
         List of dicts with per-subject results and characteristics.
@@ -139,21 +144,28 @@ def run_failure_analysis(
         seed = 1000 + subj_id
         np.random.seed(seed)
 
-        # Generate subject-specific data
-        long_obs, long_signal = generate_synthetic_timeseries(
-            target_samples, n_rois, noise_level=noise_level, ar1=ar1
-        )
-        long_obs = long_obs.T
-        long_signal = long_signal.T
+        # Load or generate subject-specific data
+        if input_npy is not None:
+            long_obs, short_obs, long_signal = load_timeseries_data(
+                input_npy=input_npy, short_samples=short_samples
+            )
+        else:
+            long_obs, short_obs, long_signal = load_timeseries_data(
+                n_samples=target_samples,
+                n_rois=n_rois,
+                noise_level=noise_level,
+                ar1=ar1,
+                short_samples=short_samples,
+                seed=seed,
+            )
 
         # Reference FC from full noisy observation
         fc_reference = get_fc_matrix(long_obs, vectorized=True, use_shrinkage=False)
 
-        # Short observation
-        short_obs = long_obs[:short_samples, :]
-
         # Run pipeline
-        result = run_bootstrap_prediction(short_obs, fc_reference, config)
+        result = run_bootstrap_prediction(
+            short_obs, fc_reference, config, correction_method=correction_method
+        )
 
         # Subject characteristics
         chars = compute_subject_characteristics(short_obs, long_obs, long_signal)
@@ -306,8 +318,33 @@ def save_and_summarize(results: list[dict], artifacts_dir: Path) -> None:
 
 def main() -> None:
     """Run failure characterization analysis."""
+    parser = argparse.ArgumentParser(
+        description="Failure case characterization for BS-NET pipeline"
+    )
+    parser.add_argument(
+        "--input-npy",
+        type=str,
+        default=None,
+        help="Path to preprocessed .npy timeseries (optional)",
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose logging",
+    )
+    parser.add_argument(
+        "--correction-method",
+        type=str,
+        choices=["original", "fisher_z", "partial", "soft_clamp"],
+        default="fisher_z",
+        help="Attenuation correction method (default: fisher_z)",
+    )
+
+    args = parser.parse_args()
+
+    log_level = logging.DEBUG if args.verbose else logging.WARNING
     logging.basicConfig(
-        level=logging.WARNING,
+        level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
@@ -320,6 +357,8 @@ def main() -> None:
         noise_level=0.25,
         ar1=0.6,
         n_bootstraps=50,
+        input_npy=args.input_npy,
+        correction_method=args.correction_method,
     )
     save_and_summarize(results, artifacts_dir)
 

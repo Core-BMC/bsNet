@@ -15,6 +15,8 @@
 
 ## 3. 정량 분석 결과 및 시각화 캡션 (Validation Results & Legends)
 - **`3.1_res_figure_legends.md`**: Figure 1~4 전체에 대한 통합 아카데믹 레전드. 패널별 축·통계량·해석을 포함한 마스터 캡션 문서.
+- **`3.2_res_abide_figure_legends.md`**: ABIDE PCP 실증 Figure 5~7b 레전드. Multi-seed (CC200/CC400), Ceiling effect 4-method 비교.
+- **`3.3_res_adhd_figure_legends.md`**: ADHD-200 실증 Figure 8~12 레전드. Single/multi-seed, group comparison (ADHD vs Control), atlas comparison.
 
 ## 4. 퍼블리케이션 및 최종 보고서 (Final Reports)
 - **`4.1_pub_report_academic.md`**: BS-NET의 Phase 1~4(이론 증명, 대규모 실증, 토폴로지 검증) 전 과정을 피어리뷰 학술 저널 형식으로 정리한 영문 학술 보고서.
@@ -28,6 +30,7 @@
 - **`5.5_methods_preprocessing.md`**: Methods 섹션용 전처리 파이프라인 상세 기술 (fMRIPrep, XCP-D, Schaefer 400, LW shrinkage). DOI 8건.
 - **`5.6_failure_characterization.md`**: 9% 실패 피험자 특성 분석. N=300 (3 noise levels) 시뮬레이션, SNR≈1:1까지 100% pass 확인.
 - **`5.7_stationarity_discussion.md`**: Stationarity test 결과 논문 반영 방식 확정. Cheng et al. (2021) 선례 기반 방어 논증 3단계.
+- **`5.8_ceiling_effect_correction.md`**: Track G — Ceiling effect 원인 분석 및 보정. Fisher z-space correction(Shou 2014, Teeuw 2021)을 포함한 4-method 비교. ABIDE N=468 실증에서 original 85% ceiling → Fisher z 0% 해소. DOI 5건.
 
 ## 6. 운영 및 파이프라인 가이드 (Operations & Pipeline)
 - **`6.1_ops_local_setup.md`**: 로컬 환경 설정 가이드. Python venv/conda, 의존성 설치, Schaefer atlas 배치, FreeSurfer 라이선스 등.
@@ -35,8 +38,13 @@
 
 ---
 
+### 스크립트 인덱스
+- **`src/scripts/README.md`**: 전체 스크립트 분류 인덱스 (7개 카테고리, CLI 레퍼런스, 의존성 그래프)
+
+---
+
 ### 부속 자산 (Assets)
-- **`figure/`**: Figure 1~5 최종 렌더링 이미지 (PNG). `artifacts/reports/`에서 복사된 배포용 사본.
+- **`figure/`**: 최종 렌더링 이미지 (PNG). 배포용 사본.
 
 | Figure | 파일명 | 내용 |
 |--------|--------|------|
@@ -44,4 +52,13 @@
 | Fig 2 | `Figure2_Validation.png` | N=100 코호트 실증 (Scatter, KDE, Error, Pass Rate) |
 | Fig 3 | `Figure3_Topology.png` | Schaefer 400 토폴로지 보존 (Degree, Path Length) |
 | Fig 4 | `Figure4_*.png` | ARI, Modularity, Subnetwork Jaccard (Yeo-7 / Yeo-100) |
-| Fig 5 | `Figure_ComponentNecessity.png` | Component Necessity Analysis — ρ̂T per condition + Δρ waterfall |
+| — | `Figure_ComponentNecessity.png` | Component Necessity Analysis — ρ̂T per condition + Δρ waterfall |
+| Fig 5a | `Figure5_ABIDE_MultiSeed_CC200.png` | ABIDE multi-seed CC200 (N=468, 10 seeds, Fisher z) |
+| Fig 5b | `Figure5_ABIDE_MultiSeed_CC400.png` | ABIDE multi-seed CC400 (N=468, 10 seeds, Fisher z) |
+| Fig 5c | `Figure5_ABIDE_Ceiling_CC200.png` | Ceiling effect 4-method comparison CC200 |
+| Fig 5d | `Figure5_ABIDE_Ceiling_CC400.png` | Ceiling effect 4-method comparison CC400 |
+| Fig 6a | `Figure6_ADHD_SingleSeed_CC200.png` | ADHD single-seed CC200 (N=40, group colored) |
+| Fig 6b | `Figure6_ADHD_SingleSeed_CC400.png` | ADHD single-seed CC400 (N=40, group colored) |
+| Fig 6c | `Figure6_ADHD_MultiSeed_CC200.png` | ADHD multi-seed CC200 (N=40, 10 seeds, group) |
+| Fig 6d | `Figure6_ADHD_MultiSeed_CC400.png` | ADHD multi-seed CC400 (N=40, 10 seeds, group) |
+| Fig 6e | `Figure6_ADHD_Atlas_Comparison.png` | ADHD atlas comparison CC200 vs CC400 |

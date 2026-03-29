@@ -14,6 +14,86 @@ except ImportError:
     HAS_SKLEARN = False
 
 
+from pathlib import Path
+
+
+def load_timeseries_data(
+    input_npy: str | None = None,
+    n_samples: int = 900,
+    n_rois: int = 50,
+    noise_level: float = 0.25,
+    ar1: float = 0.6,
+    short_samples: int = 120,
+    seed: int | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Load or generate timeseries data for defense experiments.
+
+    Supports two modes:
+    - Real data: load preprocessed .npy file (n_samples, n_rois)
+    - Synthetic: generate via generate_synthetic_timeseries()
+
+    Args:
+        input_npy: Path to preprocessed .npy timeseries. If None, generate synthetic.
+        n_samples: Total samples for synthetic generation (ignored if input_npy).
+        n_rois: Number of ROIs for synthetic generation (ignored if input_npy).
+        noise_level: Noise level for synthetic data (ignored if input_npy).
+        ar1: AR(1) coefficient for synthetic data (ignored if input_npy).
+        short_samples: Number of samples for short observation.
+        seed: Random seed for synthetic generation (ignored if input_npy).
+
+    Returns:
+        Tuple of (ts_full, ts_short, ts_signal):
+        - ts_full: Full observation (n_samples, n_rois).
+        - ts_short: Short observation (short_samples, n_rois).
+        - ts_signal: Noise-free signal (n_samples, n_rois).
+          For real data, ts_signal = ts_full (no separate signal available).
+    """
+    if input_npy is not None:
+        npy_path = Path(input_npy)
+        if not npy_path.exists():
+            raise FileNotFoundError(f"Input .npy not found: {npy_path}")
+        ts_full = np.load(str(npy_path)).astype(np.float64)
+
+        # Validate shape: expect (n_samples, n_rois)
+        if ts_full.ndim != 2:
+            raise ValueError(f"Expected 2D array, got {ts_full.ndim}D: {ts_full.shape}")
+        if ts_full.shape[0] < ts_full.shape[1]:
+            # Likely (n_rois, n_samples) — transpose
+            ts_full = ts_full.T
+
+        # Remove zero-variance ROIs
+        valid = np.std(ts_full, axis=0) > 1e-8
+        if np.sum(~valid) > 0:
+            ts_full = ts_full[:, valid]
+
+        if ts_full.shape[0] < short_samples + 10:
+            raise ValueError(
+                f"Too few timepoints ({ts_full.shape[0]}) for "
+                f"short_samples={short_samples}"
+            )
+
+        ts_short = ts_full[:short_samples, :]
+        ts_signal = ts_full  # No separate signal for real data
+
+        return ts_full, ts_short, ts_signal
+
+    # Synthetic mode
+    from src.core.simulate import generate_synthetic_timeseries
+
+    if seed is not None:
+        np.random.seed(seed)
+
+    observed, signal = generate_synthetic_timeseries(
+        n_samples, n_rois, noise_level=noise_level, ar1=ar1,
+    )
+    # generate_synthetic_timeseries returns (n_rois, n_samples) — transpose
+    ts_full = observed.T  # (n_samples, n_rois)
+    ts_signal = signal.T
+    ts_short = ts_full[:short_samples, :]
+
+    return ts_full, ts_short, ts_signal
+
+
 def fetch_schaefer_atlas(n_rois=400, resolution=2, yeo_networks=7):
     """
     Fetch Schaefer 2018 atlas using nilearn.

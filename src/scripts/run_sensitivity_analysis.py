@@ -19,6 +19,7 @@ metric was compared against self-correlation (trivially 1.0).
 
 from __future__ import annotations
 
+import argparse
 import csv
 import logging
 from pathlib import Path
@@ -28,13 +29,12 @@ import numpy as np
 
 from src.core.bootstrap import (
     block_bootstrap_indices,
+    correct_attenuation,
     estimate_optimal_block_length,
     fisher_z,
     fisher_z_inv,
-    spearman_brown,
 )
-from src.core.simulate import generate_synthetic_timeseries
-from src.data.data_loader import get_fc_matrix
+from src.data.data_loader import get_fc_matrix, load_timeseries_data
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,7 @@ def run_pipeline_with_params(
     observation_var: float,
     k_factor: float,
     n_bootstraps: int = 30,
+    correction_method: str = "fisher_z",
 ) -> tuple[float, np.ndarray]:
     """Run bootstrap prediction with custom parameters through actual pipeline path.
 
@@ -97,6 +98,8 @@ def run_pipeline_with_params(
         observation_var: Observation variance for Bayesian weighting.
         k_factor: Spearman-Brown scaling factor (target/short).
         n_bootstraps: Number of bootstrap iterations.
+        correction_method: Attenuation correction method. One of: "original",
+            "fisher_z", "partial", "soft_clamp". Defaults to "fisher_z".
 
     Returns:
         Tuple of (rho_hat_T, fc_predicted_vector) where fc_predicted_vector
@@ -129,18 +132,18 @@ def run_pipeline_with_params(
         weight = prior_var / (prior_var + observation_var)
         r_real_t = weight * r_split_t + (1 - weight) * prior_mean
 
-        # Attenuation correction
+        # Attenuation correction via correct_attenuation()
+        # Note: Prior is already applied above, so pass empirical_prior=None
         min_rel = 0.05
         r_hat_t = max(reliability_coeff, min_rel)
         r_real_t = max(r_real_t, min_rel)
 
-        r_true_t = r_obs_t / np.sqrt(r_hat_t * r_real_t)
-
-        r_hat_T = spearman_brown(r_hat_t, k_factor)
-        r_real_T = spearman_brown(r_real_t, k_factor)
-
-        rho_est_T = r_true_t * np.sqrt(r_hat_T * r_real_T)
-        rho_est_T = np.clip(rho_est_T, -1.0, 1.0)
+        rho_est_T = correct_attenuation(
+            r_obs_t, r_hat_t, r_real_t,
+            k=k_factor,
+            empirical_prior=None,
+            method=correction_method,
+        )
 
         rho_hat_b.append(fisher_z(rho_est_T))
 
@@ -162,11 +165,14 @@ def run_phase1(
     ar1: float = 0.6,
     n_bootstraps: int = 30,
     seeds: list[int] | None = None,
+    input_npy: str | None = None,
+    correction_method: str = "fisher_z",
 ) -> list[SensitivityResult]:
     """Phase 1: Sweep reliability_coeff x observation_var.
 
-    Reference FC is computed from full 900-sample NOISY observation
-    (not noise-free signal), making this a realistic test.
+    Reference FC is computed from full observation (real or synthetic).
+    For real data: uses full-length time series with use_shrinkage=True.
+    For synthetic: uses full-length synthetic data with use_shrinkage=False.
 
     Args:
         output_path: Path to save CSV results.
@@ -177,6 +183,8 @@ def run_phase1(
         ar1: AR(1) coefficient for synthetic data.
         n_bootstraps: Number of bootstrap iterations per combo.
         seeds: Random seeds for reproducibility.
+        input_npy: Path to .npy file with real time series. If provided, uses real data.
+        correction_method: Attenuation correction method. Defaults to "fisher_z".
 
     Returns:
         List of SensitivityResult tuples.
@@ -204,17 +212,30 @@ def run_phase1(
     for seed_val in seeds:
         np.random.seed(seed_val)
 
-        # Generate synthetic data ONCE per seed
-        long_obs, _ = generate_synthetic_timeseries(
-            target_samples, n_rois, noise_level=noise_level, ar1=ar1
-        )
-        long_obs = long_obs.T  # (target_samples, n_rois)
-
-        # Reference FC from full noisy observation (realistic, not oracle)
-        fc_reference = get_fc_matrix(long_obs, vectorized=True, use_shrinkage=False)
-
-        # Short observation = first 120 samples
-        short_obs = long_obs[:short_samples, :]
+        # Load or generate time series data
+        if input_npy is not None:
+            # Real data: load from .npy file
+            ts_full, ts_short, _ = load_timeseries_data(
+                input_npy=input_npy, short_samples=short_samples
+            )
+            long_obs = ts_full
+            short_obs = ts_short
+            # Real data uses shrinkage
+            fc_reference = get_fc_matrix(long_obs, vectorized=True, use_shrinkage=True)
+        else:
+            # Synthetic data: generate
+            ts_full, ts_short, _ = load_timeseries_data(
+                n_samples=target_samples,
+                n_rois=n_rois,
+                noise_level=noise_level,
+                ar1=ar1,
+                short_samples=short_samples,
+                seed=seed_val,
+            )
+            long_obs = ts_full
+            short_obs = ts_short
+            # Synthetic data does not use shrinkage for reference
+            fc_reference = get_fc_matrix(long_obs, vectorized=True, use_shrinkage=False)
 
         for rel_coeff in reliability_coeffs:
             for obs_var in observation_vars:
@@ -235,6 +256,7 @@ def run_phase1(
                     observation_var=obs_var,
                     k_factor=k_factor,
                     n_bootstraps=n_bootstraps,
+                    correction_method=correction_method,
                 )
 
                 # rFC: correlation between predicted FC and reference FC
@@ -271,10 +293,13 @@ def run_phase2(
     ar1: float = 0.6,
     n_bootstraps: int = 30,
     seeds: list[int] | None = None,
+    input_npy: str | None = None,
+    correction_method: str = "fisher_z",
 ) -> list[SensitivityResult]:
     """Phase 2: Sweep prior_mean x prior_var.
 
     Keeps reliability_coeff=0.98 and observation_var=0.15 fixed.
+    Reference FC computed from full observation (real or synthetic).
 
     Args:
         output_path: Path to save CSV results.
@@ -285,6 +310,8 @@ def run_phase2(
         ar1: AR(1) coefficient for synthetic data.
         n_bootstraps: Number of bootstrap iterations per combo.
         seeds: Random seeds for reproducibility.
+        input_npy: Path to .npy file with real time series. If provided, uses real data.
+        correction_method: Attenuation correction method. Defaults to "fisher_z".
 
     Returns:
         List of SensitivityResult tuples.
@@ -313,13 +340,30 @@ def run_phase2(
     for seed_val in seeds:
         np.random.seed(seed_val)
 
-        long_obs, _ = generate_synthetic_timeseries(
-            target_samples, n_rois, noise_level=noise_level, ar1=ar1
-        )
-        long_obs = long_obs.T
-
-        fc_reference = get_fc_matrix(long_obs, vectorized=True, use_shrinkage=False)
-        short_obs = long_obs[:short_samples, :]
+        # Load or generate time series data
+        if input_npy is not None:
+            # Real data: load from .npy file
+            ts_full, ts_short, _ = load_timeseries_data(
+                input_npy=input_npy, short_samples=short_samples
+            )
+            long_obs = ts_full
+            short_obs = ts_short
+            # Real data uses shrinkage
+            fc_reference = get_fc_matrix(long_obs, vectorized=True, use_shrinkage=True)
+        else:
+            # Synthetic data: generate
+            ts_full, ts_short, _ = load_timeseries_data(
+                n_samples=target_samples,
+                n_rois=n_rois,
+                noise_level=noise_level,
+                ar1=ar1,
+                short_samples=short_samples,
+                seed=seed_val,
+            )
+            long_obs = ts_full
+            short_obs = ts_short
+            # Synthetic data does not use shrinkage for reference
+            fc_reference = get_fc_matrix(long_obs, vectorized=True, use_shrinkage=False)
 
         for prior_mean in prior_means:
             for prior_var in prior_vars:
@@ -340,6 +384,7 @@ def run_phase2(
                     observation_var=observation_var,
                     k_factor=k_factor,
                     n_bootstraps=n_bootstraps,
+                    correction_method=correction_method,
                 )
 
                 r_fc = float(np.corrcoef(fc_reference, fc_pred)[0, 1])
@@ -427,8 +472,34 @@ def print_summary_statistics(
 
 def main() -> None:
     """Run the full two-phase sensitivity analysis."""
+    parser = argparse.ArgumentParser(
+        description="Sensitivity analysis for BS-NET parameters"
+    )
+    parser.add_argument(
+        "--input-npy",
+        type=str,
+        default=None,
+        help="Path to .npy file with real time series data (shape: n_samples, n_rois). "
+        "If provided, runs on real data; otherwise uses synthetic data.",
+    )
+    parser.add_argument(
+        "--correction-method",
+        type=str,
+        default="fisher_z",
+        choices=["original", "fisher_z", "partial", "soft_clamp"],
+        help="Attenuation correction method. Default: fisher_z.",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging output",
+    )
+    args = parser.parse_args()
+
+    log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
-        level=logging.INFO,
+        level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
@@ -439,14 +510,24 @@ def main() -> None:
     seeds = [42, 123, 456]
 
     # Phase 1: reliability_coeff x observation_var
-    results_phase1 = run_phase1(output_path_phase1, seeds=seeds)
+    results_phase1 = run_phase1(
+        output_path_phase1,
+        seeds=seeds,
+        input_npy=args.input_npy,
+        correction_method=args.correction_method,
+    )
     save_results_to_csv(results_phase1, output_path_phase1)
     print_summary_statistics(
         results_phase1, "PHASE 1 (reliability_coeff x observation_var)"
     )
 
     # Phase 2: prior_mean x prior_var
-    results_phase2 = run_phase2(output_path_phase2, seeds=seeds)
+    results_phase2 = run_phase2(
+        output_path_phase2,
+        seeds=seeds,
+        input_npy=args.input_npy,
+        correction_method=args.correction_method,
+    )
     save_results_to_csv(results_phase2, output_path_phase2)
     print_summary_statistics(results_phase2, "PHASE 2 (prior_mean x prior_var)")
 

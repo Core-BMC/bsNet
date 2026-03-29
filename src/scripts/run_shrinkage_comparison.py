@@ -10,6 +10,7 @@ norm, and condition number metrics.
 
 from __future__ import annotations
 
+import argparse
 import csv
 import logging
 from pathlib import Path
@@ -17,7 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from src.core.config import BSNetConfig
-from src.core.simulate import generate_synthetic_timeseries
+from src.data.data_loader import load_timeseries_data
 
 try:
     from sklearn.covariance import OAS, LedoitWolf
@@ -206,18 +207,21 @@ def estimate_fc_oas(x: np.ndarray) -> np.ndarray:
     return cov_to_corr(cov_shrunk)
 
 
-def run_shrinkage_comparison() -> None:
+def run_shrinkage_comparison(input_npy: str | None = None) -> None:
     """
     Run comprehensive shrinkage method comparison across ROI counts and seeds.
 
     For each (n_rois, seed) pair:
-      1. Generate synthetic data (900 samples for reference FC, 120 for short)
+      1. Load or generate data (900 samples for reference FC, 120 for short)
       2. Compute reference FC from 900 samples using Pearson
       3. Compute short-scan FC using 3 methods: Pearson, Ledoit-Wolf, OAS
       4. Compare each method's FC to reference FC using rho, MAE, Frobenius,
          and condition number
       5. Save results to artifacts/reports/shrinkage_comparison.csv
       6. Print formatted comparison table grouped by n_rois
+
+    Args:
+        input_npy: Path to preprocessed .npy timeseries (optional).
     """
     logger.info("Starting shrinkage comparison analysis")
 
@@ -247,20 +251,23 @@ def run_shrinkage_comparison() -> None:
         for seed in seeds:
             np.random.seed(seed)
 
-            # Generate long data (reference FC)
-            long_data, _ = generate_synthetic_timeseries(
-                n_samples_long, n_rois, noise_level=0.25, ar1=0.6
-            )
-            long_data = long_data.T  # Shape: (n_samples, n_rois)
+            # Load or generate long and short data
+            if input_npy is not None:
+                long_data, short_data, _ = load_timeseries_data(
+                    input_npy=input_npy, short_samples=n_samples_short
+                )
+            else:
+                long_data, short_data, _ = load_timeseries_data(
+                    n_samples=n_samples_long,
+                    n_rois=n_rois,
+                    noise_level=0.25,
+                    ar1=0.6,
+                    short_samples=n_samples_short,
+                    seed=seed,
+                )
 
             # Compute reference FC from long data using Pearson
             fc_true = estimate_fc_pearson(long_data)
-
-            # Generate short data
-            short_data, _ = generate_synthetic_timeseries(
-                n_samples_short, n_rois, noise_level=0.25, ar1=0.6
-            )
-            short_data = short_data.T  # Shape: (n_samples, n_rois)
 
             # Estimate FC using three methods
             fc_pearson = estimate_fc_pearson(short_data)
@@ -323,8 +330,27 @@ def run_shrinkage_comparison() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Shrinkage covariance estimator comparison"
+    )
+    parser.add_argument(
+        "--input-npy",
+        type=str,
+        default=None,
+        help="Path to preprocessed .npy timeseries (optional)",
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose logging",
+    )
+
+    args = parser.parse_args()
+
+    log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
-        level=logging.INFO,
+        level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    run_shrinkage_comparison()
+
+    run_shrinkage_comparison(input_npy=args.input_npy)

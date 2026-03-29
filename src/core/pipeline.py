@@ -79,6 +79,7 @@ def run_bootstrap_prediction(
     short_obs: np.ndarray,
     fc_reference: np.ndarray,
     config: BSNetConfig | None = None,
+    correction_method: str = "original",
 ) -> BootstrapResult:
     """
     Execute bootstrap prediction pipeline for reliability estimation.
@@ -149,6 +150,7 @@ def run_bootstrap_prediction(
             r_split_t,
             k=config.k_factor,
             empirical_prior=empirical_prior,
+            method=correction_method,
         )
 
         # Fisher-z transformation for distribution normalization

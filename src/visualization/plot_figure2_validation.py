@@ -41,7 +41,7 @@ def run_single_seed(
 ) -> list[dict]:
     """Run validation for a single seed.
 
-    Mimics run_real_data_scale.py logic:
+    Synthetic validation logic:
     1. Generate long TS → reference FC
     2. Mock FC = reference FC + noise
     3. Short obs from long TS
@@ -84,7 +84,7 @@ def run_single_seed(
         # Reference FC from full scan
         fc_true_T = get_fc_matrix(time_series, vectorized=True, use_shrinkage=True)
 
-        # Mock predicted FC (reference + noise, as in run_real_data_scale.py)
+        # Mock predicted FC (reference + noise)
         fc_pred_t_mock = fc_true_T + 0.1 * np.random.randn(*fc_true_T.shape)
 
         # Short observation

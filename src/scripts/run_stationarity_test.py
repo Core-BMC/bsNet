@@ -10,6 +10,7 @@ correlation metrics.
 
 from __future__ import annotations
 
+import argparse
 import logging
 import warnings
 from pathlib import Path
@@ -17,8 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from src.core.config import BSNetConfig
-from src.core.simulate import generate_synthetic_timeseries
-from src.data.data_loader import get_fc_matrix
+from src.data.data_loader import get_fc_matrix, load_timeseries_data
 
 logger = logging.getLogger(__name__)
 
@@ -136,15 +136,18 @@ def compute_icc_2_1(values: np.ndarray) -> float:
     return float(np.clip(icc, -1.0, 1.0))
 
 
-def run_stationarity_test_single_seed(seed: int) -> dict:
+def run_stationarity_test_single_seed(
+    seed: int, input_npy: str | None = None
+) -> dict:
     """
     Run stationarity test for a single random seed.
 
-    Generates synthetic fMRI data, splits into windows, computes FC estimates,
+    Generates or loads fMRI data, splits into windows, computes FC estimates,
     and runs stationarity tests.
 
     Args:
         seed: Random seed for reproducibility.
+        input_npy: Path to preprocessed .npy timeseries (optional).
 
     Returns:
         dict: Results dictionary containing:
@@ -163,13 +166,25 @@ def run_stationarity_test_single_seed(seed: int) -> dict:
     window_size = 120
 
     logger.info(
-        f"[Seed {seed}] Generating synthetic data: "
+        f"[Seed {seed}] Loading/generating data: "
         f"{n_samples} samples, {n_rois} ROIs"
     )
-    data, _ = generate_synthetic_timeseries(
-        n_samples, n_rois, noise_level=0.25, ar1=0.6
-    )
-    data = data.T
+
+    if input_npy is not None:
+        ts_full, _, _ = load_timeseries_data(
+            input_npy=input_npy, short_samples=120
+        )
+        data = ts_full
+    else:
+        ts_full, _, _ = load_timeseries_data(
+            n_samples=n_samples,
+            n_rois=n_rois,
+            noise_level=0.25,
+            ar1=0.6,
+            short_samples=120,
+            seed=seed,
+        )
+        data = ts_full
 
     window_fc_vectors = []
     for i in range(n_windows):
@@ -218,12 +233,15 @@ def run_stationarity_test_single_seed(seed: int) -> dict:
     }
 
 
-def run_stationarity_test(seeds: list[int] | None = None) -> None:
+def run_stationarity_test(
+    seeds: list[int] | None = None, input_npy: str | None = None
+) -> None:
     """
     Run stationarity test across multiple random seeds and aggregate results.
 
     Args:
         seeds: List of random seeds. Defaults to [42, 123, 777, 2026, 9999].
+        input_npy: Path to preprocessed .npy timeseries (optional).
     """
     if seeds is None:
         seeds = [42, 123, 777, 2026, 9999]
@@ -234,7 +252,7 @@ def run_stationarity_test(seeds: list[int] | None = None) -> None:
 
     results = []
     for seed in seeds:
-        result = run_stationarity_test_single_seed(seed)
+        result = run_stationarity_test_single_seed(seed, input_npy=input_npy)
         results.append(result)
 
     results = np.array(
@@ -332,8 +350,27 @@ def run_stationarity_test(seeds: list[int] | None = None) -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Stationarity test for windowed FC estimates"
+    )
+    parser.add_argument(
+        "--input-npy",
+        type=str,
+        default=None,
+        help="Path to preprocessed .npy timeseries (optional)",
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose logging",
+    )
+
+    args = parser.parse_args()
+
+    log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
-        level=logging.INFO,
+        level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    run_stationarity_test()
+
+    run_stationarity_test(input_npy=args.input_npy)
