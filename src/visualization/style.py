@@ -2,6 +2,16 @@
 
 This module provides unified color palettes, figure configuration, and helper
 functions for consistent matplotlib/seaborn visualization across all plots.
+
+Style Reference (Figure 1 standard):
+  - Title: 15pt bold, pad=10
+  - Axis labels: 13pt
+  - Legend: 10-11pt
+  - Line width: 2.5-3.0 (main), 1.5 (secondary)
+  - Marker size: 8 (main), 6 (secondary)
+  - Panel labels: "A. Title" format inside set_title()
+  - Layout: tight_layout(pad=3.0)
+  - Save: 300 DPI, bbox_inches="tight"
 """
 
 from __future__ import annotations
@@ -11,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 
 # Configure module logger
@@ -30,11 +41,95 @@ PALETTE: dict[str, str] = {
     "pass_excellent": "#2ecc71",  # Excellent category (green)
     "pass_good": "#f1c40f",  # Good category (yellow)
     "pass_fail": "#e74c3c",  # Failed category (red)
+    # Group coloring for clinical datasets
+    "control": "#2c7bb6",  # Control group (dark blue, same as "true")
+    "adhd": "#d7191c",  # ADHD/patient group (red, same as "highlight")
+    # Atlas comparison
+    "cc200": "#4A90E2",  # CC200 atlas (blue, same as "bsnet")
+    "cc400": "#fdae61",  # CC400 atlas (amber, same as "accent")
+    # Correction method comparison
+    "original": "#E27396",  # Original correction (pink)
+    "fisher_z": "#4A90E2",  # Fisher z correction (blue)
+    "partial": "#2ecc71",  # Partial correction (green)
+    "soft_clamp": "#f1c40f",  # Soft clamp correction (yellow)
 }
 """Dict[str, str]: Centralized color definitions for all visualization types."""
 
 MODEL_PALETTE: list[str] = [PALETTE["raw"], PALETTE["bsnet"]]
 """List[str]: Color palette for comparing raw vs. BS-NET models in plots."""
+
+GROUP_PALETTE: dict[str, str] = {
+    "control": PALETTE["control"],
+    "adhd": PALETTE["adhd"],
+    "unknown": "#95a5a6",
+}
+"""Dict[str, str]: Color mapping for clinical groups."""
+
+ATLAS_PALETTE: dict[str, str] = {
+    "cc200": PALETTE["cc200"],
+    "cc400": PALETTE["cc400"],
+}
+"""Dict[str, str]: Color mapping for atlas comparisons."""
+
+CORRECTION_PALETTE: dict[str, str] = {
+    "original": PALETTE["original"],
+    "fisher_z": PALETTE["fisher_z"],
+    "partial": PALETTE["partial"],
+    "soft_clamp": PALETTE["soft_clamp"],
+}
+"""Dict[str, str]: Color mapping for attenuation correction methods."""
+
+# ============================================================================
+# TYPOGRAPHY CONSTANTS (Figure 1 standard)
+# ============================================================================
+
+FONT: dict[str, int | str] = {
+    "title": 15,
+    "title_weight": "bold",
+    "title_pad": 10,
+    "axis_label": 13,
+    "legend": 11,
+    "legend_small": 9,
+    "tick": 11,
+    "annotation": 10,
+    "suptitle": 16,
+}
+"""Dict[str, int | str]: Standardized font sizes matching Figure 1."""
+
+# ============================================================================
+# LINE / MARKER CONSTANTS
+# ============================================================================
+
+LINE: dict[str, float] = {
+    "main": 3.0,
+    "secondary": 2.5,
+    "thin": 1.5,
+    "reference": 2.0,
+    "error": 1.2,
+}
+"""Dict[str, float]: Standardized line widths."""
+
+MARKER: dict[str, int] = {
+    "main": 8,
+    "secondary": 6,
+    "small": 4,
+    "scatter": 50,
+    "scatter_small": 30,
+}
+"""Dict[str, int]: Standardized marker sizes."""
+
+# ============================================================================
+# FIGURE SIZE PRESETS
+# ============================================================================
+
+FIGSIZE: dict[str, tuple[float, float]] = {
+    "2x2": (16, 10),
+    "1x2": (14, 6),
+    "2x2_tall": (16, 12),
+    "single": (8, 6),
+    "wide": (14, 7),
+}
+"""Dict[str, tuple]: Standardized figure sizes."""
 
 # ============================================================================
 # FIGURE DEFAULTS
@@ -190,3 +285,124 @@ def label_panels(
             va="top",
             ha="right",
         )
+
+
+# ============================================================================
+# AXIS STYLING HELPERS
+# ============================================================================
+
+
+def style_axis(
+    ax: plt.Axes,
+    title: str,
+    xlabel: str = "",
+    ylabel: str = "",
+    legend_loc: str = "best",
+    legend_fontsize: int | None = None,
+) -> None:
+    """Apply Figure 1 standard styling to a single axis.
+
+    Args:
+        ax: Matplotlib Axes object.
+        title: Panel title (e.g., "A. Scatter Plot"). Include panel letter.
+        xlabel: X-axis label text.
+        ylabel: Y-axis label text.
+        legend_loc: Legend location string.
+        legend_fontsize: Legend font size override. Defaults to FONT["legend"].
+    """
+    ax.set_title(
+        title,
+        fontweight=FONT["title_weight"],
+        fontsize=FONT["title"],
+        pad=FONT["title_pad"],
+    )
+    if xlabel:
+        ax.set_xlabel(xlabel, fontsize=FONT["axis_label"])
+    if ylabel:
+        ax.set_ylabel(ylabel, fontsize=FONT["axis_label"])
+    ax.tick_params(labelsize=FONT["tick"])
+    if ax.get_legend_handles_labels()[1]:
+        ax.legend(
+            loc=legend_loc,
+            fontsize=legend_fontsize or FONT["legend"],
+        )
+
+
+def add_identity_line(
+    ax: plt.Axes,
+    lims: tuple[float, float] | None = None,
+    label: str = "identity",
+) -> None:
+    """Add a diagonal identity (y=x) reference line.
+
+    Args:
+        ax: Matplotlib Axes object.
+        lims: (min, max) range for the line. If None, uses current axis limits.
+        label: Legend label for the line.
+    """
+    if lims is None:
+        lo = min(ax.get_xlim()[0], ax.get_ylim()[0])
+        hi = max(ax.get_xlim()[1], ax.get_ylim()[1])
+        lims = (lo, hi)
+    ax.plot(
+        lims, lims, "k--", alpha=0.3, linewidth=LINE["thin"], label=label,
+    )
+
+
+def add_threshold_line(
+    ax: plt.Axes,
+    value: float,
+    direction: str = "horizontal",
+    color: str | None = None,
+    linestyle: str = "--",
+    label: str | None = None,
+) -> None:
+    """Add a horizontal or vertical threshold reference line.
+
+    Args:
+        ax: Matplotlib Axes object.
+        value: Position of the threshold line.
+        direction: "horizontal" or "vertical".
+        color: Line color. Defaults to PALETTE["highlight"].
+        linestyle: Line style string.
+        label: Legend label.
+    """
+    color = color or PALETTE["highlight"]
+    kwargs = dict(
+        color=color, linestyle=linestyle,
+        linewidth=LINE["reference"], label=label,
+    )
+    if direction == "horizontal":
+        ax.axhline(y=value, **kwargs)
+    else:
+        ax.axvline(x=value, **kwargs)
+
+
+def create_figure(
+    layout: str = "2x2",
+    **kwargs: Any,
+) -> tuple[plt.Figure, np.ndarray | plt.Axes]:
+    """Create a figure with standardized size and theme applied.
+
+    Args:
+        layout: One of FIGSIZE keys ("2x2", "1x2", "2x2_tall", "single", "wide").
+        **kwargs: Additional kwargs passed to plt.subplots() (e.g., nrows, ncols).
+
+    Returns:
+        Tuple of (figure, axes).
+    """
+    apply_bsnet_theme()
+    figsize = FIGSIZE.get(layout, FIGSIZE["2x2"])
+
+    nrows = kwargs.pop("nrows", None)
+    ncols = kwargs.pop("ncols", None)
+    if nrows is None and ncols is None:
+        # Infer from layout name
+        layout_map = {
+            "2x2": (2, 2), "1x2": (1, 2), "2x2_tall": (2, 2),
+            "single": (1, 1), "wide": (1, 1),
+        }
+        nrows, ncols = layout_map.get(layout, (2, 2))
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize, **kwargs)
+    return fig, axes

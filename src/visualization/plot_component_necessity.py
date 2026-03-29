@@ -1,9 +1,11 @@
 """Component Necessity Analysis — Publication-quality Table and Figure.
 
 Generates:
-  (a) Bar chart: Mean ρ̂T per condition with error bars (± SD across seeds)
-  (b) Δρ waterfall chart showing each component's contribution relative to full pipeline
-  (c) LaTeX-ready summary table printed to stdout
+  A. Bar chart: Mean ρ̂T per condition with error bars (± SD across seeds)
+  B. Δρ waterfall chart showing each component's contribution relative to full pipeline
+  + LaTeX-ready summary table printed to stdout
+
+Styling: Matches Figure 1 standard (FONT, LINE, MARKER, PALETTE from style.py).
 
 Input:  artifacts/reports/component_necessity.csv
 Output: artifacts/reports/Figure_ComponentNecessity.png
@@ -21,21 +23,25 @@ import numpy as np
 import pandas as pd
 
 from src.visualization.style import (
+    FIGSIZE,
+    FONT,
+    LINE,
     PALETTE,
     apply_bsnet_theme,
     save_figure,
+    style_axis,
 )
 
 logger = logging.getLogger(__name__)
 
-# Condition display names and ordering
+# Condition display names and ordering — colors from PALETTE for consistency
 CONDITION_META: dict[str, dict[str, str]] = {
     "L_full": {"label": "Full Pipeline", "color": PALETTE["bsnet"]},
-    "L_no_sb": {"label": "w/o Spearman-Brown", "color": "#e74c3c"},
-    "L_no_lw": {"label": "w/o Ledoit-Wolf", "color": "#3498db"},
-    "L_no_boot": {"label": "w/o Bootstrap", "color": "#2ecc71"},
-    "L_no_prior": {"label": "w/o Bayesian Prior", "color": "#e67e22"},
-    "L_no_atten": {"label": "w/o Attenuation Corr.", "color": "#9b59b6"},
+    "L_no_sb": {"label": "w/o Spearman-Brown", "color": PALETTE["highlight"]},
+    "L_no_lw": {"label": "w/o Ledoit-Wolf", "color": PALETTE["true"]},
+    "L_no_boot": {"label": "w/o Bootstrap", "color": PALETTE["pass_excellent"]},
+    "L_no_prior": {"label": "w/o Bayesian Prior", "color": PALETTE["accent"]},
+    "L_no_atten": {"label": "w/o Attenuation Corr.", "color": PALETTE["raw"]},
 }
 
 CONDITION_ORDER = list(CONDITION_META.keys())
@@ -87,13 +93,15 @@ def plot_component_necessity(
     """
     apply_bsnet_theme()
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), gridspec_kw={"wspace": 0.35})
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2, figsize=FIGSIZE["1x2"], gridspec_kw={"wspace": 0.35},
+    )
 
     n = len(summary)
     x = np.arange(n)
     colors = [CONDITION_META[c]["color"] for c in summary["condition"]]
 
-    # ── Panel (a): Absolute ρ̂T ──
+    # ── Panel A: Absolute ρ̂T ──
     ax1.bar(
         x,
         summary["mean_rho"],
@@ -102,7 +110,7 @@ def plot_component_necessity(
         edgecolor="white",
         linewidth=0.8,
         capsize=4,
-        error_kw={"linewidth": 1.2},
+        error_kw={"linewidth": LINE["error"]},
         width=0.7,
     )
 
@@ -114,30 +122,38 @@ def plot_component_necessity(
             f"{val:.3f}",
             ha="center",
             va="bottom",
-            fontsize=9,
+            fontsize=FONT["annotation"],
             fontweight="bold",
         )
 
     ax1.set_xticks(x)
-    ax1.set_xticklabels(summary["label"], rotation=35, ha="right", fontsize=9)
-    ax1.set_ylabel(r"Mean $\hat{\rho}_T$", fontsize=12)
+    ax1.set_xticklabels(
+        summary["label"], rotation=35, ha="right", fontsize=FONT["legend_small"],
+    )
     ax1.set_ylim(0.0, 1.15)
     ax1.axhline(
         summary.iloc[0]["mean_rho"],
         color=PALETTE["bsnet"],
         linestyle="--",
-        linewidth=1,
+        linewidth=LINE["thin"],
         alpha=0.5,
         label=f"Full = {summary.iloc[0]['mean_rho']:.3f}",
     )
-    ax1.legend(fontsize=9, loc="upper left")
-    ax1.set_title("(a) Extrapolated Reliability by Condition", fontsize=11, pad=10)
+    style_axis(
+        ax1,
+        title="A. Extrapolated Reliability by Condition",
+        ylabel=r"Mean $\hat{\rho}_T$",
+        legend_loc="upper left",
+        legend_fontsize=FONT["legend_small"],
+    )
 
-    # ── Panel (b): Δρ waterfall ──
+    # ── Panel B: Δρ waterfall ──
     delta_df = summary.iloc[1:]  # Exclude full pipeline (delta=0)
     x2 = np.arange(len(delta_df))
     delta_colors = [
-        "#e74c3c" if d < -0.05 else "#2ecc71" if d > 0.05 else "#95a5a6"
+        PALETTE["highlight"] if d < -0.05
+        else PALETTE["pass_excellent"] if d > 0.05
+        else "#95a5a6"
         for d in delta_df["mean_delta"]
     ]
 
@@ -149,7 +165,7 @@ def plot_component_necessity(
         edgecolor="white",
         linewidth=0.8,
         capsize=4,
-        error_kw={"linewidth": 1.2},
+        error_kw={"linewidth": LINE["error"]},
         width=0.7,
     )
 
@@ -163,15 +179,20 @@ def plot_component_necessity(
             f"{val:+.3f}",
             ha="center",
             va=va,
-            fontsize=9,
+            fontsize=FONT["annotation"],
             fontweight="bold",
         )
 
     ax2.set_xticks(x2)
-    ax2.set_xticklabels(delta_df["label"], rotation=35, ha="right", fontsize=9)
-    ax2.set_ylabel(r"$\Delta\hat{\rho}_T$ from Full Pipeline", fontsize=12)
+    ax2.set_xticklabels(
+        delta_df["label"], rotation=35, ha="right", fontsize=FONT["legend_small"],
+    )
     ax2.axhline(0, color="black", linewidth=0.8)
-    ax2.set_title("(b) Component Contribution (Leave-One-Out)", fontsize=11, pad=10)
+    style_axis(
+        ax2,
+        title="B. Component Contribution (Leave-One-Out)",
+        ylabel=r"$\Delta\hat{\rho}_T$ from Full Pipeline",
+    )
 
     # Significance annotations for critical components
     critical = delta_df[delta_df["mean_delta"] < -0.1]
@@ -181,13 +202,13 @@ def plot_component_necessity(
             "critical",
             xy=(idx, row["mean_delta"]),
             xytext=(idx + 0.3, row["mean_delta"] - 0.05),
-            fontsize=8,
-            color="#e74c3c",
+            fontsize=FONT["legend_small"],
+            color=PALETTE["highlight"],
             fontstyle="italic",
-            arrowprops=dict(arrowstyle="->", color="#e74c3c", lw=0.8),
+            arrowprops=dict(arrowstyle="->", color=PALETTE["highlight"], lw=0.8),
         )
 
-    plt.tight_layout()
+    plt.tight_layout(pad=3.0)
     save_figure(fig, output_name)
     logger.info(f"Component necessity figure saved: {output_name}")
 
@@ -248,9 +269,27 @@ def generate_summary_table(
 
 def main() -> None:
     """Run component necessity visualization pipeline."""
-    csv_path = Path("artifacts/reports/component_necessity.csv")
-    if not csv_path.exists():
-        raise FileNotFoundError(f"Component necessity CSV not found: {csv_path}")
+    # Try multiple CSV name patterns (renamed after ABIDE batch run)
+    candidates = [
+        Path("artifacts/reports/component_necessity.csv"),
+        Path("artifacts/reports/component_necessity_Synthetic_50-900-120.csv"),
+    ]
+    # Also check for ABIDE real-data CSVs
+    import glob as glob_mod
+    candidates.extend(
+        Path(p) for p in sorted(
+            glob_mod.glob("artifacts/reports/component_necessity_ABIDE_*.csv")
+        )
+    )
+    csv_path = None
+    for c in candidates:
+        if c.exists():
+            csv_path = c
+            break
+    if csv_path is None:
+        raise FileNotFoundError(
+            f"Component necessity CSV not found. Checked: {[str(c) for c in candidates]}"
+        )
 
     summary = load_and_summarize(csv_path)
     plot_component_necessity(summary)
