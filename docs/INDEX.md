@@ -18,6 +18,7 @@
 - **`3.1_res_figure_legends.md`**: Figure 1~4 전체에 대한 통합 아카데믹 레전드. 패널별 축·통계량·해석을 포함한 마스터 캡션 문서.
 - **`3.2_res_abide_figure_legends.md`**: ABIDE PCP 실증 Figure 5~7b 레전드. Multi-seed (CC200/CC400), Ceiling effect 4-method 비교.
 - **`3.3_res_adhd_figure_legends.md`**: ADHD-200 실증 Figure 8~12 레전드. Single/multi-seed, group comparison (ADHD vs Control), atlas comparison.
+- **`3.4_res_classification_legend.md`**: Track H — ADHD vs Control 분류 실험 Figure 7 레전드. Linear SVM 3-condition × 2-atlas 비교, Reference FC paradox 해석, 선행 연구 비교.
 
 ## 4. 퍼블리케이션 및 최종 보고서 (Final Reports)
 - **`4.1_pub_report_academic.md`**: BS-NET의 Phase 1~4(이론 증명, 대규모 실증, 토폴로지 검증) 전 과정을 피어리뷰 학술 저널 형식으로 정리한 영문 학술 보고서.
@@ -63,3 +64,4 @@
 | Fig 6c | `Figure6_ADHD_MultiSeed_CC200.png` | ADHD multi-seed CC200 (N=40, 10 seeds, group) |
 | Fig 6d | `Figure6_ADHD_MultiSeed_CC400.png` | ADHD multi-seed CC400 (N=40, 10 seeds, group) |
 | Fig 6e | `Figure6_ADHD_Atlas_Comparison.png` | ADHD atlas comparison CC200 vs CC400 |
+| Fig 7 | `Figure7_ADHD_Classification.png` | Track H — ADHD vs Control classification (Accuracy, AUC, ΔAccuracy, Summary) |

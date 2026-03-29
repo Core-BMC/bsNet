@@ -8,7 +8,7 @@
 
 | # | 카테고리 | 스크립트 수 | 설명 |
 |---|----------|------------|------|
-| 1 | Validation (실증 검증) | 3 | ABIDE, ADHD, fMRIPrep 기반 실데이터 BS-NET 검증 |
+| 1 | Validation (실증 검증) | 4 | ABIDE, ADHD, fMRIPrep 기반 실데이터 BS-NET 검증 + ADHD 분류 |
 | 2 | Defense Experiments (방어 실험) | 8 | Track A–G 방어 실험 + failure analysis |
 | 3 | Data Acquisition (데이터 수집) | 2 | OpenNeuro 인덱싱 및 다운로드 |
 | 4 | Preprocessing (전처리) | 1 | Atlas parcellation, confound regression |
@@ -39,6 +39,16 @@
 - **예시**:
   ```bash
   python src/scripts/run_nilearn_adhd_bsnet.py --atlas all --correction-method fisher_z --n-jobs 8
+  ```
+
+### `run_adhd_classification.py` — Track H: ADHD vs Control 분류
+- **용도**: ADHD-200 N=40에서 3가지 FC 조건 (Raw, BS-NET, Reference)으로 Linear SVM 분류. Per-fold 결과 CSV 저장.
+- **CLI**: `--atlas {cc200,cc400}`, `--short-sec 120`, `--n-repeats 10`, `--n-bootstraps 100`, `--correction-method`, `--seed`, `-v`
+- **입력**: `data/adhd/ts_cache/{atlas}/`, `data/adhd/results/adhd_bsnet_{atlas}.csv`
+- **출력**: `data/adhd/results/adhd_classification_{atlas}.csv` (summary), `adhd_classification_{atlas}_folds.csv` (per-fold)
+- **예시**:
+  ```bash
+  python src/scripts/run_adhd_classification.py --atlas cc200 cc400 --n-bootstraps 100
   ```
 
 ### `run_fmriprep_bsnet.py` — fMRIPrep/XCP-D 기반 검증
@@ -117,7 +127,10 @@ python src/scripts/run_component_necessity.py --input-npy data/abide/timeseries_
 | `plot_figure2_validation.py` | Fig 2 | N=100 validation (scatter, KDE, error, pass rate) |
 | `plot_figure3_topology.py` | Fig 3 | Small-worldness + degree variance |
 | `plot_figure4_subnetworks.py` | Fig 4 | Jaccard overlap + modularity |
-| `plot_component_necessity.py` | Fig 5 | Component necessity bars + Δρ waterfall |
+| `plot_figure5_abide.py` | Fig 5 | ABIDE multi-seed + ceiling effect (CC200/CC400) |
+| `plot_figure6_adhd.py` | Fig 6 | ADHD single/multi-seed + atlas comparison |
+| `plot_figure7_classification.py` | Fig 7 | Track H classification (Accuracy/AUC bars + scatter, ΔAcc, Summary) |
+| `plot_component_necessity.py` | — | Component necessity bars + Δρ waterfall |
 | `style.py` | — | 공용 matplotlib 스타일 설정 (library) |
 
 ---

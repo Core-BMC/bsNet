@@ -3,7 +3,19 @@ All notable changes to the **BS-NET** pipeline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] - 2026-03-26
+## [Unreleased] - 2026-03-30
+
+### Added
+- **Track H: ADHD vs Control Classification** (`run_adhd_classification.py`): Linear SVM (C=1.0) with Stratified 5-fold × 5 repeats on N=40 (20 ADHD, 20 Control). Three FC conditions (Raw, BS-NET, Reference) × two atlases (CC200, CC400). BS-NET Acc=0.720 (CC200), 0.700 (CC400), consistently ≥ Raw FC. Per-fold CSV export for scatter visualization.
+- **Figure 7 — Classification Results** (`plot_figure7_classification.py`): 2×2 panel (Accuracy bars + scatter, AUC bars + scatter, ΔAccuracy, Summary). Per-fold jittered scatter overlay, error-bar-aware label placement.
+- **Track H Figure Legend** (`docs/3.4_res_classification_legend.md`): Panel-level academic caption, Reference FC paradox interpretation, literature comparison (ADHD-200 Competition, Graph SVM, CC200 DL).
+- **Defense Experiments Track A–H**: Completed 8 defense tracks including sensitivity, ablation, stationarity, shrinkage, component necessity, noise degradation, ceiling effect correction, and ADHD classification.
+- **ABIDE/ADHD Empirical Validation**: ABIDE N=468 (CC200/CC400) Fisher z multi-seed, ADHD-200 N=40 group comparison, cross-dataset consistency confirmed.
+- **Ceiling Effect Resolution (Track G)**: Fisher z-space correction adopted — original 85% ceiling → 0%. Four-method comparison (original, Fisher z, partial, soft clamp).
+- **Figure Style Unification**: Extended `style.py` with FONT/LINE/MARKER/FIGSIZE constants, GROUP/ATLAS/CORRECTION palettes, helper functions. All figures regenerated at 300 DPI with consistent styling.
+- **Component Necessity Batch Mode (Track E)**: `--input-dir`, `--n-subjects`, `--short-samples`, `--n-jobs`, dynamic k calculation.
+
+## [0.1.0] - 2026-03-26
 
 ### Added
 - **Formal Project Documentation (`docs/`)**: Restructured and structurally categorized theoretical, architectural, and analytical documentation using a grouped numbering schema (`1.1_theory_concept.md` through `4.2_pub_report_general.md`).
