@@ -79,6 +79,13 @@ CORRECTION_PALETTE: dict[str, str] = {
 }
 """Dict[str, str]: Color mapping for attenuation correction methods."""
 
+CONDITION_PALETTE: dict[str, str] = {
+    "reference": "#95a5a6",  # Reference FC (gray)
+    "raw": "#fdae61",         # Raw FC (amber)
+    "bsnet": "#4A90E2",       # BS-NET (blue)
+}
+"""Dict[str, str]: 3-color scheme for Fig 3–7 (Gray/Amber/Blue)."""
+
 # ============================================================================
 # TYPOGRAPHY CONSTANTS (Figure 1 standard)
 # ============================================================================
