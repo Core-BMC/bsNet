@@ -1,283 +1,331 @@
-"""Generate Figure 2: Validation metrics for BS-NET prediction accuracy (10-seed).
+"""Generate Figure 2: BS-NET validation on ds007535 (SpeechHemi) real data.
 
-Creates a 2x2 visualization of prediction accuracy, distribution overlap,
-error distribution, and clinical pass rates.
+Dataset: N=30, task-residual FC, 6 atlases, 2-min short scan (120 s),
+         full BS-NET pipeline (block-bootstrap + SB prophecy + Fisher-z correction).
 
-Design: 10 seeds x 20 subjects x 50 ROIs
-  - Each subject: generate synthetic long TS → reference FC → mock FC →
-    short obs → run_bootstrap_prediction → compare true_rho vs pred_rho
-  - Cross-seed variability shown in all panels
+Data source: data/ds007535/results/ds007535_duration_sweep_{atlas}.csv
+  Columns: sub_id, duration_sec, seed, r_fc_raw, rho_hat_T, ci_lower, ci_upper
+  No recomputation — CSVs already contain full-pipeline results.
+
+Layout: 2×2
+  A — Scatter: r_fc_raw vs ρ̂T (seed-averaged, 30 pts/atlas × 6 atlas)
+  B — KDE: r_fc_raw vs ρ̂T distribution per atlas (paired overlay)
+  C — Violin: Δ = ρ̂T − r_fc_raw by atlas (improvement distribution)
+  D — Bar: mean Δ ± SD per atlas + overall mean line
 """
 
+from __future__ import annotations
+
+import sys
 import warnings
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from scipy import stats
+from matplotlib.lines import Line2D
+from scipy.stats import gaussian_kde
 
-from src.core.config import BSNetConfig
-from src.core.pipeline import run_bootstrap_prediction
-from src.core.simulate import generate_synthetic_timeseries
-from src.data.data_loader import get_fc_matrix
-from src.visualization.style import PALETTE, apply_bsnet_theme, save_figure
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from src.visualization.style import (
+    ATLAS_META,
+    CONDITION_PALETTE,
+    FIGSIZE,
+    FONT_AXIS,
+    FONT_PANEL,
+    FONT_TICK,
+    apply_bsnet_theme,
+    save_figure,
+)
 
 warnings.filterwarnings("ignore")
 
-# Reproducible 10-seed set (shared across all figures)
-SEEDS: list[int] = [42, 123, 777, 2026, 9999, 314, 628, 1414, 2718, 3141]
+# ── Constants ─────────────────────────────────────────────────────────────────
+
+RESULTS_DIR = Path("data/ds007535/results")
+OUTPUT_NAME = "Figure2_Validation_ds007535.png"
+SHORT_SEC   = 120          # 2-min short scan
+ATLASES     = list(ATLAS_META.keys())
+
+C_RAW   = CONDITION_PALETTE["raw"]    # Amber
+C_BSNET = CONDITION_PALETTE["bsnet"]  # Blue
 
 
-def run_single_seed(
-    seed: int,
-    n_subjects: int = 20,
-    n_rois: int = 50,
-    t_samples_long: int = 450,
-    t_samples_short: int = 120,
-    noise_level: float = 0.25,
-    ar1: float = 0.6,
-) -> list[dict]:
-    """Run validation for a single seed.
+# ── Data loading ──────────────────────────────────────────────────────────────
 
-    Synthetic validation logic:
-    1. Generate long TS → reference FC
-    2. Mock FC = reference FC + noise
-    3. Short obs from long TS
-    4. run_bootstrap_prediction(short_obs, mock_fc, config) → rho_hat_T
-    5. true_rho = corr(mock_fc, reference_fc)
 
-    Args:
-        seed: Random seed.
-        n_subjects: Number of subjects per seed.
-        n_rois: Number of ROIs.
-        t_samples_long: Full scan length.
-        t_samples_short: Short scan length.
-        noise_level: Noise level for synthetic TS generation.
-        ar1: AR(1) coefficient.
+def _load_subject_level(short_sec: int = SHORT_SEC) -> pd.DataFrame:
+    """Load all atlases, filter to short_sec, seed-average per (sub_id, atlas).
 
     Returns:
-        List of result dicts with true_rho, pred_rho, error, is_above_80.
+        DataFrame with columns: sub_id, atlas, r_fc, rho_hat_T, ci_lower,
+        ci_upper, improvement, label (atlas display name).
     """
-    np.random.seed(seed)
-    results: list[dict] = []
+    rows: list[pd.DataFrame] = []
+    for atlas in ATLASES:
+        path = RESULTS_DIR / f"ds007535_duration_sweep_{atlas}.csv"
+        if not path.exists():
+            print(f"  [WARN] missing: {path.name}")
+            continue
+        df = pd.read_csv(path)
+        df = df[df["duration_sec"] == short_sec]
+        agg = (
+            df.groupby("sub_id", as_index=False)
+            .agg(
+                r_fc=("r_fc_raw", "mean"),
+                rho_hat_T=("rho_hat_T", "mean"),
+                ci_lower=("ci_lower", "mean"),
+                ci_upper=("ci_upper", "mean"),
+                improvement=("improvement", "mean"),
+            )
+        )
+        agg["atlas"] = atlas
+        agg["label"] = ATLAS_META[atlas]["label"]
+        rows.append(agg)
 
-    target_min = (t_samples_long * 1.0) / 60.0
-    short_min = (t_samples_short * 1.0) / 60.0
+    if not rows:
+        raise FileNotFoundError(f"No CSVs found in {RESULTS_DIR}")
+    return pd.concat(rows, ignore_index=True)
 
-    config = BSNetConfig(
-        n_rois=n_rois,
-        tr=1.0,
-        short_duration_sec=short_min * 60,
-        target_duration_min=target_min,
-        n_bootstraps=50,
+
+# ── Panel helpers ──────────────────────────────────────────────────────────────
+
+
+def _plot_panel_a(ax: plt.Axes, df: pd.DataFrame) -> None:
+    """Panel A: r_fc vs ρ̂T scatter — 30 subjects × 6 atlases.
+
+    Each atlas: seed-averaged subject points (colored dots).
+    Identity line shows zero-improvement boundary.
+    """
+    lo = min(df["r_fc"].min(), df["rho_hat_T"].min()) - 0.03
+    hi = max(df["r_fc"].max(), df["rho_hat_T"].max()) + 0.03
+
+    ax.plot([lo, hi], [lo, hi], color="#888888", lw=1.2, ls="--",
+            zorder=1, label="y = x")
+
+    for atlas in ATLASES:
+        sub = df[df["atlas"] == atlas]
+        if sub.empty:
+            continue
+        m = ATLAS_META[atlas]
+        ax.scatter(
+            sub["r_fc"], sub["rho_hat_T"],
+            color=m["color"], s=38, alpha=0.75,
+            linewidths=0.5, edgecolors=m["color"],
+            zorder=3, label=m["label"],
+        )
+
+    ax.axvline(df["r_fc"].mean(),     color=C_RAW,   lw=0.9, ls=":", alpha=0.6)
+    ax.axhline(df["rho_hat_T"].mean(), color=C_BSNET, lw=0.9, ls=":", alpha=0.6)
+
+    ax.set_xlim(lo, hi)
+    ax.set_ylim(lo, hi)
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xlabel(r"$r_{\mathrm{FC}}$ (Raw, 2 min)", **FONT_AXIS)
+    ax.set_ylabel(r"$\hat{\rho}_T$ (bs-Net, 2 min)", **FONT_AXIS)
+    ax.set_title("A", loc="left", **FONT_PANEL)
+    ax.tick_params(labelsize=FONT_TICK)
+    ax.legend(fontsize=8, framealpha=0.9, ncol=2)
+
+
+def _plot_panel_b(ax: plt.Axes, df: pd.DataFrame) -> None:
+    """Panel B: Paired KDE — r_fc vs ρ̂T per atlas.
+
+    Solid = r_fc (Raw), dashed = ρ̂T (bs-Net). Schaefer200 opaque; others faded.
+    """
+    PRIMARY = "schaefer200"
+    x_grid  = np.linspace(
+        min(df["r_fc"].min(), df["rho_hat_T"].min()) - 0.05,
+        max(df["r_fc"].max(), df["rho_hat_T"].max()) + 0.05,
+        300,
     )
 
-    for sub in range(n_subjects):
-        # Generate full time series
-        long_obs, _ = generate_synthetic_timeseries(
-            t_samples_long, n_rois, noise_level=noise_level, ar1=ar1,
-        )
-        time_series = long_obs.T  # (samples, rois)
+    for atlas in ATLASES:
+        sub = df[df["atlas"] == atlas]
+        if len(sub) < 4:
+            continue
+        m       = ATLAS_META[atlas]
+        color   = m["color"]
+        is_main = atlas == PRIMARY
+        lw      = 2.2 if is_main else 0.9
+        alpha_l = 0.92 if is_main else 0.28
 
-        # Reference FC from full scan
-        fc_true_T = get_fc_matrix(time_series, vectorized=True, use_shrinkage=True)
+        kde_raw   = gaussian_kde(sub["r_fc"])
+        kde_bsnet = gaussian_kde(sub["rho_hat_T"])
 
-        # Mock predicted FC (reference + noise)
-        fc_pred_t_mock = fc_true_T + 0.1 * np.random.randn(*fc_true_T.shape)
+        ax.plot(x_grid, kde_raw(x_grid),   color=color, lw=lw, ls="-",
+                alpha=alpha_l, zorder=3 if is_main else 2)
+        ax.plot(x_grid, kde_bsnet(x_grid), color=color, lw=lw, ls="--",
+                alpha=alpha_l, zorder=3 if is_main else 2)
 
-        # Short observation
-        short_obs = time_series[:t_samples_short, :]
+        if is_main:
+            ax.fill_between(x_grid, kde_raw(x_grid),   alpha=0.08, color=C_RAW)
+            ax.fill_between(x_grid, kde_bsnet(x_grid), alpha=0.08, color=C_BSNET)
 
-        # Run BS-NET pipeline
-        result = run_bootstrap_prediction(short_obs, fc_pred_t_mock, config)
-
-        # true_rho: how close mock FC is to reference FC
-        true_rho = float(np.corrcoef(fc_pred_t_mock, fc_true_T)[0, 1])
-        pred_rho = float(result.rho_hat_T)
-
-        results.append(
-            {
-                "seed": seed,
-                "subject": f"seed{seed}_sub{sub:03d}",
-                "true_rho": true_rho,
-                "pred_rho": pred_rho,
-                "error": abs(true_rho - pred_rho),
-                "is_above_80": pred_rho >= 0.80,
-            }
-        )
-
-    return results
+    leg_handles = [
+        Line2D([0], [0], color="#555555", lw=2, ls="-",
+               label=r"$r_{\mathrm{FC}}$ (Raw)"),
+        Line2D([0], [0], color="#555555", lw=2, ls="--",
+               label=r"$\hat{\rho}_T$ (bs-Net)"),
+    ]
+    ax.legend(handles=leg_handles, fontsize=8.5, framealpha=0.9)
+    ax.set_xlabel("Pearson r", **FONT_AXIS)
+    ax.set_ylabel("Density", **FONT_AXIS)
+    ax.set_title("B", loc="left", **FONT_PANEL)
+    ax.tick_params(labelsize=FONT_TICK)
+    ax.set_ylim(bottom=0)
 
 
-def main() -> None:
-    """Generate and save Figure 2: Prediction validation metrics.
+def _plot_panel_c(ax: plt.Axes, df: pd.DataFrame) -> None:
+    """Panel C: Improvement violin Δ = ρ̂T − r_fc by atlas.
 
-    Runs 10 seeds x 20 subjects synthetic validation, then creates
-    four-panel visualization with cross-seed variability.
+    6 violins colored by atlas. Schaefer200 opaque; others faded.
+    Subject dots + median bar overlaid. Horizontal line at Δ=0.
     """
-    print("--- Figure 2: Validation (10-seed synthetic design) ---")
-    reports_dir = Path("artifacts/reports")
-    reports_dir.mkdir(parents=True, exist_ok=True)
+    PRIMARY   = "schaefer200"
+    positions = np.arange(len(ATLASES))
 
-    all_results: list[dict] = []
-    for i, seed in enumerate(SEEDS):
-        print(f"  Seed {i + 1}/{len(SEEDS)} (seed={seed})...")
-        seed_results = run_single_seed(seed, n_subjects=20, n_rois=50)
-        all_results.extend(seed_results)
+    ax.axhline(0, color="#888888", lw=1.0, ls="--", alpha=0.7, zorder=1)
 
-    df = pd.DataFrame(all_results)
-    csv_path = reports_dir / "validation_10seed_results.csv"
-    df.to_csv(csv_path, index=False)
-    print(f"  Saved: {csv_path} ({len(df)} rows)")
+    rng = np.random.default_rng(42)
+    for ai, atlas in enumerate(ATLASES):
+        sub = df[df["atlas"] == atlas]["improvement"].dropna().values
+        if len(sub) < 3:
+            continue
+        m       = ATLAS_META[atlas]
+        color   = m["color"]
+        is_main = atlas == PRIMARY
+        alpha_v = 0.70 if is_main else 0.22
 
-    # Cross-seed summary
-    total_subjects = len(df)
-    mean_true = df["true_rho"].mean()
-    mean_pred = df["pred_rho"].mean()
-    mean_error = df["error"].mean()
+        parts = ax.violinplot(
+            sub, positions=[ai], widths=0.6,
+            showmeans=False, showmedians=False, showextrema=False,
+        )
+        for pc in parts["bodies"]:
+            pc.set_facecolor(color)
+            pc.set_alpha(alpha_v)
+            pc.set_edgecolor("none")
 
-    pass_80 = int(df["is_above_80"].sum())
-    pass_80_rate = (pass_80 / total_subjects) * 100
-    pass_90 = int((df["pred_rho"] >= 0.90).sum())
-    pass_90_rate = (pass_90 / total_subjects) * 100
-    failed = total_subjects - pass_80
-    failed_rate = (failed / total_subjects) * 100
+        jitter = rng.uniform(-0.12, 0.12, len(sub))
+        ax.scatter(
+            ai + jitter, sub,
+            color=color,
+            s=22 if is_main else 8,
+            alpha=0.85 if is_main else 0.22,
+            linewidths=0, zorder=4,
+        )
 
-    # Per-seed pass rates for error bars in Panel D
-    seed_stats = df.groupby("seed").agg(
-        pass_80_rate=("is_above_80", lambda x: x.mean() * 100),
-        pass_90_rate=("pred_rho", lambda x: (x >= 0.90).mean() * 100),
-        fail_rate=("is_above_80", lambda x: (1 - x.mean()) * 100),
-    ).reset_index()
+        med = float(np.median(sub))
+        ax.plot(
+            [ai - 0.22, ai + 0.22], [med, med],
+            color=color,
+            lw=2.2 if is_main else 0.9,
+            alpha=0.95 if is_main else 0.35,
+            zorder=5,
+        )
 
-    t_stat, p_val = stats.ttest_rel(df["true_rho"], df["pred_rho"])
-    slope, intercept, r_value, _, _ = stats.linregress(
-        df["true_rho"], df["pred_rho"],
-    )
-    r_squared_val = float(r_value ** 2)
+    labels = [ATLAS_META[a]["label"] for a in ATLASES]
+    ax.set_xticks(positions)
+    ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=FONT_TICK - 0.5)
+    ax.set_ylabel(r"$\hat{\rho}_T - r_{\mathrm{FC}}$ (Δ)", **FONT_AXIS)
+    ax.set_title("C", loc="left", **FONT_PANEL)
+    ax.tick_params(labelsize=FONT_TICK)
 
-    print("\n--- QUANTITATIVE ANALYSIS (10-seed aggregate) ---")
-    print(f"Total Subjects: {total_subjects} ({len(SEEDS)} seeds x 20)")
-    print(f"Mean Reference FC: {mean_true:.4f}")
-    print(f"Mean Predicted FC: {mean_pred:.4f}")
-    print(f"Mean Absolute Error: {mean_error:.4f}")
-    print(f"Pass Rate (>= 0.80): {pass_80_rate:.1f}%")
-    print(f"Excellent (>= 0.90): {pass_90_rate:.1f}%")
-    print(f"Failed (< 0.80): {failed_rate:.1f}%")
-    print(f"Paired T-test: t={t_stat:.4f}, p={p_val:.4e}")
-    print(f"R^2: {r_squared_val:.4f}")
 
-    # --- Plotting ---
+def _plot_panel_d(ax: plt.Axes, df: pd.DataFrame) -> None:
+    """Panel D: Mean Δ ± SD per atlas bar chart + overall mean line.
+
+    Schaefer200 fully opaque; others faded.
+    """
+    PRIMARY   = "schaefer200"
+    positions = np.arange(len(ATLASES))
+
+    for ai, atlas in enumerate(ATLASES):
+        sub     = df[df["atlas"] == atlas]["improvement"].dropna()
+        m_val   = float(sub.mean())
+        s_val   = float(sub.std())
+        color   = ATLAS_META[atlas]["color"]
+        is_main = atlas == PRIMARY
+        alpha   = 0.85 if is_main else 0.28
+
+        ax.bar(ai, m_val, color=color, alpha=alpha,
+               edgecolor="none", width=0.6, zorder=2)
+        ax.errorbar(ai, m_val, yerr=s_val,
+                    color=color, alpha=min(alpha + 0.3, 1.0),
+                    capsize=4, lw=1.5, zorder=3)
+        ax.text(
+            ai, m_val + s_val + 0.003,
+            f"{m_val:.3f}",
+            ha="center", va="bottom",
+            fontsize=7.5, color=color,
+            alpha=min(alpha + 0.3, 1.0),
+        )
+
+    overall_mean = float(df["improvement"].mean())
+    ax.axhline(overall_mean, color="#333333", lw=1.4, ls=":",
+               zorder=4, label=f"Overall mean = {overall_mean:.3f}")
+
+    labels = [ATLAS_META[a]["label"] for a in ATLASES]
+    ax.set_xticks(positions)
+    ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=FONT_TICK - 0.5)
+    ax.set_ylabel(r"Mean $\Delta$ ± SD", **FONT_AXIS)
+    ax.set_title("D", loc="left", **FONT_PANEL)
+    ax.tick_params(labelsize=FONT_TICK)
+    ax.set_ylim(0, 0.2)
+    ax.legend(fontsize=8, framealpha=0.9)
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+
+def plot_figure2(short_sec: int = SHORT_SEC) -> None:
+    """Generate and save Figure 2: real-data validation (ds007535, 6 atlases).
+
+    Loads per-record CSVs (full BS-NET pipeline, fisher_z correction).
+    Seed-averages per subject, then plots 4-panel validation figure.
+
+    Args:
+        short_sec: Short-scan duration to analyse (default 120 = 2 min).
+    """
+    print(f"Loading ds007535 results (duration={short_sec}s, 6 atlases) …")
+    df = _load_subject_level(short_sec)
+
+    N_sub = df["sub_id"].nunique()
+    N_atl = df["atlas"].nunique()
+    print(f"  {N_sub} subjects × {N_atl} atlases = {len(df)} data points")
+
+    print()
+    for atlas in ATLASES:
+        sub = df[df["atlas"] == atlas]
+        if sub.empty:
+            continue
+        print(
+            f"  {ATLAS_META[atlas]['label']:20s}  "
+            f"r_fc={sub['r_fc'].mean():.3f}±{sub['r_fc'].std():.3f}  "
+            f"ρ̂T={sub['rho_hat_T'].mean():.3f}±{sub['rho_hat_T'].std():.3f}  "
+            f"Δ={sub['improvement'].mean():.3f}±{sub['improvement'].std():.3f}"
+        )
+
     apply_bsnet_theme()
-    fig = plt.figure(figsize=(16, 12))
+    fig, axes = plt.subplots(2, 2, figsize=FIGSIZE.get("2x2", (14, 11)))
+    ax_a, ax_b = axes[0, 0], axes[0, 1]
+    ax_c, ax_d = axes[1, 0], axes[1, 1]
 
-    # Panel A: Scatter Plot (all seeds pooled, color by seed)
-    ax1 = plt.subplot(2, 2, 1)
-    sns.scatterplot(
-        x="true_rho", y="pred_rho", data=df, alpha=0.5, ax=ax1, s=40,
-        hue="seed", palette="tab10", legend=False,
-    )
-    xlim = (df["true_rho"].min() - 0.02, df["true_rho"].max() + 0.02)
-    ax1.plot(xlim, xlim, "k--", label="Identity (y=x)")
-    x_range = np.linspace(xlim[0], xlim[1], 100)
-    ax1.plot(
-        x_range, intercept + slope * x_range,
-        color=PALETTE["highlight"], linewidth=2.0,
-        label=f"Fit ($R^2={r_squared_val:.2f}$)",
-    )
-    ax1.set_title(
-        "A. Prediction Accuracy (Reference vs. Predicted)",
-        fontsize=14, fontweight="bold",
-    )
-    ax1.set_xlabel("Reference FC Correlation (ρ_true)", fontsize=12)
-    ax1.set_ylabel("Predicted FC Correlation (ρ_pred)", fontsize=12)
-    ax1.set_xlim(*xlim)
-    ax1.legend(fontsize=10)
+    _plot_panel_a(ax_a, df)
+    _plot_panel_b(ax_b, df)
+    _plot_panel_c(ax_c, df)
+    _plot_panel_d(ax_d, df)
 
-    # Panel B: Distribution Overlay
-    ax2 = plt.subplot(2, 2, 2)
-    sns.kdeplot(
-        df["true_rho"], fill=True, label="Reference FC",
-        ax=ax2, color=PALETTE["true"], alpha=0.5,
+    fig.suptitle(
+        f"BS-NET Validation — ds007535 (SpeechHemi)  "
+        f"N={N_sub}, {N_atl} atlases, {short_sec}s short scan",
+        fontsize=11, y=1.01,
     )
-    sns.kdeplot(
-        df["pred_rho"], fill=True, label="Predicted FC",
-        ax=ax2, color=PALETTE["raw"], alpha=0.5,
-    )
-    bias = mean_true - mean_pred
-    df["pred_rho_shifted"] = df["pred_rho"] + bias
-    sns.kdeplot(
-        df["pred_rho_shifted"], fill=False, label="Predicted (Mean-Shifted)",
-        ax=ax2, color=PALETTE["accent"], linestyle="--", linewidth=2.5,
-    )
-    ax2.axvline(
-        x=0.8, color=PALETTE["highlight"], linestyle=":",
-        label="Clinical Threshold (0.8)",
-    )
-    ax2.set_title(
-        "B. Density Distribution of FC Correlation",
-        fontsize=14, fontweight="bold",
-    )
-    ax2.set_xlabel("Pearson Correlation (ρ)", fontsize=12)
-    ax2.set_ylabel("Density", fontsize=12)
-    ax2.legend(loc="upper left", fontsize=10)
-
-    # Panel C: Error Histogram
-    ax3 = plt.subplot(2, 2, 3)
-    sns.histplot(df["error"], bins=25, kde=True, ax=ax3, color=PALETTE["bsnet"])
-    ax3.set_title(
-        "C. Prediction Error Distribution",
-        fontsize=14, fontweight="bold",
-    )
-    ax3.set_xlabel("Absolute Error (|ρ_true - ρ_pred|)", fontsize=12)
-    ax3.set_ylabel("Subject Count", fontsize=12)
-
-    # Panel D: Pass Rate Bar Chart with cross-seed error bars
-    ax4 = plt.subplot(2, 2, 4)
-    categories = ["Failed (< 0.8)", "Good (0.8–0.9)", "Excellent (>= 0.9)"]
-
-    # Per-seed category counts (as rates)
-    good_rate = seed_stats["pass_80_rate"] - seed_stats["pass_90_rate"]
-    means = [
-        seed_stats["fail_rate"].mean(),
-        good_rate.mean(),
-        seed_stats["pass_90_rate"].mean(),
-    ]
-    sds = [
-        seed_stats["fail_rate"].std(),
-        good_rate.std(),
-        seed_stats["pass_90_rate"].std(),
-    ]
-    colors = [
-        PALETTE["pass_fail"],
-        PALETTE["pass_good"],
-        PALETTE["pass_excellent"],
-    ]
-    bars = ax4.bar(
-        categories, means, yerr=sds, color=colors,
-        edgecolor="black", alpha=0.8, capsize=5,
-        error_kw={"linewidth": 1.2},
-    )
-    for bar, m, s in zip(bars, means, sds):
-        ax4.text(
-            bar.get_x() + bar.get_width() / 2,
-            bar.get_height() + s + 1,
-            f"{m:.1f}%",
-            ha="center", va="bottom", fontsize=12, fontweight="bold",
-        )
-    ax4.set_title(
-        "D. Clinical Reliability Pass Rate (mean ± SD across seeds)",
-        fontsize=14, fontweight="bold",
-    )
-    ax4.set_ylabel("Rate (%)", fontsize=12)
-    ax4.set_ylim(0, max(means) + max(sds) + 15)
-
-    plt.tight_layout(pad=3.0)
-    save_figure(fig, "Figure2_Validation.png")
-    print("\nFigure 2 saved.")
+    fig.tight_layout()
+    save_figure(fig, OUTPUT_NAME)
+    print(f"\nSaved: {OUTPUT_NAME}")
 
 
 if __name__ == "__main__":
-    main()
+    plot_figure2()

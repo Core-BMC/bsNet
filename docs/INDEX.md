@@ -13,6 +13,7 @@
 - **`2.2_log_experiment_20260327.md`**: 2차 실증. N=100 대규모 Scale-Up(OpenNeuro) 검증 로직 가동 기록, KDE Bias 편향 보정, Figure 2 시각화 완료 로그.
 - **`2.3_log_sessions.log`**: 토폴로지 검증(Phase 4~7) 세션별 실행 이력. Schaefer 400 전환, ARI/Jaccard 산출, Violin plot 생성 등 단문 기록.
 - **`2.4_log_experiment_20260328_30.md`**: 3차 실증 (3일분 통합). 방어 실험 Track A–G 완성, Ceiling effect 발견 및 Fisher z 해소, ABIDE N=468 CC200/CC400 검증, ADHD-200 N=40 그룹 비교, Track E 배치 리팩토링.
+- **`2.5_log_experiment_20260401.md`**: 4차 작업 (세션 3). Figure 1/2/7 재설계, style.py ATLAS_META 통합, ds000243 파이프라인 인프라 구축, run_duration_sweep.py ds000243 지원 추가.
 
 ## 3. 정량 분석 결과 및 시각화 캡션 (Validation Results & Legends)
 - **`3.1_res_figure_legends.md`**: Figure 1~4 전체에 대한 통합 아카데믹 레전드. 패널별 축·통계량·해석을 포함한 마스터 캡션 문서.
@@ -48,20 +49,23 @@
 ### 부속 자산 (Assets)
 - **`figure/`**: 최종 렌더링 이미지 (PNG). 배포용 사본.
 
-| Figure | 파일명 | 내용 |
-|--------|--------|------|
-| Fig 1 | `Figure1_Combined.png` | 최적 스캔 시간 증명 (Marginal Gain, CI Decay, Signal Overlay) |
-| Fig 2 | `Figure2_Validation.png` | N=100 코호트 실증 (Scatter, KDE, Error, Pass Rate) |
-| Fig 3 | `Figure3_Topology.png` | Schaefer 400 토폴로지 보존 (Degree, Path Length) |
-| Fig 4 | `Figure4_*.png` | ARI, Modularity, Subnetwork Jaccard (Yeo-7 / Yeo-100) |
-| — | `Figure_ComponentNecessity.png` | Component Necessity Analysis — ρ̂T per condition + Δρ waterfall |
-| Fig 5a | `Figure5_ABIDE_MultiSeed_CC200.png` | ABIDE multi-seed CC200 (N=468, 10 seeds, Fisher z) |
-| Fig 5b | `Figure5_ABIDE_MultiSeed_CC400.png` | ABIDE multi-seed CC400 (N=468, 10 seeds, Fisher z) |
-| Fig 5c | `Figure5_ABIDE_Ceiling_CC200.png` | Ceiling effect 4-method comparison CC200 |
-| Fig 5d | `Figure5_ABIDE_Ceiling_CC400.png` | Ceiling effect 4-method comparison CC400 |
-| Fig 6a | `Figure6_ADHD_SingleSeed_CC200.png` | ADHD single-seed CC200 (N=40, group colored) |
-| Fig 6b | `Figure6_ADHD_SingleSeed_CC400.png` | ADHD single-seed CC400 (N=40, group colored) |
-| Fig 6c | `Figure6_ADHD_MultiSeed_CC200.png` | ADHD multi-seed CC200 (N=40, 10 seeds, group) |
-| Fig 6d | `Figure6_ADHD_MultiSeed_CC400.png` | ADHD multi-seed CC400 (N=40, 10 seeds, group) |
-| Fig 6e | `Figure6_ADHD_Atlas_Comparison.png` | ADHD atlas comparison CC200 vs CC400 |
-| Fig 7 | `Figure7_ADHD_Classification.png` | Track H — ADHD vs Control classification (Accuracy, AUC, ΔAccuracy, Summary) |
+#### 메인 Figure (논문 본문용, 7개)
+
+| # | 파일명 | 내용 | 스크립트 |
+|---|--------|------|---------|
+| Fig 1 | `Figure1_ds007535_DurationSweep.png` | Duration Sweep — ds007535 실데이터 (6 atlas, 투명도 계층, cross-subject reliability G1/G2) | `plot_figure1_ds007535.py` |
+| Fig 2 | `Figure2_Validation_ds007535.png` | Empirical Validation — ds007535 N=30 (6 atlas, full BS-NET pipeline, 4-panel) | `plot_figure2_validation.py` |
+| Fig 3 | `Figure3_ComponentNecessity.png` | Component Necessity — ABIDE N=468 실데이터 violin+jitter (SB/Prior/LW leave-one-out) | `plot_figure3_component.py` |
+| Fig 4 | `Figure4_Structure_Preservation.png` | Network Structure Preservation — ARI, Hub Variance, Small-worldness, Jaccard 합병 4-panel | `plot_figure4_structure.py` |
+| Fig 5 | `Figure5_ABIDE_Validation.png` | ABIDE Empirical Validation (N=468, CC200, 10 seeds, Fisher z, 4-panel) | `plot_figure5_abide_v2.py` |
+| Fig 6 | `Figure6_ADHD_Validation.png` | Cross-Dataset Generalization (N=40, CC200, 10 seeds, Fisher z, 4-panel) | `plot_figure6_adhd_v2.py` |
+| Fig 7 | `Figure7_ADHD_Classification.png` | Clinical Classification — grouped bar (CC200/CC400 hatching, 3 FC conditions) | `plot_figure7_classification.py` |
+
+#### 보충 Figure (Supplementary)
+
+| # | 파일명 | 내용 |
+|---|--------|------|
+| Fig S1 | *(생성 예정)* | ABIDE CC400 멀티시드 |
+| Fig S2 | *(생성 예정)* | ADHD CC400 멀티시드 |
+| Fig S3 | *(생성 예정)* | Ceiling effect 4-method 비교 (CC200/CC400) |
+| Fig S4 | *(생성 예정)* | Component Necessity (Synthetic, 구버전) |

@@ -3,6 +3,25 @@ All notable changes to the **BS-NET** pipeline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased] - 2026-04-01
+
+### Added
+- **ds000243 (WashU resting-state) Pipeline** (`preprocess_ds000243.py`): Pure resting-state preprocessing — 36P confound regression + bandpass (0.01–0.1 Hz), no task regression. Flexible `discover_subjects()` handles fMRIPrep varying BOLD suffix patterns. Output: `data/ds000243/timeseries_cache/{atlas}/`.
+- **ds000243 Batch Script** (`run_ds000243_batch.sh`): 6-atlas × 10-seed duration sweep with skip-existing logic and colored logging.
+- **ds000243 Directory Structure**: `data/ds000243/{raw,timeseries_cache,results}/` scaffolded.
+- **`run_duration_sweep.py` — ds000243 Support**: `DURATIONS_DS000243`, `TR_DS000243`, `ATLAS_CHOICES["ds000243"]`, `discover_subjects_ds000243()`, CLI `--dataset ds000243`.
+- **Experiment Log `2.5_log_experiment_20260401.md`**: Session 3 work record — Figure 1/2/7 redesign, style unification, ds000243 infrastructure.
+
+### Changed
+- **Figure 1 — 6-Atlas Transparency Hierarchy** (`plot_figure1_ds007535.py`): All panels (A, B, C) now display all 6 atlases with Schaefer200 opaque (α=0.92, lw=2.5) and others faded (α=0.25, lw=1.0). Panel A legend restructured: "2 min" removed, faded Schaefer200 entry added below ρ̂T(bs-Net). Panel C legend: "Mean CI Width" → atlas label.
+- **Figure 1 — Cross-Subject Reliability Matrices G1/G2** (`_load_reliability_matrices()`): Replaced within-scan "short-short" correlation with true **cross-subject reliability** `R[i,j] = r over N subjects(fc_condition[:,i,j], fc_ref[:,i,j])` — both Short and BS-NET compared against Long reference. Full BS-NET pipeline (bootstrap → SB → Bayesian prior → Fisher-z attenuation) applied per subject; per-connection Fisher-z shift `fc_bsnet[i,j] = tanh(arctanh(fc_bootstrap[i,j]) + z_shift)` extends global correction element-wise. Results cached as `.npz` to avoid recomputation.
+- **Figure 1 — G3 Subject Scatter**: Changed from single exemplar subject only to **N=30 all-subjects scatter**, with exemplar highlighted (s=120, blue edge) and others faded (α=0.22). Coordinates pre-computed from CSV, plot-only.
+- **Figure 2 — Full Rewrite** (`plot_figure2_validation.py`): Rebuilt using ds007535 real data (N=30, 6 atlases, full BS-NET pipeline). 4-panel: scatter r_fc vs ρ̂T, KDE paired distributions, violin Δ by atlas, bar Δ ± SD. Panel D y-range fixed to [0, 0.2].
+- **Figure 7 — Grouped Bar Chart Redesign** (`plot_figure7_classification.py`): Replaced 2×2 violin layout with **1×2 grouped bar chart**. BAR_WIDTH=0.28, GROUP_GAP=0.35. CC200: solid bars, CC400: hatched (`/`). 3 FC conditions × 2 atlases per group. Error bars: ±1 SD across 10 seeds × 5 folds.
+- **`style.py` — ATLAS_META Unification**: Added `ATLAS_META` dict (6 atlases: color, linestyle, marker, label, lw). Helper functions `_alpha_for()`, `_lw_for()`, `_ms_for()` centralize transparency hierarchy. Imported across all figure scripts.
+- **Figure Color Scheme (Fig 3–7)**: Gray(#95a5a6, Reference) + Amber(#fdae61, Raw) + Blue(#4A90E2, BS-NET) fully adopted.
+- **`docs/INDEX.md`**: Figure table updated to new filenames + script references. 2.5 log entry added.
+
 ## [Unreleased] - 2026-03-30
 
 ### Added

@@ -81,27 +81,56 @@ CORRECTION_PALETTE: dict[str, str] = {
 
 CONDITION_PALETTE: dict[str, str] = {
     "reference": "#95a5a6",  # Reference FC (gray)
-    "raw": "#fdae61",         # Raw FC (amber)
-    "bsnet": "#4A90E2",       # BS-NET (blue)
+    "raw": "#fdae61",        # Raw FC (amber)
+    "bsnet": "#4A90E2",      # bs-Net (blue)
 }
 """Dict[str, str]: 3-color scheme for Fig 3–7 (Gray/Amber/Blue)."""
+
+# ============================================================================
+# ATLAS METADATA  (Figure 1 multi-atlas standard)
+# ============================================================================
+
+ATLAS_META: dict[str, dict] = {
+    "schaefer200":    {"label": "Schaefer 200",   "color": "#4A90E2", "ls": "-",  "marker": "s", "lw": 2.5},
+    "schaefer400":    {"label": "Schaefer 400",   "color": "#1A5FAC", "ls": "--", "marker": "^", "lw": 1.8},
+    "cc200":          {"label": "CC 200",          "color": "#F4A261", "ls": "-",  "marker": "o", "lw": 1.8},
+    "cc400":          {"label": "CC 400",          "color": "#C05C22", "ls": "--", "marker": "D", "lw": 1.8},
+    "aal":            {"label": "AAL",             "color": "#52B788", "ls": "-",  "marker": "P", "lw": 1.8},
+    "harvard_oxford": {"label": "Harvard-Oxford",  "color": "#9B72CF", "ls": "--", "marker": "X", "lw": 1.8},
+}
+"""Dict[str, dict]: Per-atlas color, linestyle, marker, linewidth for multi-atlas panels."""
 
 # ============================================================================
 # TYPOGRAPHY CONSTANTS (Figure 1 standard)
 # ============================================================================
 
-FONT: dict[str, int | str] = {
-    "title": 15,
+FONT: dict[str, int | float | str] = {
+    "title": 18,            # Panel label (A, B, C …) — bold
     "title_weight": "bold",
     "title_pad": 10,
-    "axis_label": 13,
-    "legend": 11,
-    "legend_small": 9,
-    "tick": 11,
-    "annotation": 10,
-    "suptitle": 16,
+    "axis_label": 10.5,     # x/y axis labels
+    "legend": 9.5,          # Legend entries
+    "legend_small": 8.5,    # Small legend (multi-atlas ncol=2)
+    "tick": 9.5,            # Tick labels
+    "annotation": 9.5,      # Inline annotations / text boxes
+    "suptitle": 14,         # Figure suptitle
 }
-"""Dict[str, int | str]: Standardized font sizes matching Figure 1."""
+"""Dict: Standardized font sizes (Figure 1 standard, updated from Fig1 ds007535)."""
+
+# Convenience kwargs dicts — pass directly as **FONT_PANEL, **FONT_AXIS
+FONT_PANEL: dict[str, int | str] = {
+    "fontsize": FONT["title"],
+    "fontweight": FONT["title_weight"],
+}
+"""dict: kwargs for panel-label set_title() calls."""
+
+FONT_AXIS: dict[str, float] = {
+    "fontsize": FONT["axis_label"],
+}
+"""dict: kwargs for set_xlabel() / set_ylabel() calls."""
+
+FONT_TICK: float = FONT["tick"]
+"""float: labelsize for ax.tick_params()."""
 
 # ============================================================================
 # LINE / MARKER CONSTANTS
@@ -113,6 +142,7 @@ LINE: dict[str, float] = {
     "thin": 1.5,
     "reference": 2.0,
     "error": 1.2,
+    "individual": 0.7,   # per-subject / thin trajectory lines
 }
 """Dict[str, float]: Standardized line widths."""
 
@@ -126,15 +156,42 @@ MARKER: dict[str, int] = {
 """Dict[str, int]: Standardized marker sizes."""
 
 # ============================================================================
+# BAR CHART STYLE  (Raw = solid, bs-Net = diagonal stripe)
+# ============================================================================
+
+BAR_STYLE: dict[str, dict] = {
+    "raw": {
+        "alpha": 0.85,
+        "edgecolor": "none",
+        "hatch": None,
+    },
+    "bsnet": {
+        "alpha": 0.75,
+        "edgecolor": "white",
+        "hatch": "////",
+        "linewidth": 0.4,
+    },
+}
+"""Dict: Bar plot style — Raw FC (solid Amber) vs bs-Net (diagonal stripe, atlas color).
+
+Usage example::
+
+    ax.bar(x, raw_vals,   color=CONDITION_PALETTE["raw"],   **BAR_STYLE["raw"])
+    ax.bar(x, bsnet_vals, color=CONDITION_PALETTE["bsnet"], **BAR_STYLE["bsnet"])
+"""
+
+# ============================================================================
 # FIGURE SIZE PRESETS
 # ============================================================================
 
 FIGSIZE: dict[str, tuple[float, float]] = {
-    "2x2": (16, 10),
-    "1x2": (14, 6),
+    "single":   (8,  6),
+    "wide":     (14, 7),
+    "1x2":      (14, 6),
+    "2x2":      (16, 10),
     "2x2_tall": (16, 12),
-    "single": (8, 6),
-    "wide": (14, 7),
+    "2x3":      (18, 11),   # Figure 1 rows A–C / D–F
+    "3x3":      (18, 15),   # Figure 1 full (A–F + G row)
 }
 """Dict[str, tuple]: Standardized figure sizes."""
 

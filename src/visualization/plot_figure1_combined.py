@@ -259,7 +259,7 @@ def plot_combined_figure() -> None:
     )
     ax4.axhline(y=2.0, color="gray", linestyle=":", linewidth=1.5, alpha=0.5)
     ax4.set_title(
-        "D. Visualizing 84% Coherence (Separated vs. Overlay)",
+        "D. Signal Recovery: True vs. Noisy FC (r=0.84)",
         fontweight="bold", fontsize=15, pad=10,
     )
     ax4.set_xlabel("Time (seconds)", fontsize=13)

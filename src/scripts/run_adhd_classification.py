@@ -7,13 +7,17 @@ Compares classification performance across three FC conditions:
   (2) BS-NET corrected FC from short scan (2 min → extrapolated)
   (3) Reference FC from full scan — upper bound
 
+Multi-seed mode (--n-seeds N): varies the bootstrap seed used to
+generate BS-NET FC matrices, then aggregates classification metrics
+across seeds → reports mean±seed_std for robustness.
+
 Classifier: Linear SVM (C=1.0, default)
 CV: Stratified 5-fold × N repeats (random seeds)
 Features: Upper-triangle of ROI×ROI FC matrix
 
 Usage:
     python src/scripts/run_adhd_classification.py --atlas cc200
-    python src/scripts/run_adhd_classification.py --atlas cc200 cc400 --n-repeats 20
+    python src/scripts/run_adhd_classification.py --atlas cc200 cc400 --n-seeds 10
     python src/scripts/run_adhd_classification.py --atlas cc200 --short-sec 120 -v
 """
 
@@ -250,7 +254,7 @@ def run_experiment(
     correction_method: str = "fisher_z",
     seed: int = 42,
 ) -> dict:
-    """Run full classification experiment for one atlas.
+    """Run full classification experiment for one atlas (single seed).
 
     Args:
         atlas: Atlas name (cc200 or cc400).
@@ -266,7 +270,7 @@ def run_experiment(
     meta = load_subject_metadata(atlas)
     n_subs = len(meta)
 
-    logger.info(f"Atlas={atlas.upper()}, N={n_subs}, short={short_sec}s")
+    logger.info(f"Atlas={atlas.upper()}, N={n_subs}, short={short_sec}s, seed={seed}")
 
     # Labels
     y = np.array([1 if m["group"] == "adhd" else 0 for m in meta])
@@ -344,16 +348,104 @@ def run_experiment(
     return results
 
 
+def run_multiseed_experiment(
+    atlas: str,
+    n_seeds: int = 10,
+    short_sec: float = 120.0,
+    n_repeats: int = 5,
+    n_bootstraps: int = 100,
+    correction_method: str = "fisher_z",
+    seed_base: int = 42,
+) -> dict[str, dict]:
+    """Run classification across multiple bootstrap seeds.
+
+    For each seed, BS-NET FC matrices are regenerated with a different
+    bootstrap random state, then classified. Raw FC and Reference FC
+    are seed-invariant (computed once, classified per seed for CV variance).
+
+    Args:
+        atlas: Atlas name.
+        n_seeds: Number of bootstrap seeds.
+        short_sec: Short scan duration in seconds.
+        n_repeats: CV repeats per seed.
+        n_bootstraps: Bootstrap iterations per subject per seed.
+        correction_method: Attenuation correction method.
+        seed_base: Starting seed.
+
+    Returns:
+        Dict with per-condition aggregated results including
+        per-seed accuracy/auc arrays.
+    """
+    seeds = [seed_base + s * 1000 for s in range(n_seeds)]
+
+    # Collect per-seed results
+    per_seed: dict[str, list[dict]] = {c: [] for c in ["raw_short", "bsnet", "reference"]}
+
+    for si, seed in enumerate(seeds):
+        logger.info(f"\n--- Seed {si + 1}/{n_seeds} (seed={seed}) ---")
+        result = run_experiment(
+            atlas=atlas,
+            short_sec=short_sec,
+            n_repeats=n_repeats,
+            n_bootstraps=n_bootstraps,
+            correction_method=correction_method,
+            seed=seed,
+        )
+        for cond in per_seed:
+            per_seed[cond].append(result[cond])
+
+    # Aggregate across seeds
+    aggregated = {}
+    for cond, seed_results in per_seed.items():
+        seed_accs = np.array([r["acc_mean"] for r in seed_results])
+        seed_aucs = np.array([r["auc_mean"] for r in seed_results])
+
+        # Collect all per-fold values across all seeds
+        all_fold_acc = np.concatenate([r["all_acc"] for r in seed_results])
+        all_fold_auc = np.concatenate([r["all_auc"] for r in seed_results])
+
+        aggregated[cond] = {
+            "condition": cond,
+            "label": seed_results[0]["label"],
+            "n_features": seed_results[0]["n_features"],
+            "acc_mean": float(np.mean(seed_accs)),
+            "acc_std": float(np.std(all_fold_acc)),
+            "auc_mean": float(np.mean(seed_aucs)),
+            "auc_std": float(np.std(all_fold_auc)),
+            "acc_seed_std": float(np.std(seed_accs)),
+            "auc_seed_std": float(np.std(seed_aucs)),
+            "seed_accs": seed_accs,
+            "seed_aucs": seed_aucs,
+            "all_acc": all_fold_acc,
+            "all_auc": all_fold_auc,
+            "n_seeds": n_seeds,
+        }
+
+        logger.info(
+            f"\n[Aggregated] {cond}: "
+            f"Acc={aggregated[cond]['acc_mean']:.3f}±{aggregated[cond]['acc_std']:.3f} "
+            f"(seed_std={aggregated[cond]['acc_seed_std']:.4f}), "
+            f"AUC={aggregated[cond]['auc_mean']:.3f}±{aggregated[cond]['auc_std']:.3f}"
+        )
+
+    return aggregated
+
+
+# ============================================================================
+# Save
+# ============================================================================
+
 def save_results(
     results: dict[str, dict],
     atlas: str,
     output_dir: Path,
 ) -> Path:
-    """Save classification results to CSV (summary + per-fold).
+    """Save classification results to CSV (summary + per-fold + seed-level).
 
-    Saves two files:
+    Saves:
       - adhd_classification_{atlas}.csv: summary (mean/std per condition)
-      - adhd_classification_{atlas}_folds.csv: per-fold acc/auc values
+      - adhd_classification_{atlas}_folds.csv: per-fold acc/auc
+      - adhd_classification_{atlas}_seeds.csv: per-seed acc/auc (if multi-seed)
 
     Args:
         results: Per-condition classification results.
@@ -369,16 +461,30 @@ def save_results(
     csv_path = output_dir / f"adhd_classification_{atlas}.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv_mod.writer(f)
-        writer.writerow([
+        header = [
             "condition", "label", "n_features",
             "acc_mean", "acc_std", "auc_mean", "auc_std",
-        ])
+        ]
+        # Add seed columns if multi-seed
+        sample = next(iter(results.values()))
+        is_multiseed = "n_seeds" in sample
+        if is_multiseed:
+            header.extend(["n_seeds", "acc_seed_std", "auc_seed_std"])
+        writer.writerow(header)
+
         for _cond, r in results.items():
-            writer.writerow([
+            row = [
                 r["condition"], r["label"], r["n_features"],
                 f"{r['acc_mean']:.4f}", f"{r['acc_std']:.4f}",
                 f"{r['auc_mean']:.4f}", f"{r['auc_std']:.4f}",
-            ])
+            ]
+            if is_multiseed:
+                row.extend([
+                    r["n_seeds"],
+                    f"{r['acc_seed_std']:.4f}",
+                    f"{r['auc_seed_std']:.4f}",
+                ])
+            writer.writerow(row)
     logger.info(f"Summary saved: {csv_path}")
 
     # --- Per-fold CSV ---
@@ -396,27 +502,56 @@ def save_results(
                 ])
     logger.info(f"Per-fold saved: {folds_path}")
 
+    # --- Per-seed CSV (multi-seed only) ---
+    if is_multiseed:
+        seeds_path = output_dir / f"adhd_classification_{atlas}_seeds.csv"
+        with open(seeds_path, "w", newline="") as f:
+            writer = csv_mod.writer(f)
+            writer.writerow(["condition", "seed_idx", "acc_mean", "auc_mean"])
+            for _cond, r in results.items():
+                seed_accs = r.get("seed_accs", [])
+                seed_aucs = r.get("seed_aucs", [])
+                for si, (sa, su) in enumerate(zip(seed_accs, seed_aucs)):
+                    writer.writerow([
+                        r["condition"], si,
+                        f"{sa:.4f}", f"{su:.4f}",
+                    ])
+        logger.info(f"Per-seed saved: {seeds_path}")
+
     return csv_path
 
 
 def print_summary(all_results: dict[str, dict[str, dict]]) -> None:
     """Print formatted summary table."""
-    print("\n" + "=" * 78)
+    print("\n" + "=" * 90)
     print("Track H: ADHD vs Control Classification — Summary")
-    print("=" * 78)
-    print(f"{'Atlas':<8} {'Condition':<25} {'Accuracy':<18} {'AUC':<18}")
-    print("-" * 78)
+    print("=" * 90)
+
+    sample = next(iter(next(iter(all_results.values())).values()))
+    is_multiseed = "n_seeds" in sample
+
+    if is_multiseed:
+        print(
+            f"{'Atlas':<8} {'Condition':<25} {'Accuracy':<18} "
+            f"{'AUC':<18} {'Seed Std':<10}"
+        )
+    else:
+        print(f"{'Atlas':<8} {'Condition':<25} {'Accuracy':<18} {'AUC':<18}")
+    print("-" * 90)
 
     for atlas, results in all_results.items():
         for cond in ["raw_short", "bsnet", "reference"]:
             r = results[cond]
-            print(
+            line = (
                 f"{atlas.upper():<8} {r['label']:<25} "
                 f"{r['acc_mean']:.3f} ± {r['acc_std']:.3f}   "
                 f"{r['auc_mean']:.3f} ± {r['auc_std']:.3f}"
             )
-        print("-" * 78)
-    print("=" * 78)
+            if is_multiseed:
+                line += f"   {r.get('acc_seed_std', 0):.4f}"
+            print(line)
+        print("-" * 90)
+    print("=" * 90)
 
 
 # ============================================================================
@@ -437,12 +572,16 @@ def main() -> None:
         help="Short scan duration in seconds (default: 120)",
     )
     parser.add_argument(
-        "--n-repeats", type=int, default=10,
-        help="Number of CV repeats (default: 10)",
+        "--n-repeats", type=int, default=5,
+        help="Number of CV repeats per seed (default: 5)",
     )
     parser.add_argument(
         "--n-bootstraps", type=int, default=100,
         help="Bootstrap iterations per subject (default: 100)",
+    )
+    parser.add_argument(
+        "--n-seeds", type=int, default=1,
+        help="Number of bootstrap seeds (default: 1, set >1 for multi-seed)",
     )
     parser.add_argument(
         "--correction-method",
@@ -468,14 +607,27 @@ def main() -> None:
         logger.info(f"{'='*60}")
 
         t0 = time.time()
-        results = run_experiment(
-            atlas=atlas,
-            short_sec=args.short_sec,
-            n_repeats=args.n_repeats,
-            n_bootstraps=args.n_bootstraps,
-            correction_method=args.correction_method,
-            seed=args.seed,
-        )
+
+        if args.n_seeds > 1:
+            results = run_multiseed_experiment(
+                atlas=atlas,
+                n_seeds=args.n_seeds,
+                short_sec=args.short_sec,
+                n_repeats=args.n_repeats,
+                n_bootstraps=args.n_bootstraps,
+                correction_method=args.correction_method,
+                seed_base=args.seed,
+            )
+        else:
+            results = run_experiment(
+                atlas=atlas,
+                short_sec=args.short_sec,
+                n_repeats=args.n_repeats,
+                n_bootstraps=args.n_bootstraps,
+                correction_method=args.correction_method,
+                seed=args.seed,
+            )
+
         elapsed = time.time() - t0
         logger.info(f"Elapsed: {elapsed:.1f}s")
 

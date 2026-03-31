@@ -6,6 +6,7 @@ Runs BS-NET at multiple short-scan durations and records r_FC (raw) and
 
   - **abide**: ABIDE PCP (CC200/CC400), variable TR per site
   - **ds007535**: OpenNeuro SpeechHemi (Schaefer 200/400), TR=2.0s, ~15 min
+  - **ds000243**: WashU resting-state (N=50, ≥15 min), fMRIPrep preprocessed
 
 Design:
   - Common subset: only subjects with total scan ≥ min_total_sec
@@ -19,6 +20,9 @@ Usage:
 
     # ds007535 (15-min task-residual, Schaefer 200)
     python src/scripts/run_duration_sweep.py --dataset ds007535 --atlas schaefer200
+
+    # ds000243 (WashU resting-state, Schaefer 200)
+    python src/scripts/run_duration_sweep.py --dataset ds000243 --atlas schaefer200
 
     # Quick test
     python src/scripts/run_duration_sweep.py --dataset ds007535 --max-subjects 5 --n-seeds 2
@@ -52,8 +56,9 @@ logger = logging.getLogger(__name__)
 # ── Configuration ────────────────────────────────────────────────────────
 
 # Default durations per dataset (seconds)
-DURATIONS_ABIDE = [30, 60, 90, 120, 150, 180]
+DURATIONS_ABIDE    = [30, 60, 90, 120, 150, 180]
 DURATIONS_DS007535 = [30, 60, 90, 120, 180, 240, 300, 450]
+DURATIONS_DS000243 = [30, 60, 90, 120, 180, 240, 300, 450]
 
 DEFAULT_SEEDS = list(range(42, 52))  # 10 seeds: 42–51
 CORRECTION_METHOD = "fisher_z"
@@ -72,10 +77,22 @@ TR_MAP_ABIDE = {
 # ds007535: fixed TR (from dataset JSON sidecar)
 TR_DS007535 = 2.0
 
+# ds000243: TR fallback (sidecar JSON preferred at runtime)
+TR_DS000243 = 2.0
+
 # Atlas mappings per dataset
 ATLAS_CHOICES = {
     "abide": ["cc200", "cc400"],
-    "ds007535": ["schaefer200", "schaefer400"],
+    "ds007535": [
+        "schaefer200", "schaefer400",
+        "cc200", "cc400",
+        "aal", "harvard_oxford",
+    ],
+    "ds000243": [
+        "schaefer200", "schaefer400",
+        "cc200", "cc400",
+        "aal", "harvard_oxford",
+    ],
 }
 
 
@@ -203,6 +220,57 @@ def discover_subjects_ds007535(
     return subjects
 
 
+def discover_subjects_ds000243(
+    atlas: str,
+    min_total_sec: float,
+    max_subjects: int,
+) -> list[dict]:
+    """Discover preprocessed ds000243 subjects.
+
+    Args:
+        atlas: Atlas name (e.g. schaefer200).
+        min_total_sec: Minimum total scan duration in seconds.
+        max_subjects: Limit (0 = all).
+
+    Returns:
+        List of subject dicts.
+    """
+    cache_dir = Path("data/ds000243/timeseries_cache") / atlas
+    if not cache_dir.exists():
+        logger.error(f"Cache directory not found: {cache_dir}")
+        return []
+
+    tr = TR_DS000243
+    subjects = []
+    for npy_file in sorted(cache_dir.glob(f"*_{atlas}.npy")):
+        sub_id = npy_file.stem.replace(f"_{atlas}", "")
+        ts = np.load(npy_file)
+        n_vols = ts.shape[0]
+        total_sec = n_vols * tr
+
+        if total_sec < min_total_sec:
+            continue
+
+        subjects.append({
+            "sub_id": sub_id,
+            "ts_path": str(npy_file),
+            "site": "ds000243",
+            "tr": tr,
+            "n_vols": n_vols,
+            "total_sec": total_sec,
+            "n_rois": ts.shape[1],
+        })
+
+    if max_subjects > 0:
+        subjects = subjects[:max_subjects]
+
+    logger.info(
+        f"[ds000243] {len(subjects)} subjects with ≥{min_total_sec}s "
+        f"(atlas={atlas})"
+    )
+    return subjects
+
+
 def discover_subjects(
     dataset: str,
     atlas: str,
@@ -224,6 +292,8 @@ def discover_subjects(
         return discover_subjects_abide(atlas, min_total_sec, max_subjects)
     if dataset == "ds007535":
         return discover_subjects_ds007535(atlas, min_total_sec, max_subjects)
+    if dataset == "ds000243":
+        return discover_subjects_ds000243(atlas, min_total_sec, max_subjects)
     raise ValueError(f"Unknown dataset: {dataset}")
 
 
@@ -446,9 +516,12 @@ def run_duration_sweep(
         Path to per-record CSV.
     """
     if durations is None:
-        durations = (
-            DURATIONS_DS007535 if dataset == "ds007535" else DURATIONS_ABIDE
-        )
+        if dataset == "ds007535":
+            durations = DURATIONS_DS007535
+        elif dataset == "ds000243":
+            durations = DURATIONS_DS000243
+        else:
+            durations = DURATIONS_ABIDE
     if seeds is None:
         seeds = DEFAULT_SEEDS
 
@@ -574,7 +647,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--dataset", default="ds007535",
-        choices=["abide", "ds007535"],
+        choices=["abide", "ds007535", "ds000243"],
         help="Dataset to use (default: ds007535)",
     )
     parser.add_argument(
@@ -613,7 +686,10 @@ def main() -> None:
         atlas = ATLAS_CHOICES[args.dataset][0]  # first default
     min_total_sec = args.min_total_sec
     if min_total_sec <= 0:
-        min_total_sec = 360.0 if args.dataset == "abide" else 600.0
+        if args.dataset == "abide":
+            min_total_sec = 360.0
+        else:  # ds007535, ds000243
+            min_total_sec = 600.0
 
     # Validate atlas
     valid = ATLAS_CHOICES[args.dataset]
