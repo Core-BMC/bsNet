@@ -6,32 +6,34 @@ Pipeline:
   2. Load confounds (36P: 6 motion params + derivatives + quadratics + WM/CSF)
   3. Bandpass filter: 0.01–0.1 Hz  (NO task regression — pure resting-state)
   4. Parcellation: configurable atlas → (n_timepoints × n_rois) timeseries
-  5. Save as .npy per subject
+  5. Concatenate across runs (if multiple runs exist) and save as .npy per subject
 
 Input:
   ds000243/ (fMRIPrep output, BIDS derivative)
-    sub-XX/func/sub-XX_task-rest_space-MNI152NLin2009cAsym_res-2_desc-preproc_bold.nii.gz
-    sub-XX/func/sub-XX_task-rest_desc-confounds_timeseries.tsv
-    sub-XX/func/sub-XX_task-rest_bold.json   (optional — TR fallback = 2.0s)
+    sub-XX/func/sub-XX_task-rest_run-N_space-MNI152NLin6Asym_res-2_desc-preproc_bold.nii.gz
+    sub-XX/func/sub-XX_task-rest_run-N_desc-confounds_timeseries.tsv
+    sub-XX/func/sub-XX_task-rest_run-N_bold.json   (optional — TR fallback = 2.0s)
 
 Output:
   data/ds000243/timeseries_cache/{atlas}/sub-XX_{atlas}.npy
 
 Notes:
-  - ds000243 is the WashU resting-state dataset (N=50, ≥15 min scan).
+  - ds000243 is the WashU resting-state dataset (N=52, ≥15 min scan).
+  - sub-001~014 have a single long run; sub-015~052 have run-1 + run-2 (concatenated).
   - No task regressors needed (pure resting-state — cf. ds007535 task-residual).
   - Same 36P confound schema and atlas support as preprocess_ds007535.py.
-  - fMRIPrep filenames may vary; discover_subjects() uses flexible glob.
+  - fMRIPrep filenames may vary; discover_subjects() uses flexible glob and
+    strips space/res entities to locate confounds TSV (which lacks these entities).
 
 Usage:
-    # Process all subjects
-    python src/scripts/preprocess_ds000243.py --input-dir data/ds000243/raw
+    # Process all subjects (--input-dir = fMRIPrep derivative root)
+    python src/scripts/preprocess_ds000243.py --input-dir data/ds000243/results/fmrirep
 
     # Limit to first 5
-    python src/scripts/preprocess_ds000243.py --input-dir data/ds000243/raw --max-subjects 5
+    python src/scripts/preprocess_ds000243.py --input-dir data/ds000243/results/fmrirep --max-subjects 5
 
     # Custom atlas
-    python src/scripts/preprocess_ds000243.py --input-dir data/ds000243/raw --atlas schaefer400
+    python src/scripts/preprocess_ds000243.py --input-dir data/ds000243/results/fmrirep --atlas schaefer400
 """
 
 from __future__ import annotations
@@ -40,6 +42,7 @@ import argparse
 import json
 import logging
 import os
+import re
 from pathlib import Path
 
 import numpy as np
@@ -297,67 +300,92 @@ def _fetch_atlas(atlas: str) -> object:
 # ── Main processing ──────────────────────────────────────────────────────
 
 
-def process_single_subject(
+def _process_single_run(
     bold_path: Path,
     confounds_path: Path,
     json_path: Path | None,
-    atlas: str,
-    output_dir: Path,
-) -> dict | None:
-    """Process one subject: 36P confound regression + bandpass + parcellation.
-
-    No task regression is applied (pure resting-state).
+    masker: object,
+    tr: float,
+) -> np.ndarray | None:
+    """Process one run: confound regression + bandpass + parcellation.
 
     Args:
         bold_path: Path to preprocessed BOLD NIfTI.
         confounds_path: Path to confounds TSV.
-        json_path: Path to BOLD sidecar JSON (optional; TR fallback = 2.0s).
-        atlas: Atlas name (key in ATLAS_MAP).
-        output_dir: Output directory for .npy files.
+        json_path: Unused (TR already resolved by caller); kept for API symmetry.
+        masker: Fitted or unfitted NiftiLabelsMasker instance.
+        tr: Repetition time in seconds.
 
     Returns:
-        Dict with subject info, or None on failure.
+        (n_timepoints, n_rois) float32 array, or None on failure.
     """
     try:
         import nibabel as nib
-        from nilearn.maskers import NiftiLabelsMasker
     except ImportError as e:
         logger.error(f"Required package missing: {e}")
         return None
 
-    sub_id = bold_path.name.split("_")[0]  # sub-XX
-
-    # Load TR from sidecar JSON (fallback to TR_FALLBACK)
-    tr = TR_FALLBACK
-    if json_path and json_path.exists():
-        with open(json_path) as f:
-            meta = json.load(f)
-        tr = meta.get("RepetitionTime", TR_FALLBACK)
-
-    # Load BOLD
     img = nib.load(bold_path)
     n_timepoints = img.shape[-1]
     logger.info(
-        f"{sub_id}: {n_timepoints} volumes, TR={tr}s, "
+        f"  Run {bold_path.name}: {n_timepoints} vols, TR={tr}s, "
         f"total={n_timepoints * tr:.0f}s"
     )
 
-    # Load confounds (36P)
     confounds_36p = load_confounds_36p(confounds_path)
-
-    # Trim confounds if fMRIPrep included dummy scans not present in BOLD
     if confounds_36p.shape[0] > n_timepoints:
         n_trim = confounds_36p.shape[0] - n_timepoints
         logger.debug(f"  Trimming {n_trim} dummy volumes from confounds head")
         confounds_36p = confounds_36p[n_trim:]
 
-    logger.debug(f"  Confound matrix: {confounds_36p.shape}")
+    try:
+        ts = masker.fit_transform(img, confounds=confounds_36p)
+    except Exception as e:
+        logger.error(f"  Masker failed for {bold_path.name}: {e}")
+        return None
 
-    # Fetch atlas
+    return ts.astype(np.float32)
+
+
+def process_subject(
+    sub_id: str,
+    runs: list[dict],
+    atlas: str,
+    output_dir: Path,
+) -> dict | None:
+    """Process one subject: all runs concatenated → .npy timeseries.
+
+    Each run is denoised (36P) and bandpass-filtered independently, then
+    concatenated along the time axis before saving. This matches standard
+    multi-run FC preprocessing practice.
+
+    Args:
+        sub_id: Subject identifier (e.g. ``"sub-001"``).
+        runs: List of dicts, each with ``bold_path``, ``confounds_path``,
+              ``json_path`` (may be None).
+        atlas: Atlas name (key in ATLAS_MAP).
+        output_dir: Output directory for .npy files.
+
+    Returns:
+        Dict with subject summary, or None if all runs failed.
+    """
+    try:
+        from nilearn.maskers import NiftiLabelsMasker
+    except ImportError as e:
+        logger.error(f"Required package missing: {e}")
+        return None
+
+    # Resolve TR from first available sidecar JSON
+    tr = TR_FALLBACK
+    for run in runs:
+        jp = run.get("json_path")
+        if jp and jp.exists():
+            with open(jp) as f:
+                meta = json.load(f)
+            tr = meta.get("RepetitionTime", TR_FALLBACK)
+            break
+
     atlas_data = _fetch_atlas(atlas)
-
-    # Extract parcellated timeseries with 36P denoising + bandpass
-    # No task regressors — resting-state only
     masker = NiftiLabelsMasker(
         labels_img=atlas_data.maps,
         standardize="zscore_sample",
@@ -367,98 +395,155 @@ def process_single_subject(
         t_r=tr,
     )
 
-    try:
-        timeseries = masker.fit_transform(img, confounds=confounds_36p)
-    except Exception as e:
-        logger.error(f"{sub_id}: Masker failed: {e}")
+    all_ts: list[np.ndarray] = []
+    for run in runs:
+        ts = _process_single_run(
+            bold_path=run["bold_path"],
+            confounds_path=run["confounds_path"],
+            json_path=run.get("json_path"),
+            masker=masker,
+            tr=tr,
+        )
+        if ts is not None:
+            all_ts.append(ts)
+
+    if not all_ts:
+        logger.error(f"{sub_id}: all runs failed")
         return None
 
+    timeseries = np.concatenate(all_ts, axis=0)
+    n_vols_total = timeseries.shape[0]
     n_rois_actual = timeseries.shape[1]
-    logger.info(f"  Parcellated: ({n_timepoints}, {n_rois_actual})")
 
-    # Save
+    if len(all_ts) > 1:
+        logger.info(
+            f"{sub_id}: concatenated {len(all_ts)} runs → "
+            f"({n_vols_total}, {n_rois_actual}), "
+            f"total={n_vols_total * tr:.0f}s"
+        )
+    else:
+        logger.info(f"{sub_id}: ({n_vols_total}, {n_rois_actual})")
+
     output_dir.mkdir(parents=True, exist_ok=True)
     out_path = output_dir / f"{sub_id}_{atlas}.npy"
-    np.save(out_path, timeseries.astype(np.float32))
+    np.save(out_path, timeseries)
 
     return {
         "sub_id": sub_id,
-        "n_vols": n_timepoints,
+        "n_runs": len(all_ts),
+        "n_vols": n_vols_total,
         "tr": tr,
-        "total_sec": n_timepoints * tr,
+        "total_sec": n_vols_total * tr,
         "n_rois": n_rois_actual,
         "ts_path": str(out_path),
     }
 
 
+def _bold_base_entity(bold_name: str) -> str:
+    """Strip space/res/desc BIDS entities from a BOLD filename stem.
+
+    fMRIPrep embeds space/res/desc in BOLD filenames but NOT in confounds TSV.
+    This function extracts the minimal BIDS entity string (sub, task, run)
+    needed to locate the corresponding confounds file.
+
+    Example::
+
+        sub-001_task-rest_run-1_space-MNI152NLin6Asym_res-2_desc-preproc_bold.nii.gz
+        → sub-001_task-rest_run-1
+
+    Args:
+        bold_name: BOLD filename (basename only).
+
+    Returns:
+        Base entity string without space/res/desc suffixes.
+    """
+    # Strip .nii.gz / _bold.nii.gz suffix
+    stem = bold_name.replace("_bold.nii.gz", "").replace(".nii.gz", "")
+    # Remove _space-XXX, _res-XXX, _desc-XXX entities (and everything after)
+    base = re.sub(r"_(space|res|desc)-[^_]+", "", stem)
+    return base
+
+
 def discover_subjects(input_dir: Path) -> list[dict]:
     """Discover ds000243 subjects with fMRIPrep resting-state outputs.
 
-    Searches for any ``*_bold.nii.gz`` under sub-XX/func/ (flexible glob to
-    handle varying fMRIPrep space/res/desc suffix combinations). Skips
-    subjects whose BOLD file is an unretrieved DataLad annex stub (<1 MB).
+    Finds all runs per subject under sub-XX/func/. Multi-run subjects
+    (run-1 + run-2) are returned with both runs so they can be concatenated.
+    Skips BOLD files that are unretrieved DataLad annex stubs (<1 MB).
+
+    The confounds TSV uses a shorter filename than the BOLD (no space/res
+    entities). ``_bold_base_entity()`` strips those entities to resolve the
+    correct confounds path.
 
     Args:
-        input_dir: Root directory containing sub-XX/ subdirectories.
+        input_dir: fMRIPrep derivative root containing sub-XX/ subdirectories.
 
     Returns:
-        List of dicts with bold_path, confounds_path, json_path.
+        List of subject dicts, each with ``sub_id`` and ``runs`` (list of
+        dicts with ``bold_path``, ``confounds_path``, ``json_path``).
     """
     subjects = []
     for sub_dir in sorted(input_dir.glob("sub-*")):
+        if not sub_dir.is_dir():
+            continue  # skip sub-XX.html report files
         func_dir = sub_dir / "func"
         if not func_dir.exists():
             continue
 
-        # Prefer MNI152NLin2009cAsym preprocessed BOLD; fall back to any bold
+        # Collect all preproc BOLD candidates (sorted → run-1 before run-2)
         bold_candidates = sorted(func_dir.glob("*desc-preproc_bold.nii.gz"))
         if not bold_candidates:
             bold_candidates = sorted(func_dir.glob("*_bold.nii.gz"))
         if not bold_candidates:
             continue
 
-        bold_path = bold_candidates[0]
-
-        # Skip DataLad broken symlinks / unretrieved annex objects
-        try:
-            actual_size = bold_path.stat().st_size
-        except OSError:
-            logger.debug(f"  Skipping {bold_path.name}: broken symlink")
-            continue
-        if actual_size < 1_000_000:
-            logger.debug(
-                f"  Skipping {bold_path.name}: too small ({actual_size} bytes)"
-                " — likely unretrieved DataLad annex object"
-            )
-            continue
-
-        stem = bold_path.name.replace("_bold.nii.gz", "")
-        confounds_path = func_dir / f"{stem}_desc-confounds_timeseries.tsv"
-        json_path      = func_dir / f"{stem}_bold.json"
-
-        if not confounds_path.exists():
-            # Try without desc-preproc in stem (some fMRIPrep versions differ)
-            alt_stem = stem.replace("_desc-preproc", "")
-            alt_confounds = func_dir / f"{alt_stem}_desc-confounds_timeseries.tsv"
-            if alt_confounds.exists():
-                confounds_path = alt_confounds
-                alt_json = func_dir / f"{alt_stem}_bold.json"
-                if alt_json.exists():
-                    json_path = alt_json
-            else:
+        runs: list[dict] = []
+        for bold_path in bold_candidates:
+            # Skip DataLad broken symlinks / unretrieved annex objects
+            try:
+                actual_size = bold_path.stat().st_size
+            except OSError:
+                logger.debug(f"  Skipping {bold_path.name}: broken symlink")
+                continue
+            if actual_size < 1_000_000:
                 logger.debug(
-                    f"  Skipping {sub_dir.name}: confounds not found "
+                    f"  Skipping {bold_path.name}: too small ({actual_size} B)"
+                    " — likely unretrieved DataLad annex object"
+                )
+                continue
+
+            # Resolve confounds: strip space/res/desc to get base BIDS entity
+            base = _bold_base_entity(bold_path.name)
+            confounds_path = func_dir / f"{base}_desc-confounds_timeseries.tsv"
+            json_path = func_dir / f"{base}_bold.json"
+
+            if not confounds_path.exists():
+                logger.debug(
+                    f"  Skipping {bold_path.name}: confounds not found "
                     f"({confounds_path.name})"
                 )
                 continue
 
+            runs.append({
+                "bold_path": bold_path,
+                "confounds_path": confounds_path,
+                "json_path": json_path if json_path.exists() else None,
+            })
+
+        if not runs:
+            logger.debug(f"  Skipping {sub_dir.name}: no valid runs found")
+            continue
+
         subjects.append({
-            "bold_path": bold_path,
-            "confounds_path": confounds_path,
-            "json_path": json_path if json_path.exists() else None,
+            "sub_id": sub_dir.name,
+            "runs": runs,
         })
 
-    logger.info(f"Discovered {len(subjects)} subjects in {input_dir}")
+    logger.info(
+        f"Discovered {len(subjects)} subjects in {input_dir} "
+        f"(runs/subject: "
+        f"{sum(len(s['runs']) for s in subjects) / max(len(subjects), 1):.1f} avg)"
+    )
     return subjects
 
 
@@ -472,7 +557,10 @@ def main() -> None:
     )
     parser.add_argument(
         "--input-dir", required=True, type=Path,
-        help="Path to ds000243 fMRIPrep derivative root (containing sub-XX/func/)",
+        help=(
+            "Path to ds000243 fMRIPrep derivative root (containing sub-XX/func/). "
+            "Example: data/ds000243/results/fmrirep"
+        ),
     )
     parser.add_argument(
         "--atlas", default="schaefer200",
@@ -490,40 +578,61 @@ def main() -> None:
         "--force", action="store_true",
         help="Reprocess subjects even if .npy already exists",
     )
+    parser.add_argument(
+        "--n-jobs", type=int, default=8,
+        help="Parallel workers (joblib loky). -1 = all CPUs, 1 = sequential (default: 8)",
+    )
     args = parser.parse_args()
 
     output_dir = args.output_dir or (
         Path("data/ds000243/timeseries_cache") / args.atlas
     )
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     subjects = discover_subjects(args.input_dir)
     if args.max_subjects > 0:
         subjects = subjects[: args.max_subjects]
 
-    results = []
-    for i, sub in enumerate(subjects):
-        sub_id = sub["bold_path"].parent.parent.name
-        out_path = output_dir / f"{sub_id}_{args.atlas}.npy"
+    # Filter already-processed subjects before dispatching workers
+    pending = []
+    for sub in subjects:
+        out_path = output_dir / f"{sub['sub_id']}_{args.atlas}.npy"
         if not args.force and out_path.exists():
-            logger.info(f"[{i + 1}/{len(subjects)}] Skipping {sub_id} (already exists)")
-            continue
-        logger.info(f"[{i + 1}/{len(subjects)}] Processing {sub_id}")
-        result = process_single_subject(
-            bold_path=sub["bold_path"],
-            confounds_path=sub["confounds_path"],
-            json_path=sub["json_path"],
+            logger.info(f"Skipping {sub['sub_id']} (already exists)")
+        else:
+            pending.append(sub)
+
+    logger.info(
+        f"{len(pending)} subjects to process, {len(subjects) - len(pending)} already done "
+        f"(n_jobs={args.n_jobs})"
+    )
+
+    def _run(sub: dict) -> dict | None:
+        return process_subject(
+            sub_id=sub["sub_id"],
+            runs=sub["runs"],
             atlas=args.atlas,
             output_dir=output_dir,
         )
-        if result:
-            results.append(result)
 
-    print(f"\nProcessed {len(results)}/{len(subjects)} subjects")
+    if args.n_jobs == 1:
+        results = [r for sub in pending if (r := _run(sub)) is not None]
+    else:
+        from joblib import Parallel, delayed
+        raw = Parallel(n_jobs=args.n_jobs, backend="loky", verbose=10)(
+            delayed(_run)(sub) for sub in pending
+        )
+        results = [r for r in raw if r is not None]
+
+    print(f"\nProcessed {len(results)}/{len(subjects)} subjects "
+          f"({len(subjects) - len(pending)} skipped)")
     print(f"Output: {output_dir}")
     if results:
         durations = [r["total_sec"] for r in results]
+        n_runs_list = [r["n_runs"] for r in results]
         print(f"Duration: {min(durations):.0f}–{max(durations):.0f}s "
               f"(mean={np.mean(durations):.0f}s)")
+        print(f"Runs/subject: {min(n_runs_list)}–{max(n_runs_list)}")
         print(f"ROIs: {results[0]['n_rois']}")
 
 
