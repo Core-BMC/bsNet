@@ -290,20 +290,22 @@ def run_bsnet_single(
         seed=seed,
     )
 
-    # Full-scan FC (reference)
-    fc_full_vec = get_fc_matrix(ts, vectorized=True, use_shrinkage=True)
+    # Full-scan FC (reference) — Fisher z-space for principled reliability estimation
+    # arctanh transform: maps Pearson r ∈ (-1,1) → unbounded z-space (nilearn default)
+    fc_full_vec = get_fc_matrix(ts, vectorized=True, use_shrinkage=True, fisher_z=True)
 
-    # Short-scan FC (first 2 minutes)
+    # Short-scan FC (first 2 minutes) — same space as fc_full_vec
     ts_short = ts[:short_vols, :]
-    fc_short_vec = get_fc_matrix(ts_short, vectorized=True, use_shrinkage=True)
+    fc_short_vec = get_fc_matrix(ts_short, vectorized=True, use_shrinkage=True, fisher_z=True)
 
-    # Baseline: raw correlation between short and full FC
+    # Baseline: raw correlation between short and full FC (both in z-space)
     r_fc_raw = float(np.corrcoef(fc_short_vec, fc_full_vec)[0, 1])
 
-    # BS-NET prediction
+    # BS-NET prediction — fisher_z_fc=True keeps bootstrap FC in same z-space
     result = run_bootstrap_prediction(
         ts_short, fc_full_vec, config,
         correction_method=correction_method,
+        fisher_z_fc=True,
     )
 
     # BS-NET enhanced FC correlation

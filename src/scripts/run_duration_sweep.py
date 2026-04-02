@@ -58,7 +58,8 @@ logger = logging.getLogger(__name__)
 # Default durations per dataset (seconds)
 DURATIONS_ABIDE    = [30, 60, 90, 120, 150, 180]
 DURATIONS_DS007535 = [30, 60, 90, 120, 180, 240, 300, 450]
-DURATIONS_DS000243 = [30, 60, 90, 120, 180, 240, 300, 450]
+DURATIONS_DS000243      = [30, 60, 90, 120, 180, 240, 300, 450]
+DURATIONS_DS000243_XCPD = [30, 60, 90, 120, 180, 240, 300, 450]
 
 DEFAULT_SEEDS = list(range(42, 52))  # 10 seeds: 42–51
 CORRECTION_METHOD = "fisher_z"
@@ -77,8 +78,8 @@ TR_MAP_ABIDE = {
 # ds007535: fixed TR (from dataset JSON sidecar)
 TR_DS007535 = 2.0
 
-# ds000243: TR fallback (sidecar JSON preferred at runtime)
-TR_DS000243 = 2.0
+# ds000243: TR confirmed from NIfTI header get_zooms()[3] = 2.5s (all subjects)
+TR_DS000243 = 2.5
 
 # Atlas mappings per dataset
 ATLAS_CHOICES = {
@@ -89,6 +90,13 @@ ATLAS_CHOICES = {
         "aal", "harvard_oxford",
     ],
     "ds000243": [
+        "schaefer200", "schaefer400",
+        "cc200", "cc400",
+        "aal", "harvard_oxford",
+    ],
+    # XCP-D post-processed variant: same atlases, different cache directory
+    # (data/ds000243/timeseries_cache_xcpd/{atlas}/)
+    "ds000243_xcpd": [
         "schaefer200", "schaefer400",
         "cc200", "cc400",
         "aal", "harvard_oxford",
@@ -271,6 +279,66 @@ def discover_subjects_ds000243(
     return subjects
 
 
+def discover_subjects_ds000243_xcpd(
+    atlas: str,
+    min_total_sec: float,
+    max_subjects: int,
+) -> list[dict]:
+    """Discover XCP-D post-processed ds000243 subjects.
+
+    Reads from ``data/ds000243/timeseries_cache_xcpd/{atlas}/`` which is
+    populated by ``convert_xcpd_to_npy.py``.
+
+    Args:
+        atlas: Atlas name (e.g. schaefer200).
+        min_total_sec: Minimum total scan duration in seconds.
+        max_subjects: Limit (0 = all).
+
+    Returns:
+        List of subject dicts (same schema as other discover_subjects_*).
+    """
+    cache_dir = Path("data/ds000243/timeseries_cache_xcpd") / atlas
+    if not cache_dir.exists():
+        logger.error(
+            f"XCP-D cache directory not found: {cache_dir}\n"
+            "  Run convert_xcpd_to_npy.py first:\n"
+            "  python src/scripts/convert_xcpd_to_npy.py "
+            "--xcpd-dir data/ds000243/results/xcpd "
+            f"--atlas {atlas.capitalize()}"
+        )
+        return []
+
+    tr = TR_DS000243
+    subjects = []
+    for npy_file in sorted(cache_dir.glob(f"*_{atlas}.npy")):
+        sub_id = npy_file.stem.replace(f"_{atlas}", "")
+        ts = np.load(npy_file)
+        n_vols = ts.shape[0]
+        total_sec = n_vols * tr
+
+        if total_sec < min_total_sec:
+            continue
+
+        subjects.append({
+            "sub_id": sub_id,
+            "ts_path": str(npy_file),
+            "site": "ds000243_xcpd",
+            "tr": tr,
+            "n_vols": n_vols,
+            "total_sec": total_sec,
+            "n_rois": ts.shape[1],
+        })
+
+    if max_subjects > 0:
+        subjects = subjects[:max_subjects]
+
+    logger.info(
+        f"[ds000243_xcpd] {len(subjects)} subjects with ≥{min_total_sec}s "
+        f"(atlas={atlas})"
+    )
+    return subjects
+
+
 def discover_subjects(
     dataset: str,
     atlas: str,
@@ -280,7 +348,7 @@ def discover_subjects(
     """Route to dataset-specific discovery function.
 
     Args:
-        dataset: Dataset name ("abide" or "ds007535").
+        dataset: Dataset name ("abide", "ds007535", "ds000243", "ds000243_xcpd").
         atlas: Atlas name.
         min_total_sec: Minimum total scan duration.
         max_subjects: Limit (0 = all).
@@ -294,6 +362,8 @@ def discover_subjects(
         return discover_subjects_ds007535(atlas, min_total_sec, max_subjects)
     if dataset == "ds000243":
         return discover_subjects_ds000243(atlas, min_total_sec, max_subjects)
+    if dataset == "ds000243_xcpd":
+        return discover_subjects_ds000243_xcpd(atlas, min_total_sec, max_subjects)
     raise ValueError(f"Unknown dataset: {dataset}")
 
 
@@ -328,8 +398,8 @@ def sweep_single_subject(
         ts = ts[:, valid_cols]
         n_rois = ts.shape[1]
 
-    # Reference FC: full timeseries
-    fc_full_vec = get_fc_matrix(ts, vectorized=True, use_shrinkage=True)
+    # Reference FC: full timeseries — Fisher z-space for unbiased comparison
+    fc_full_vec = get_fc_matrix(ts, vectorized=True, use_shrinkage=True, fisher_z=True)
 
     results = []
     for dur_sec in durations:
@@ -340,10 +410,10 @@ def sweep_single_subject(
 
         ts_short = ts[:short_vols, :]
         fc_short_vec = get_fc_matrix(
-            ts_short, vectorized=True, use_shrinkage=True
+            ts_short, vectorized=True, use_shrinkage=True, fisher_z=True
         )
 
-        # Raw FC similarity
+        # Raw FC similarity (Pearson r between z-transformed FC vectors)
         r_fc_raw = float(np.corrcoef(fc_short_vec, fc_full_vec)[0, 1])
 
         # BS-NET pipeline
@@ -360,6 +430,7 @@ def sweep_single_subject(
             result = run_bootstrap_prediction(
                 ts_short, fc_full_vec, config,
                 correction_method=CORRECTION_METHOD,
+                fisher_z_fc=True,
             )
             rho_hat_T = float(result.rho_hat_T)
             ci_lower = float(result.ci_lower)
@@ -518,7 +589,7 @@ def run_duration_sweep(
     if durations is None:
         if dataset == "ds007535":
             durations = DURATIONS_DS007535
-        elif dataset == "ds000243":
+        elif dataset in ("ds000243", "ds000243_xcpd"):
             durations = DURATIONS_DS000243
         else:
             durations = DURATIONS_ABIDE
@@ -583,7 +654,9 @@ def run_duration_sweep(
     )
 
     # ── Save per-record CSV ──────────────────────────────────────────────
-    results_dir = Path(f"data/{dataset}/results")
+    # ds000243_xcpd → share results dir with ds000243 for easy comparison
+    results_dataset = "ds000243" if dataset == "ds000243_xcpd" else dataset
+    results_dir = Path(f"data/{results_dataset}/results")
     results_dir.mkdir(parents=True, exist_ok=True)
 
     csv_path = results_dir / f"{dataset}_duration_sweep_{atlas}.csv"
@@ -647,8 +720,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--dataset", default="ds007535",
-        choices=["abide", "ds007535", "ds000243"],
-        help="Dataset to use (default: ds007535)",
+        choices=["abide", "ds007535", "ds000243", "ds000243_xcpd"],
+        help=(
+            "Dataset to use (default: ds007535). "
+            "'ds000243_xcpd' uses XCP-D post-processed timeseries from "
+            "data/ds000243/timeseries_cache_xcpd/ "
+            "(run convert_xcpd_to_npy.py first)."
+        ),
     )
     parser.add_argument(
         "--atlas", default=None,
@@ -688,7 +766,7 @@ def main() -> None:
     if min_total_sec <= 0:
         if args.dataset == "abide":
             min_total_sec = 360.0
-        else:  # ds007535, ds000243
+        else:  # ds007535, ds000243, ds000243_xcpd
             min_total_sec = 600.0
 
     # Validate atlas

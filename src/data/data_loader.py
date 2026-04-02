@@ -125,15 +125,50 @@ def create_masker(atlas_img, standardize="zscore_sample", detrend=True, low_pass
     )
     return masker
 
-def get_fc_matrix(time_series, vectorized=True, use_shrinkage=False):
-    """
-    Compute Pearson correlation matrix (FC) from time series.
-    Assumes time_series is shape (n_samples, n_rois).
-    If use_shrinkage is True, use Ledoit-Wolf estimation for robustness on short data.
-    Falls back to np.corrcoef if sklearn is unavailable.
+def get_fc_matrix(
+    time_series,
+    vectorized: bool = True,
+    use_shrinkage: bool = False,
+    fisher_z: bool = False,
+    partial_corr: bool = False,
+):
+    """Compute FC matrix from timeseries.
+
+    Computes Pearson r or partial correlation (optionally with Ledoit-Wolf
+    shrinkage), then optionally applies Fisher z-transform (arctanh).
+
+    Method selection:
+        - partial_corr=False, use_shrinkage=False : np.corrcoef (Pearson r)
+        - partial_corr=False, use_shrinkage=True  : LW regularized Pearson r
+        - partial_corr=True,  use_shrinkage=True  : LW precision → partial corr
+          (recommended: LW regularization makes precision matrix inversion stable)
+        - partial_corr=True,  use_shrinkage=False : pseudo-inverse of np.corrcoef
+          (not recommended for short timeseries — ill-conditioned)
+
+    Partial correlation derivation:
+        Given precision matrix Θ = Σ⁻¹:
+            partial_corr[i,j] = -Θ[i,j] / sqrt(Θ[i,i] * Θ[j,j])
+        This reflects direct pairwise connectivity after partialling out
+        all other ROIs (nilearn ConnectivityMeasure kind='partial correlation').
+
+    Args:
+        time_series: Array of shape (n_samples, n_rois).
+        vectorized: If True, return upper-triangle vector; else return matrix.
+        use_shrinkage: Use Ledoit-Wolf covariance estimator (recommended for
+            short timeseries). Falls back to np.corrcoef if sklearn unavailable.
+        fisher_z: If True, apply arctanh to correlation values before
+            returning (Fisher z-transform). Values are clipped to ±0.9999
+            before transform to avoid ±inf. Default False for backward compat.
+        partial_corr: If True, compute partial correlation via precision matrix
+            inversion instead of Pearson r. Requires use_shrinkage=True for
+            numerical stability with short timeseries (n_samples < n_rois).
+            Default False for backward compat.
+
+    Returns:
+        FC vector or matrix. Values are in [-1, 1] (Pearson r or partial corr)
+        if fisher_z=False, or arctanh-transformed (unbounded) if fisher_z=True.
     """
     if time_series.shape[0] < 3:
-        # Edge case: avoid breaking
         res = np.zeros((time_series.shape[1], time_series.shape[1]))
         if vectorized:
             return res[np.triu_indices_from(res, k=1)]
@@ -142,14 +177,34 @@ def get_fc_matrix(time_series, vectorized=True, use_shrinkage=False):
     if use_shrinkage and HAS_SKLEARN:
         lw = LedoitWolf()
         cov_matrix = lw.fit(time_series).covariance_
-        d = np.sqrt(np.diag(cov_matrix))
-        d[d == 0] = 1e-10
-        corr_matrix = cov_matrix / np.outer(d, d)
-        corr_matrix = np.clip(corr_matrix, -1.0, 1.0)
+
+        if partial_corr:
+            # Precision matrix = inverse of regularized covariance
+            # LW shrinkage ensures positive-definite → stable inversion
+            precision = np.linalg.inv(cov_matrix)
+            d = np.sqrt(np.diag(precision))
+            d[d == 0] = 1e-10
+            corr_matrix = -precision / np.outer(d, d)
+            np.fill_diagonal(corr_matrix, 0)
+        else:
+            d = np.sqrt(np.diag(cov_matrix))
+            d[d == 0] = 1e-10
+            corr_matrix = cov_matrix / np.outer(d, d)
+            corr_matrix = np.clip(corr_matrix, -1.0, 1.0)
+            np.fill_diagonal(corr_matrix, 0)
     else:
         corr_matrix = np.corrcoef(time_series.T)
+        if partial_corr:
+            # Use pseudo-inverse (may be unstable for short timeseries)
+            precision = np.linalg.pinv(corr_matrix)
+            d = np.sqrt(np.diag(precision))
+            d[d == 0] = 1e-10
+            corr_matrix = -precision / np.outer(d, d)
+        np.fill_diagonal(corr_matrix, 0)
 
-    np.fill_diagonal(corr_matrix, 0)
+    if fisher_z:
+        # arctanh(0) = 0 for diagonal entries; clip off-diagonal to ±0.9999
+        corr_matrix = np.arctanh(np.clip(corr_matrix, -0.9999, 0.9999))
 
     if vectorized:
         indices = np.triu_indices_from(corr_matrix, k=1)

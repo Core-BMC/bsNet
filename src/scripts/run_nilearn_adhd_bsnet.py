@@ -322,20 +322,21 @@ def run_bsnet_single(
         seed=seed,
     )
 
-    # Reference FC from full scan
-    fc_full_vec = get_fc_matrix(ts, vectorized=True, use_shrinkage=True)
+    # Reference FC from full scan — Fisher z-space (nilearn convention)
+    fc_full_vec = get_fc_matrix(ts, vectorized=True, use_shrinkage=True, fisher_z=True)
 
-    # Short scan (first 2 min)
+    # Short scan (first 2 min) — same space as fc_full_vec
     ts_short = ts[:short_vols, :]
-    fc_short_vec = get_fc_matrix(ts_short, vectorized=True, use_shrinkage=True)
+    fc_short_vec = get_fc_matrix(ts_short, vectorized=True, use_shrinkage=True, fisher_z=True)
 
-    # Baseline correlation
+    # Baseline correlation (both vectors in z-space)
     r_fc_raw = float(np.corrcoef(fc_short_vec, fc_full_vec)[0, 1])
 
-    # BS-NET
+    # BS-NET — fisher_z_fc=True keeps bootstrap FC in z-space to match fc_full_vec
     result = run_bootstrap_prediction(
         ts_short, fc_full_vec, config,
         correction_method=correction_method,
+        fisher_z_fc=True,
     )
 
     return {
@@ -737,8 +738,8 @@ def _multiseed_adhd_worker(args: tuple) -> dict:
 
     short_vols = int(short_sec / tr)
     ts_short = ts[:short_vols, :]
-    fc_full_vec = get_fc_matrix(ts, vectorized=True, use_shrinkage=True)
-    fc_short_vec = get_fc_matrix(ts_short, vectorized=True, use_shrinkage=True)
+    fc_full_vec = get_fc_matrix(ts, vectorized=True, use_shrinkage=True, fisher_z=True)
+    fc_short_vec = get_fc_matrix(ts_short, vectorized=True, use_shrinkage=True, fisher_z=True)
     r_fc_raw = float(np.corrcoef(fc_short_vec, fc_full_vec)[0, 1])
 
     rho_arr = np.zeros(n_seeds)
@@ -756,6 +757,7 @@ def _multiseed_adhd_worker(args: tuple) -> dict:
         result = run_bootstrap_prediction(
             ts_short, fc_full_vec, config,
             correction_method=corr_method,
+            fisher_z_fc=True,
         )
         rho_arr[s] = float(result.rho_hat_T)
         ci_lo_arr[s] = float(result.ci_lower)

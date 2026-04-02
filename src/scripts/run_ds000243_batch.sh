@@ -60,7 +60,11 @@ for ATLAS in ${ATLASES}; do
     RAW_CSV="${RESULTS_DIR}/${DATASET}_duration_sweep_${ATLAS}.csv"
 
     # ── Step 1: preprocess (atlas별 timeseries_cache 없으면 실행) ─────────
-    N_CACHED=$(find "${CACHE_ATLAS_DIR}" -name "*.npy" 2>/dev/null | wc -l | tr -d ' ')
+    if [[ -d "${CACHE_ATLAS_DIR}" ]]; then
+        N_CACHED=$(find "${CACHE_ATLAS_DIR}" -name "*.npy" | wc -l | tr -d ' ')
+    else
+        N_CACHED=0
+    fi
     if [[ "${FORCE}" == "1" || "${N_CACHED}" -lt 50 ]]; then
         echo -e "${GREEN}[PREPROC]${NC} ${ATLAS} (cached: ${N_CACHED}/52) ..."
         PREPROC_START=$(date +%s)

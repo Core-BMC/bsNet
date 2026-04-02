@@ -72,8 +72,9 @@ if _MACOS_CERT.exists():
 
 # ── Constants ────────────────────────────────────────────────────────────
 
-# Default TR fallback for ds000243 (WashU HCP-style; sidecar JSON is preferred)
-TR_FALLBACK = 2.0
+# Default TR fallback for ds000243 (WashU resting-state; sidecar JSON is preferred)
+# Confirmed from NIfTI header: get_zooms()[3] = 2.5s (all subjects)
+TR_FALLBACK = 2.5
 
 # 36P confound columns (Ciric et al., 2017; Satterthwaite et al., 2013)
 CONFOUND_COLS_BASE = [

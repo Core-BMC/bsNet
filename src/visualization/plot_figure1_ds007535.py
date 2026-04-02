@@ -148,11 +148,14 @@ def _plot_panel_a(
     ax: plt.Axes,
     atlas_sub_durs: dict[str, pd.DataFrame],
     atlas_aggs: dict[str, pd.DataFrame],
+    single_atlas_only: bool = False,
 ) -> None:
-    """Panel A: ρ̂T + r_FC vs. duration — all 6 atlases, Schaefer200 prominent.
+    """Panel A: ρ̂T + r_FC vs. duration — Schaefer200 prominent.
 
-    r_FC (Amber) shown only for primary atlas.
-    ρ̂T shown for all atlases using atlas colors; non-primary heavily faded.
+    single_atlas_only=False: ρ̂T shown for all atlases; non-primary faded.
+                             Legend includes atlas names.
+    single_atlas_only=True : Only primary atlas shown.
+                             Legend has only r_FC / ρ̂T (no atlas name).
     """
     PRIMARY = "schaefer200"
 
@@ -168,7 +171,7 @@ def _plot_panel_a(
     ax.plot(dur_p, agg_p["r_fc_mean"], color=C_RAW, lw=2.5, marker="o",
             markersize=6, zorder=4)
 
-    # ── bs-Net ρ̂T: all 6 atlases (no auto-labels; legend built manually) ──
+    # ── bs-Net ρ̂T ──
     for atlas_key, agg in atlas_aggs.items():
         m       = ATLAS_META[atlas_key]
         color   = m["color"]
@@ -192,27 +195,37 @@ def _plot_panel_a(
 
     ax.axvline(x=TWO_MIN_SEC, color="#888888", lw=1.5, ls="--", alpha=0.7)
 
-    # ── Custom legend: concept labels + atlas entries (Schaefer200 faded, right below ρ̂T) ──
-    m_p   = ATLAS_META[PRIMARY]
-    OTHER = [k for k in atlas_aggs if k != PRIMARY]
-    legend_handles = [
-        Line2D([0], [0], color=C_RAW, lw=2.5, marker="o", markersize=6,
-               label=r"$r_{\mathrm{FC}}$ (Raw)"),
-        Line2D([0], [0], color=m_p["color"], lw=2.5, marker=m_p["marker"],
-               markersize=6, alpha=0.92,
-               label=r"$\hat{\rho}_T$ (bs-Net)"),
-        # Schaefer200 — faded, identical style to other atlas entries
-        Line2D([0], [0], color=m_p["color"], lw=1.0, ls=m_p["ls"],
-               marker=m_p["marker"], markersize=2.5, alpha=0.25,
-               label=m_p["label"]),
-        *[
-            Line2D([0], [0], color=ATLAS_META[k]["color"], lw=1.0,
-                   ls=ATLAS_META[k]["ls"], marker=ATLAS_META[k]["marker"],
-                   markersize=2.5, alpha=0.25, label=ATLAS_META[k]["label"])
-            for k in OTHER
-        ],
-    ]
-    ax.legend(handles=legend_handles, fontsize=9.0, framealpha=0.9, ncol=2)
+    # ── Legend ──
+    m_p = ATLAS_META[PRIMARY]
+    if single_atlas_only:
+        # Clean 2-entry legend: concept labels only, no atlas name
+        legend_handles = [
+            Line2D([0], [0], color=C_RAW, lw=2.5, marker="o", markersize=6,
+                   label=r"$r_{\mathrm{FC}}$ (Raw)"),
+            Line2D([0], [0], color=m_p["color"], lw=2.5, marker=m_p["marker"],
+                   markersize=6, alpha=0.92,
+                   label=r"$\hat{\rho}_T$ (bs-Net)"),
+        ]
+        ax.legend(handles=legend_handles, fontsize=9.5, framealpha=0.9)
+    else:
+        OTHER = [k for k in atlas_aggs if k != PRIMARY]
+        legend_handles = [
+            Line2D([0], [0], color=C_RAW, lw=2.5, marker="o", markersize=6,
+                   label=r"$r_{\mathrm{FC}}$ (Raw)"),
+            Line2D([0], [0], color=m_p["color"], lw=2.5, marker=m_p["marker"],
+                   markersize=6, alpha=0.92,
+                   label=r"$\hat{\rho}_T$ (bs-Net)"),
+            Line2D([0], [0], color=m_p["color"], lw=1.0, ls=m_p["ls"],
+                   marker=m_p["marker"], markersize=2.5, alpha=0.25,
+                   label=m_p["label"]),
+            *[
+                Line2D([0], [0], color=ATLAS_META[k]["color"], lw=1.0,
+                       ls=ATLAS_META[k]["ls"], marker=ATLAS_META[k]["marker"],
+                       markersize=2.5, alpha=0.25, label=ATLAS_META[k]["label"])
+                for k in OTHER
+            ],
+        ]
+        ax.legend(handles=legend_handles, fontsize=9.0, framealpha=0.9, ncol=2)
 
     ax.set_xlabel("Scan Duration (s)", **FONT_AXIS)
     ax.set_ylabel("Correlation with Reference FC", **FONT_AXIS)
@@ -226,24 +239,33 @@ def _plot_panel_a(
 def _plot_panel_b(
     ax: plt.Axes,
     atlas_sub_durs: dict[str, pd.DataFrame],
+    single_atlas_only: bool = False,
 ) -> None:
-    """Panel B: Improvement Δ = ρ̂T − r_FC — grouped box plots, all atlases.
+    """Panel B: Improvement Δ = ρ̂T − r_FC — grouped box plots.
 
-    Each duration has 6 atlas box plots (offset within group).
-    Medians connected by lines per atlas. Semi-transparent boxes.
+    single_atlas_only=False: 6 atlas groups per duration, offset within group.
+    single_atlas_only=True : Single atlas, box centered at tick (offset=0),
+                             legend label = "bs-Net".
 
     Args:
         ax: Axes to plot on.
         atlas_sub_durs: Dict of seed-averaged subject DataFrames per atlas.
+        single_atlas_only: If True, simplified single-atlas layout.
     """
     durations = sorted(
         next(iter(atlas_sub_durs.values()))["duration_sec"].unique()
     )
-    n_dur    = len(durations)
-    n_atlas  = len(atlas_sub_durs)
-    x_idx    = np.arange(n_dur)                          # 0…7
-    offsets  = np.linspace(-0.38, 0.38, n_atlas)
-    box_w    = 0.10
+    n_dur   = len(durations)
+    n_atlas = len(atlas_sub_durs)
+    x_idx   = np.arange(n_dur)  # 0…n_dur-1
+
+    # Offset spacing: single mode → centered at 0; multi → spread ±0.38
+    if single_atlas_only or n_atlas == 1:
+        offsets = np.array([0.0])
+        box_w   = 0.30  # wider box when single
+    else:
+        offsets = np.linspace(-0.38, 0.38, n_atlas)
+        box_w   = 0.10
 
     ax.axhline(y=0, color="#888888", lw=1.0, ls="-", alpha=0.5, zorder=1)
 
@@ -254,7 +276,6 @@ def _plot_panel_b(
         color    = m["color"]
         is_main  = atlas_key == PRIMARY
 
-        # Schaefer200: full opacity; others: heavily faded
         box_alpha  = 0.55 if is_main else 0.12
         line_alpha = 0.90 if is_main else 0.30
         lw_scale   = m["lw"] if is_main else max(m["lw"] * 0.6, 0.8)
@@ -294,29 +315,35 @@ def _plot_panel_b(
             )
 
         # Median connection line
+        legend_label = "bs-Net" if (single_atlas_only and is_main) else m["label"]
         if positions:
             ax.plot(positions, medians,
                     color=color, lw=lw_scale, ls=m["ls"],
                     marker=m["marker"], markersize=ms_scale,
-                    alpha=line_alpha, label=m["label"],
+                    alpha=line_alpha, label=legend_label,
                     zorder=5 if is_main else 2)
 
+    # X-axis: tick at each duration label, xlim centered on boxes
     ax.set_xticks(x_idx)
     ax.set_xticklabels([str(d) for d in durations], fontsize=FONT_TICK)
+    ax.set_xlim(x_idx[0] - 0.6, x_idx[-1] + 0.6)
     ax.set_xlabel("Scan Duration (s)", **FONT_AXIS)
     ax.set_ylabel(r"$\hat{\rho}_T - r_{\mathrm{FC}}$ (Δ)", **FONT_AXIS)
     ax.set_title("B", loc="left", **FONT_PANEL)
     ax.tick_params(labelsize=FONT_TICK)
-    ax.legend(fontsize=8, framealpha=0.9, ncol=2)
+    ncol = 1 if single_atlas_only else 2
+    ax.legend(fontsize=8, framealpha=0.9, ncol=ncol)
 
 
 def _plot_panel_c(
     ax: plt.Axes,
     atlas_aggs: dict[str, pd.DataFrame],
+    single_atlas_only: bool = False,
 ) -> None:
-    """Panel C: 95% CI width decay — all 6 atlases, Schaefer200 prominent.
+    """Panel C: 95% CI width decay — Schaefer200 prominent.
 
-    Each atlas: mean CI width line + ±1 SD fill. Non-primary heavily faded.
+    single_atlas_only=True : Only primary atlas, legend label = "bs-Net".
+    single_atlas_only=False: All atlases with non-primary faded.
     """
     PRIMARY = "schaefer200"
 
@@ -330,7 +357,7 @@ def _plot_panel_c(
         lw         = 2.5  if is_main else 1.0
         ms         = 6.0  if is_main else 2.5
         zline      = 4    if is_main else 2
-        label      = m["label"]
+        label      = "bs-Net" if (single_atlas_only and is_main) else m["label"]
 
         dur = agg["duration_sec"]
         ax.fill_between(dur,
@@ -350,7 +377,8 @@ def _plot_panel_c(
     ax.set_ylim(0, None)
     ax.set_xticks(XTICKS)
     ax.tick_params(labelsize=FONT_TICK)
-    ax.legend(fontsize=9.5, framealpha=0.9, ncol=2)
+    ncol = 1 if single_atlas_only else 2
+    ax.legend(fontsize=9.5, framealpha=0.9, ncol=ncol)
 
 
 def _plot_panel_d(
@@ -579,15 +607,16 @@ def _load_reliability_matrices(
         ts_short  = ts[:short_vols, :]
         n_rois_s  = ts_short.shape[1]
 
-        fc_short_vec = get_fc_matrix(ts_short, vectorized=True,  use_shrinkage=True)
-        fc_ref_vec   = get_fc_matrix(ts,       vectorized=True,  use_shrinkage=True)
+        # Fisher z-space throughout (consistent with pipeline default)
+        fc_short_vec = get_fc_matrix(ts_short, vectorized=True,  use_shrinkage=True, fisher_z=True)
+        fc_ref_vec   = get_fc_matrix(ts,       vectorized=True,  use_shrinkage=True, fisher_z=True)
+        # Matrices in Pearson r for heatmap display (tanh-back for natural [-1,1] range)
         fc_short_mat = get_fc_matrix(ts_short, vectorized=False, use_shrinkage=True)
         fc_ref_mat   = get_fc_matrix(ts,       vectorized=False, use_shrinkage=True)
 
-        # ── Step 1: bootstrap-averaged FC matrix ──────────────────────────
+        # ── Step 1: bootstrap-averaged FC matrix (Pearson r, for heatmap) ─
         blk   = max(3, int(estimate_optimal_block_length(ts_short)))
         n_blk = max(1, short_vols // blk)
-        rng   = np.random.default_rng(42 + sub_i)
         fc_bs_sum = np.zeros((n_rois_s, n_rois_s))
         for _ in range(config.n_bootstraps):
             idx  = block_bootstrap_indices(short_vols, blk, n_blk)
@@ -595,10 +624,11 @@ def _load_reliability_matrices(
             fc_bs_sum += get_fc_matrix(ts_b, vectorized=False, use_shrinkage=True)
         fc_bootstrap_mat = fc_bs_sum / config.n_bootstraps
 
-        # ── Step 2: full pipeline → scalar rho_hat_T ──────────────────────
+        # ── Step 2: full pipeline → scalar rho_hat_T (z-space vectors) ───
         result = run_bootstrap_prediction(
             ts_short, fc_ref_vec, config=config,
             correction_method=correction_method,
+            fisher_z_fc=True,
         )
         rho_hat_T = result.rho_hat_T
         r_fc      = float(np.corrcoef(fc_short_vec, fc_ref_vec)[0, 1])
@@ -785,7 +815,7 @@ def _draw_split_heatmap(
 
     im = ax.imshow(combined, vmin=vmin, vmax=vmax, cmap=cmap, aspect="auto",
                    interpolation="nearest")
-    plt.colorbar(im, ax=ax, shrink=0.82, label="Pearson r", pad=0.02)
+    plt.colorbar(im, ax=ax, shrink=0.82, label="Cross-subj. r", pad=0.02)
 
     # Diagonal dividing line
     ax.plot([0, n - 1], [0, n - 1], color="#222222", lw=1.2, zorder=10)
@@ -929,6 +959,173 @@ def _plot_panel_g(
     ax_g3.legend(fontsize=8, framealpha=0.9, loc="upper left")
 
 
+def _plot_panel_d_row(
+    ax_d1: plt.Axes,
+    ax_d2: plt.Axes,
+    ax_d3: plt.Axes,
+    R_short: np.ndarray,
+    R_bsnet: np.ndarray,
+    fc_ref_mean: np.ndarray,
+    rel_meta: dict,
+    df_record: pd.DataFrame,
+    exemplar_sub: str,
+) -> None:
+    """Panel D row (single_atlas_only mode): D1/D2/D3.
+
+    D1: R_short heatmap — cross-subject reliability per connection (short-scan).
+        Upper triangle: R_short. Lower triangle: fc_ref_mean.
+        Shows baseline reliability before bs-Net correction.
+    D2: R_bsnet − R_short difference map — improvement per connection.
+        Diverging colormap (RdBu_r) centered at 0.
+        Positive (blue) = bs-Net improves that edge. Negative (red) = regression.
+    D3: Subject-level scatter — ρ̂T vs r_FC at 2-min per subject.
+        Exemplar highlighted. Shows overall reliability improvement distribution.
+
+    Args:
+        ax_d1, ax_d2, ax_d3: Target axes for D1, D2, D3.
+        R_short:     Cross-subject reliability matrix for short-scan (n × n).
+        R_bsnet:     Cross-subject reliability matrix for bs-Net (n × n).
+        fc_ref_mean: Mean reference FC matrix across subjects (n × n).
+        rel_meta:    Metadata dict from _load_reliability_matrices().
+        df_record:   Per-record CSV (all subjects, durations, seeds).
+        exemplar_sub: Subject ID to highlight in D3.
+    """
+    N = rel_meta["n_subs"]
+    n = R_short.shape[0]
+
+    cmap_fc   = plt.cm.RdBu_r.copy()
+    cmap_fc.set_bad(color="white")
+
+    # ── D1: Reference FC mean — lower triangle only ───────────────────────────
+    # Shows true network structure (mean across N subjects, full-scan FC).
+    # Upper triangle masked (NaN → white) to avoid redundancy.
+    n         = fc_ref_mean.shape[0]
+    ref_lower = fc_ref_mean.copy().astype(float)
+    # Mask upper triangle (i < j) and diagonal
+    rows_u, cols_u = np.triu_indices(n, k=0)          # k=0 includes diagonal
+    ref_lower[rows_u, cols_u] = np.nan
+
+    cmap_ref = plt.cm.RdBu_r.copy()
+    cmap_ref.set_bad(color="white")
+    # Fixed [-1, 1] scale: fc_ref_mean is Pearson r (not Fisher z),
+    # naturally bounded → interpretable colorbar
+    im1 = ax_d1.imshow(
+        ref_lower, vmin=-1.0, vmax=1.0,
+        cmap=cmap_ref, aspect="auto", interpolation="nearest",
+    )
+    plt.colorbar(im1, ax=ax_d1, shrink=0.82, label="Pearson r  [−1, 1]", pad=0.02)
+
+    n_rois = rel_meta["n_rois"]
+    tick_pos = [0, n // 4, n // 2, 3 * n // 4, n - 1]
+    ax_d1.set_xticks(tick_pos)
+    ax_d1.set_yticks(tick_pos)
+    ax_d1.set_xlabel(f"ROIs (N={n_rois})", **FONT_AXIS)
+    ax_d1.set_ylabel(f"ROIs (N={n_rois})", **FONT_AXIS)
+    ax_d1.set_title("D1", loc="left", **FONT_PANEL)
+    ax_d1.tick_params(labelsize=FONT_TICK)
+    ax_d1.text(
+        n * 0.28, n * 0.68,
+        f"Reference FC\n(mean, N={N})",
+        fontsize=8.5, va="center", ha="center", color="#111111",
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.82, ec="none"),
+        zorder=11,
+    )
+
+    # ── D2: R_bsnet − R_short difference map (lower triangle only) ───────────
+    # Red   (positive) = bs-Net improves cross-subj. reliability for that edge
+    # Blue  (negative) = legacy short-scan is more reliable for that edge
+    # Lower triangle only: diff is symmetric → upper is redundant
+    diff = R_short - R_bsnet
+    diff_diag = diff.copy().astype(float)
+    # Mask upper triangle + diagonal (k=0 includes diagonal)
+    rows_u2, cols_u2 = np.triu_indices(diff_diag.shape[0], k=0)
+    diff_diag[rows_u2, cols_u2] = np.nan
+
+    cmap_diff = plt.cm.RdBu_r.copy()
+    cmap_diff.set_bad(color="white")
+
+    im2 = ax_d2.imshow(
+        np.ma.masked_invalid(diff_diag),
+        vmin=-0.2, vmax=0.2,
+        cmap=cmap_diff, aspect="auto", interpolation="nearest",
+    )
+    plt.colorbar(im2, ax=ax_d2, shrink=0.82,
+                 label=r"$\Delta$ reliability (bs-Net − Raw)", pad=0.02)
+
+    # % connections improved annotation
+    n_total    = int(np.sum(~np.isnan(diff_diag)))
+    n_improved = int(np.sum(diff_diag > 0))
+    pct        = 100.0 * n_improved / n_total if n_total > 0 else 0.0
+    ax_d2.text(
+        0.97, 0.03,
+        f"{pct:.0f}% edges improved",
+        transform=ax_d2.transAxes, fontsize=8.5,
+        va="bottom", ha="right",
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.88, ec="#ffffff"),
+    )
+
+    n_rois2  = rel_meta["n_rois"]
+    n2       = diff_diag.shape[0]
+    tick_pos2 = [0, n2 // 4, n2 // 2, 3 * n2 // 4, n2 - 1]
+    ax_d2.set_xticks(tick_pos2)
+    ax_d2.set_yticks(tick_pos2)
+    ax_d2.set_xlabel(f"ROIs (N={n_rois2})", **FONT_AXIS)
+    ax_d2.set_ylabel(f"ROIs (N={n_rois2})", **FONT_AXIS)
+    ax_d2.set_title("D2", loc="left", **FONT_PANEL)
+    ax_d2.tick_params(labelsize=FONT_TICK)
+
+    # ── D3: Subject-level scatter at 2-min ────────────────────────────────────
+    sub_pts = (
+        df_record[df_record["duration_sec"] == TWO_MIN_SEC]
+        .groupby("sub_id", as_index=False)
+        .agg(r_fc=("r_fc_raw", "mean"), rho_hat_T=("rho_hat_T", "mean"))
+    )
+
+    others    = sub_pts[sub_pts["sub_id"] != exemplar_sub]
+    highlight = sub_pts[sub_pts["sub_id"] == exemplar_sub]
+
+    ax_d3.scatter(
+        others["r_fc"], others["rho_hat_T"],
+        color=C_BSNET, s=40, alpha=0.22, linewidths=0.6,
+        edgecolors=C_BSNET, zorder=2,
+        label=f"Other subjects (N={len(others)})",
+    )
+    if len(highlight):
+        ax_d3.scatter(
+            highlight["r_fc"], highlight["rho_hat_T"],
+            color=C_BSNET, s=120, alpha=1.0, linewidths=1.4,
+            edgecolors="#1a5fa8", zorder=5,
+            label=exemplar_sub,
+        )
+
+    all_vals = pd.concat([sub_pts["r_fc"], sub_pts["rho_hat_T"]])
+    lo = float(all_vals.min()) - 0.04
+    hi = float(all_vals.max()) + 0.04
+    ax_d3.plot([lo, hi], [lo, hi], color="#888888", lw=1.2, ls="--", zorder=1)
+
+    mean_r   = float(sub_pts["r_fc"].mean())
+    mean_rho = float(sub_pts["rho_hat_T"].mean())
+    ax_d3.axhline(mean_rho, color=C_BSNET, lw=0.8, ls=":", alpha=0.55, zorder=3)
+    ax_d3.axvline(mean_r,   color=C_RAW,   lw=0.8, ls=":", alpha=0.55, zorder=3)
+    ax_d3.text(
+        0.97, 0.05,
+        f"mean $r_{{\\mathrm{{FC}}}}$ = {mean_r:.3f}\n"
+        f"mean $\\hat{{\\rho}}_T$ = {mean_rho:.3f}",
+        transform=ax_d3.transAxes, fontsize=8,
+        va="bottom", ha="right", family="monospace",
+        bbox=dict(boxstyle="round,pad=0.35", fc="white", alpha=0.88, ec="#cccccc"),
+    )
+
+    ax_d3.set_xlim(lo, hi)
+    ax_d3.set_ylim(lo, hi)
+    ax_d3.set_aspect("equal", adjustable="box")
+    ax_d3.set_xlabel(r"$r_{\mathrm{FC}}$ (Raw, 2 min)", **FONT_AXIS)
+    ax_d3.set_ylabel(r"$\hat{\rho}_T$ (bs-Net, 2 min)", **FONT_AXIS)
+    ax_d3.set_title("D3", loc="left", **FONT_PANEL)
+    ax_d3.tick_params(labelsize=FONT_TICK)
+    ax_d3.legend(fontsize=8, framealpha=0.9, loc="upper left")
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
@@ -937,31 +1134,39 @@ def plot_figure1(
     atlases: list[str] | None = None,
     exemplar_sub: str = EXEMPLAR_SUB,
     exemplar_short_sec: int = TWO_MIN_SEC,
+    single_atlas_only: bool = False,
 ) -> None:
-    """Generate and save Figure 1 (ds007535, 7-panel, multi-atlas).
+    """Generate and save Figure 1.
 
-    Panels A–C use primary_atlas (Schaefer 200) with subject-level SD.
-    Panels D–F compare all atlases.
-    Panel G: exemplar FC scatter (real data, sub-01 at 2-min).
-
-    Layout: 3×3 GridSpec
-      Row 0: A  B  C
-      Row 1: D  E  F
-      Row 2: G  (full-width)
+    Two layout modes:
+    - single_atlas_only=False (default): 3×3, 9-panel, all atlases.
+        Row 0: A  B  C  (primary atlas = Schaefer 200)
+        Row 1: D  E  F  (multi-atlas comparison)
+        Row 2: G1 G2 G3 (FC heatmaps + scatter)
+    - single_atlas_only=True: 2×3, 6-panel, primary atlas only.
+        Row 0: A  B  C  (primary atlas)
+        Row 1: G1 G2 G3 (FC heatmaps + scatter)
+        Panels D/E/F (multi-atlas) are omitted.
 
     Args:
-        primary_atlas: Atlas used for Panels A–C and G.
+        primary_atlas: Atlas used for all panels (A–C and G).
         atlases: Atlas list for multi-atlas panels (D–F).
+            Ignored when single_atlas_only=True.
         exemplar_sub: Subject ID for Panel G scatter.
         exemplar_short_sec: Short-scan duration for Panel G (seconds).
+        single_atlas_only: If True, show only primary_atlas and skip D/E/F.
+            Use when multi-atlas comparison data are unavailable or unnecessary.
 
     Raises:
         FileNotFoundError: If any required CSV or timeseries cache is missing.
     """
-    if atlases is None:
+    # Atlas list: single mode uses only primary_atlas
+    if single_atlas_only:
+        atlases = [primary_atlas]
+    elif atlases is None:
         atlases = list(ATLAS_META.keys())
 
-    # Load & aggregate all atlases from per-record CSVs (proper subject-level SD)
+    # Load & aggregate per-record CSVs for required atlases only
     atlas_records: dict[str, pd.DataFrame] = {
         k: _load_per_record(k) for k in atlases
     }
@@ -975,7 +1180,7 @@ def plot_figure1(
     primary_sub_dur = atlas_sub_durs[primary_atlas]
     primary_agg = atlas_aggs[primary_atlas]
 
-    # Cross-subject reliability matrices for G1/G2 (cached after first run)
+    # Cross-subject reliability matrices for G1/G2
     R_short, R_bsnet, fc_ref_mean, rel_meta = _load_reliability_matrices(
         primary_atlas, exemplar_short_sec
     )
@@ -990,40 +1195,67 @@ def plot_figure1(
 
     apply_bsnet_theme()
 
-    # ── 3×3 GridSpec layout ──────────────────────────────────────────────────
-    # Row 0: A  B  C  (Schaefer200 primary)
-    # Row 1: D  E  F  (multi-atlas)
-    # Row 2: G1 G2 G3 (exemplar FC heatmaps + scatter)
-    fig = plt.figure(figsize=FIGSIZE["3x3"])
-    gs = gridspec.GridSpec(
-        3, 3,
-        figure=fig,
-        height_ratios=[1, 1, 1.1],
-        hspace=0.50,
-        wspace=0.34,
-    )
+    if single_atlas_only:
+        # ── 2×3 GridSpec (no multi-atlas row) ───────────────────────────────
+        # Row 0: A  B  C  (primary atlas — simplified legends, no atlas name)
+        # Row 1: D1 D2 D3 (D1=R_short split-map, D2=diff map, D3=subject scatter)
+        fig = plt.figure(figsize=FIGSIZE.get("2x3", (18, 11)))
+        gs = gridspec.GridSpec(
+            2, 3,
+            figure=fig,
+            height_ratios=[1, 1.1],
+            hspace=0.50,
+            wspace=0.34,
+        )
+        ax_a  = fig.add_subplot(gs[0, 0])
+        ax_b  = fig.add_subplot(gs[0, 1])
+        ax_c  = fig.add_subplot(gs[0, 2])
+        ax_d1 = fig.add_subplot(gs[1, 0])
+        ax_d2 = fig.add_subplot(gs[1, 1])
+        ax_d3 = fig.add_subplot(gs[1, 2])
 
-    ax_a = fig.add_subplot(gs[0, 0])
-    ax_b = fig.add_subplot(gs[0, 1])
-    ax_c = fig.add_subplot(gs[0, 2])
-    ax_d = fig.add_subplot(gs[1, 0])
-    ax_e = fig.add_subplot(gs[1, 1])
-    ax_f = fig.add_subplot(gs[1, 2])
-    ax_g1 = fig.add_subplot(gs[2, 0])   # FC_short heatmap
-    ax_g2 = fig.add_subplot(gs[2, 1])   # FC_ref heatmap
-    ax_g3 = fig.add_subplot(gs[2, 2])   # scatter
+        _plot_panel_a(ax_a, atlas_sub_durs, atlas_aggs, single_atlas_only=True)
+        _plot_panel_b(ax_b, atlas_sub_durs, single_atlas_only=True)
+        _plot_panel_c(ax_c, atlas_aggs, single_atlas_only=True)
+        _plot_panel_d_row(
+            ax_d1, ax_d2, ax_d3,
+            R_short, R_bsnet, fc_ref_mean,
+            rel_meta, df_primary_record, exemplar_sub,
+        )
+    else:
+        # ── 3×3 GridSpec layout ──────────────────────────────────────────────
+        # Row 0: A  B  C  (Schaefer200 primary)
+        # Row 1: D  E  F  (multi-atlas)
+        # Row 2: G1 G2 G3 (exemplar FC heatmaps + scatter)
+        fig = plt.figure(figsize=FIGSIZE["3x3"])
+        gs = gridspec.GridSpec(
+            3, 3,
+            figure=fig,
+            height_ratios=[1, 1, 1.1],
+            hspace=0.50,
+            wspace=0.34,
+        )
+        ax_a  = fig.add_subplot(gs[0, 0])
+        ax_b  = fig.add_subplot(gs[0, 1])
+        ax_c  = fig.add_subplot(gs[0, 2])
+        ax_d  = fig.add_subplot(gs[1, 0])
+        ax_e  = fig.add_subplot(gs[1, 1])
+        ax_f  = fig.add_subplot(gs[1, 2])
+        ax_g1 = fig.add_subplot(gs[2, 0])
+        ax_g2 = fig.add_subplot(gs[2, 1])
+        ax_g3 = fig.add_subplot(gs[2, 2])
 
-    _plot_panel_a(ax_a, atlas_sub_durs, atlas_aggs)
-    _plot_panel_b(ax_b, atlas_sub_durs)
-    _plot_panel_c(ax_c, atlas_aggs)
-    _plot_panel_d(ax_d, atlas_aggs)
-    _plot_panel_e(ax_e, atlas_aggs)
-    _plot_panel_f(ax_f, atlas_sub_durs, atlas_aggs)
-    _plot_panel_g(
-        ax_g1, ax_g2, ax_g3,
-        R_short, R_bsnet, fc_ref_mean,
-        rel_meta, df_primary_record, exemplar_sub,
-    )
+        _plot_panel_a(ax_a, atlas_sub_durs, atlas_aggs, single_atlas_only=False)
+        _plot_panel_b(ax_b, atlas_sub_durs, single_atlas_only=False)
+        _plot_panel_c(ax_c, atlas_aggs, single_atlas_only=False)
+        _plot_panel_d(ax_d, atlas_aggs)
+        _plot_panel_e(ax_e, atlas_aggs)
+        _plot_panel_f(ax_f, atlas_sub_durs, atlas_aggs)
+        _plot_panel_g(
+            ax_g1, ax_g2, ax_g3,
+            R_short, R_bsnet, fc_ref_mean,
+            rel_meta, df_primary_record, exemplar_sub,
+        )
 
     save_figure(fig, OUTPUT_NAME)
     print(f"Saved: artifacts/reports/{OUTPUT_NAME}  |  docs/figure/{OUTPUT_NAME}")
