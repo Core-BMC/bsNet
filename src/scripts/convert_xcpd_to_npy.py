@@ -69,10 +69,19 @@ ATLAS_NAME_MAP: dict[str, str] = {
     "HarvardOxford": "harvard_oxford",
     "Craddock200":  "cc200",
     "Craddock400":  "cc400",
-    # XCP-D built-in 4S series (added for completeness)
-    "4S156Parcels": "4s156",
-    "4S256Parcels": "4s256",
-    "4S356Parcels": "4s356",
+    # XCP-D v26.x built-in 4S series (Schaefer cortical + Tian subcortical)
+    # NIfTI 모드에서 Schaefer200/400 대신 이 이름을 사용해야 함
+    # 4S256 = Schaefer 200 + 56 subcortical, 4S456 = Schaefer 400 + 56 subcortical
+    "4S156Parcels":  "4s156parcels",
+    "4S256Parcels":  "4s256parcels",
+    "4S356Parcels":  "4s356parcels",
+    "4S456Parcels":  "4s456parcels",
+    "4S556Parcels":  "4s556parcels",
+    "4S656Parcels":  "4s656parcels",
+    "4S756Parcels":  "4s756parcels",
+    "4S856Parcels":  "4s856parcels",
+    "4S956Parcels":  "4s956parcels",
+    "4S1056Parcels": "4s1056parcels",
 }
 
 
