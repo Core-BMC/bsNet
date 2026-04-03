@@ -138,6 +138,7 @@ run_xcpd() {
 
     local cmd=(
         docker run --rm
+        --user "$(id -u):$(id -g)"
         -v "${FMRIPREP_DIR}:/data:ro"
         -v "${XCPD_OUT_DIR}:/out"
         -v "${sub_work}:/work"
