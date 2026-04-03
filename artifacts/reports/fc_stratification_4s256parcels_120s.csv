@@ -1,0 +1,13 @@
+analysis,label,value_mean,value_sd,note
+distribution,near_zero_10_pct,35.89,,% of pairs with |FC|<0.10
+quartile,Q1 (Weakest),0.1728,0.0359,n_obs=245
+quartile,Q2 (Weak),0.4196,0.0674,n_obs=245
+quartile,Q3 (Strong),0.6351,0.0661,n_obs=245
+quartile,Q4 (Strongest),0.8537,0.0262,n_obs=245
+threshold,t=0.0,0.7033,0.061,kept=99.8%
+threshold,t=0.05,0.7513,0.0553,kept=81.3%
+threshold,t=0.1,0.7908,0.0482,kept=64.1%
+threshold,t=0.15,0.8202,0.0404,kept=49.1%
+threshold,t=0.2,0.8406,0.0326,kept=36.7%
+threshold,t=0.25,0.8534,0.0262,kept=26.7%
+threshold,t=0.3,0.8585,0.0227,kept=19.1%
