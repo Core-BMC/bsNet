@@ -1,42 +1,56 @@
-"""Held-out prediction validation for BS-NET.
+"""Held-out prediction validation for BS-NET (sliding-window design).
 
-Fundamental proof experiment: does BS-NET's ρ̂T actually predict
-what you would observe with *more independent data*?
+Fundamental proof experiment: does BS-NET's ρ̂T accurately predict
+what you would observe with the *remaining* (longer) scan?
 
-Design (3-segment split):
-────────────────────────────────────────────────────────────────────────
-  |←── A (120 s) ──→|←────── B (T_ref s) ──────→|←── C (T_ref s) ──→|
-        short scan      reference (known to BS-NET)    held-out (blind)
-────────────────────────────────────────────────────────────────────────
+Design (2-segment, clinically realistic):
+────────────────────────────────────────────────────────────────────────────
+  |←── A (short_sec, e.g. 120 s) ──→|←──── B (remaining full scan) ────→|
+        sliding-window bootstrap           fc_reference (LW)
+────────────────────────────────────────────────────────────────────────────
 
-  1. A  → BS-NET short observation  (short_obs)
-  2. B  → reference FC (fc_reference)   — the "15-min proxy" within this subject
-  3. C  → held-out FC (fc_holdout)      — *never seen* by BS-NET
+  1. A  → BS-NET input  (run_sliding_window_prediction)
+  2. B  → reference FC  (LW-shrinkage FC vector)
+           AND ground truth  r_FC(A, B)
 
-Metrics (all Spearman ρ on upper-triangle FC vectors):
-  r_fc_AC   : raw FC correlation(A, C)          — uncorrected baseline
-  rho_hat_T : BS-NET prediction (using A + B)   — corrected estimate
-  r_fc_BC   : FC correlation(B, C)              — expected ceiling (same-subject, independent)
-  r_fc_full : FC correlation(A, B+C)            — "what more data gives" (ground truth)
+Rationale for sliding-window:
+  run_sliding_window_prediction() applies the full BS-NET pipeline
+  (block bootstrap + SB prophecy + Bayesian prior + attenuation)
+  over multiple overlapping sub-windows of A, then averages in
+  Fisher-z space.  This is more stable than single-window bootstrap
+  and matches the intended clinical usage of BS-NET.
+
+Clinical analogy:
+  - Total scan 12 min  →  A = first 2 min,  B = remaining 10 min
+  - ρ̂T(SW) should approach r_FC(A, B)  (what the longer scan gives)
+
+Metrics (Spearman ρ on upper-triangle FC vectors):
+  r_fc_AB      : raw FC correlation(A, B)     — uncorrected baseline
+  rho_hat_T_sw : BS-NET sliding-window pred.  — corrected estimate
+  rho_hat_T_bp : BS-NET simple bootstrap      — comparison reference
+  r_fc_BB      : split-half of B              — within-B ceiling
 
 Hypothesis:
-  ρ̂T ≈ r_fc_BC ≈ r_fc_full >> r_fc_AC
+  ρ̂T(SW) ≈ ρ̂T(BP) >> r_FC(A,B)   (both correct upward)
+  ρ̂T(SW) closer to r_FC_BB ceiling than raw r_FC_AB
 
-Also computes strong-FC version (|FC_C| > fc_thresh) to address zero-inflation.
+Strong-FC subset (|FC_B| >= fc_thresh) computed in parallel to
+address zero-inflation concern.
 
 Usage:
     python src/scripts/run_held_out_validation.py \\
         --atlas 4s256parcels \\
         --short-sec 120 \\
-        --n-seeds 10 \\
+        --n-seeds 5 \\
         --n-jobs 4 \\
-        --out-csv data/ds000243/results/held_out_validation_4s256parcels.csv
+        --out-csv data/ds000243/results/held_out_validation_sw_4s256parcels.csv
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -48,7 +62,7 @@ from scipy.stats import spearmanr
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.core.config import BSNetConfig
-from src.core.pipeline import run_bootstrap_prediction
+from src.core.pipeline import run_bootstrap_prediction, run_sliding_window_prediction
 from src.data.data_loader import get_fc_matrix
 
 logger = logging.getLogger(__name__)
@@ -57,20 +71,21 @@ logger = logging.getLogger(__name__)
 CACHE_DIR = Path("data/ds000243/timeseries_cache_xcpd")
 RESULTS_DIR = Path("data/ds000243/results")
 TR = 2.5
-MIN_TOTAL_SEC = 600.0   # need enough for A + B + C
+# Need A + at least MIN_B_SEC of reference
+MIN_B_SEC = 120.0       # reference segment must be ≥ 2 min
 CORRECTION_METHOD = "fisher_z"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _pearson_fc_vec(ts: np.ndarray) -> np.ndarray:
-    """Return upper-triangle Pearson FC vector with NaN → 0.
+    """Return upper-triangle Pearson FC vector; NaN → 0.
 
     Args:
         ts: Time series array, shape (n_tp, n_rois).
 
     Returns:
-        1-D array of upper-triangle FC values.
+        1-D upper-triangle FC vector.
     """
     fc = np.corrcoef(ts.T)
     fc = np.nan_to_num(fc, nan=0.0)
@@ -79,57 +94,17 @@ def _pearson_fc_vec(ts: np.ndarray) -> np.ndarray:
 
 
 def _spearman(a: np.ndarray, b: np.ndarray) -> float:
-    """Spearman correlation between two FC vectors.
+    """Spearman ρ between two vectors.
 
     Args:
-        a: First FC vector.
-        b: Second FC vector.
+        a: First vector.
+        b: Second vector.
 
     Returns:
         Spearman ρ.
     """
     r, _ = spearmanr(a, b)
     return float(r)
-
-
-def _split_timeseries(
-    ts: np.ndarray,
-    short_sec: float,
-    tr: float,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
-    """Split timeseries into A (short), B (reference), C (held-out).
-
-    B and C receive equal halves of whatever remains after removing A.
-
-    Args:
-        ts: Full timeseries, shape (n_tp, n_rois).
-        short_sec: Duration of segment A in seconds.
-        tr: Repetition time in seconds.
-
-    Returns:
-        Tuple (ts_A, ts_B, ts_C) or None if insufficient data.
-    """
-    n_tp = ts.shape[0]
-    n_A = int(short_sec / tr)
-
-    if n_A >= n_tp:
-        logger.debug(f"n_A={n_A} >= n_tp={n_tp}; skip")
-        return None
-
-    remaining = n_tp - n_A
-    if remaining < 2:
-        return None
-
-    n_B = remaining // 2
-    n_C = remaining - n_B  # may differ by 1
-
-    if n_B < 4 or n_C < 4:   # need at least 4 TPs per segment
-        return None
-
-    ts_A = ts[:n_A, :]
-    ts_B = ts[n_A : n_A + n_B, :]
-    ts_C = ts[n_A + n_B :, :]
-    return ts_A, ts_B, ts_C
 
 
 # ── Per-subject worker ────────────────────────────────────────────────────────
@@ -140,18 +115,21 @@ def _process_subject(
     n_seeds: int,
     fc_thresh: float,
 ) -> list[dict] | None:
-    """Run held-out validation for one subject across multiple seeds.
+    """Run held-out validation for one subject.
+
+    Splits timeseries into A (short) and B (remaining full reference).
+    Runs both sliding-window and simple bootstrap BS-NET on A, using B
+    as the reference FC.  Ground truth is r_FC(A, B).
 
     Args:
         fp: Path to .npy timeseries file, shape (n_tp, n_rois).
         short_sec: Duration of segment A in seconds.
-        n_seeds: Number of random seeds for bootstrap.
-        fc_thresh: |FC| threshold for strong-connection subset.
+        n_seeds: Number of random seeds.
+        fc_thresh: |FC| threshold for strong-connection subset (based on B).
 
     Returns:
         List of result dicts (one per seed), or None on failure.
     """
-    import os
     os.environ.setdefault("OMP_NUM_THREADS", "1")
 
     sub_id = fp.stem.split("_")[0]
@@ -161,34 +139,56 @@ def _process_subject(
         logger.warning(f"{sub_id}: load failed — {exc}")
         return None
 
-    total_sec = ts.shape[0] * TR
-    if total_sec < MIN_TOTAL_SEC:
-        logger.info(f"{sub_id}: {total_sec:.0f}s < {MIN_TOTAL_SEC}s; skip")
+    n_tp, n_rois = ts.shape
+    total_sec = n_tp * TR
+    n_A = int(short_sec / TR)
+
+    if n_A >= n_tp:
+        logger.info(f"{sub_id}: scan too short for A={short_sec}s; skip")
         return None
 
-    segs = _split_timeseries(ts, short_sec, TR)
-    if segs is None:
-        logger.warning(f"{sub_id}: cannot split; skip")
-        return None
-
-    ts_A, ts_B, ts_C = segs
+    ts_A = ts[:n_A, :]
+    ts_B = ts[n_A:, :]
     sec_A = ts_A.shape[0] * TR
     sec_B = ts_B.shape[0] * TR
-    sec_C = ts_C.shape[0] * TR
-    n_rois = ts.shape[1]
 
-    # Pre-compute FC vectors for each segment
+    if sec_B < MIN_B_SEC:
+        logger.info(f"{sub_id}: B={sec_B:.0f}s < {MIN_B_SEC}s; skip")
+        return None
+
+    # ── Remove zero-variance ROIs (across full scan) ──────────────────────────
+    # Zero-variance ROIs in short windows cause NaN in corrcoef after
+    # block bootstrap resampling (48 TPs × 256 ROIs is rank-deficient).
+    roi_std = ts.std(axis=0)
+    valid_rois = roi_std > 1e-6
+    if not valid_rois.all():
+        n_removed = int((~valid_rois).sum())
+        logger.debug(f"{sub_id}: removing {n_removed} zero-variance ROIs")
+        ts   = ts[:, valid_rois]
+        ts_A = ts[:n_A, :]
+        ts_B = ts[n_A:, :]
+        n_rois = ts.shape[1]
+
+    # ── FC vectors ────────────────────────────────────────────────────────────
     fc_A = _pearson_fc_vec(ts_A)
     fc_B = _pearson_fc_vec(ts_B)
-    fc_C = _pearson_fc_vec(ts_C)
-    fc_BC = _pearson_fc_vec(np.concatenate([ts_B, ts_C], axis=0))
 
-    # Strong-connection mask based on |FC_C|
-    strong_mask = np.abs(fc_C) >= fc_thresh
-    n_strong = int(strong_mask.sum())
+    # Split-half of B for within-B ceiling
+    n_half = ts_B.shape[0] // 2
+    fc_B1  = _pearson_fc_vec(ts_B[:n_half, :])
+    fc_B2  = _pearson_fc_vec(ts_B[n_half:, :])
+    r_fc_BB = _spearman(fc_B1, fc_B2)
 
-    # Reference FC vector for BS-NET (LW shrinkage on B)
+    # Ground truth: raw correlation A vs B
+    r_fc_AB = _spearman(fc_A, fc_B)
+
+    # Reference FC for BS-NET (LW shrinkage on B)
     fc_B_lw = get_fc_matrix(ts_B, vectorized=True, use_shrinkage=True)
+
+    # Strong-connection mask based on |FC_B|
+    strong_mask  = np.abs(fc_B) >= fc_thresh
+    n_strong     = int(strong_mask.sum())
+    r_fc_AB_str  = _spearman(fc_A[strong_mask], fc_B[strong_mask]) if n_strong > 10 else float("nan")
 
     records = []
     for seed in range(n_seeds):
@@ -203,65 +203,67 @@ def _process_subject(
             seed=seed,
         )
 
+        # ── Sliding-window prediction ─────────────────────────────────────────
         try:
-            result = run_bootstrap_prediction(
+            res_sw = run_sliding_window_prediction(
+                short_obs=ts_A,
+                fc_reference=fc_B_lw,
+                config=config,
+                correction_method=CORRECTION_METHOD,
+                window_sec=short_sec / 2.0,   # 60 s windows for 120 s scan
+                step_sec=short_sec / 8.0,     # 15 s step → ~75% overlap
+            )
+            rho_sw    = res_sw.rho_hat_T
+            ci_sw_lo  = res_sw.ci_lower
+            ci_sw_hi  = res_sw.ci_upper
+        except Exception as exc:
+            logger.warning(f"{sub_id} seed={seed} SW failed: {exc}")
+            rho_sw = ci_sw_lo = ci_sw_hi = float("nan")
+
+        # ── Simple bootstrap prediction (comparison) ──────────────────────────
+        try:
+            res_bp = run_bootstrap_prediction(
                 short_obs=ts_A,
                 fc_reference=fc_B_lw,
                 config=config,
                 correction_method=CORRECTION_METHOD,
             )
-            rho_hat_T = result.rho_hat_T
-            ci_lower = result.ci_lower
-            ci_upper = result.ci_upper
+            rho_bp   = res_bp.rho_hat_T
+            ci_bp_lo = res_bp.ci_lower
+            ci_bp_hi = res_bp.ci_upper
         except Exception as exc:
-            logger.warning(f"{sub_id} seed={seed}: BS-NET failed — {exc}")
-            rho_hat_T = float("nan")
-            ci_lower = float("nan")
-            ci_upper = float("nan")
-
-        # Spearman correlations (all-pairs)
-        r_fc_AC   = _spearman(fc_A, fc_C)
-        r_fc_BC   = _spearman(fc_B, fc_C)
-        r_fc_full = _spearman(fc_A, fc_BC)
-
-        # Strong-connection subset
-        if n_strong > 10:
-            r_fc_AC_strong   = _spearman(fc_A[strong_mask],   fc_C[strong_mask])
-            r_fc_BC_strong   = _spearman(fc_B[strong_mask],   fc_C[strong_mask])
-            r_fc_full_strong = _spearman(fc_A[strong_mask],   fc_BC[strong_mask])
-        else:
-            r_fc_AC_strong   = float("nan")
-            r_fc_BC_strong   = float("nan")
-            r_fc_full_strong = float("nan")
+            logger.warning(f"{sub_id} seed={seed} BP failed: {exc}")
+            rho_bp = ci_bp_lo = ci_bp_hi = float("nan")
 
         records.append({
-            "sub_id":          sub_id,
-            "seed":            seed,
-            "n_rois":          n_rois,
-            "sec_A":           sec_A,
-            "sec_B":           sec_B,
-            "sec_C":           sec_C,
-            "total_sec":       total_sec,
-            "n_pairs":         len(fc_A),
-            "n_strong":        n_strong,
-            "fc_thresh":       fc_thresh,
-            # All-pairs
-            "r_fc_AC":         r_fc_AC,
-            "r_fc_BC":         r_fc_BC,
-            "r_fc_full":       r_fc_full,
-            "rho_hat_T":       rho_hat_T,
-            "ci_lower":        ci_lower,
-            "ci_upper":        ci_upper,
+            "sub_id":        sub_id,
+            "seed":          seed,
+            "n_rois":        n_rois,
+            "sec_A":         sec_A,
+            "sec_B":         sec_B,
+            "total_sec":     total_sec,
+            "n_pairs":       len(fc_A),
+            "n_strong":      n_strong,
+            "fc_thresh":     fc_thresh,
+            # Ground truth (no BS-NET)
+            "r_fc_AB":       r_fc_AB,
+            "r_fc_BB":       r_fc_BB,       # within-B split-half ceiling
+            # Sliding-window BS-NET
+            "rho_hat_T_sw":  rho_sw,
+            "ci_sw_lo":      ci_sw_lo,
+            "ci_sw_hi":      ci_sw_hi,
+            # Simple bootstrap BS-NET
+            "rho_hat_T_bp":  rho_bp,
+            "ci_bp_lo":      ci_bp_lo,
+            "ci_bp_hi":      ci_bp_hi,
             # Strong-FC subset
-            "r_fc_AC_strong":   r_fc_AC_strong,
-            "r_fc_BC_strong":   r_fc_BC_strong,
-            "r_fc_full_strong": r_fc_full_strong,
+            "r_fc_AB_strong": r_fc_AB_str,
         })
 
     logger.info(
-        f"{sub_id}: {total_sec:.0f}s | "
-        f"r_AC={r_fc_AC:.3f} → ρ̂T={rho_hat_T:.3f} | "
-        f"r_BC={r_fc_BC:.3f} r_full={r_fc_full:.3f}"
+        f"{sub_id}: {total_sec:.0f}s | B={sec_B:.0f}s | "
+        f"r_AB={r_fc_AB:.3f} → ρ̂T(SW)={rho_sw:.3f} ρ̂T(BP)={rho_bp:.3f} | "
+        f"ceiling(BB)={r_fc_BB:.3f}"
     )
     return records
 
@@ -276,14 +278,14 @@ def run_held_out_validation(
     n_jobs: int,
     out_csv: Path,
 ) -> pd.DataFrame:
-    """Run held-out prediction validation across all subjects.
+    """Run sliding-window held-out validation across all subjects.
 
     Args:
         atlas: Atlas directory name under CACHE_DIR.
         short_sec: Duration of short segment A in seconds.
-        n_seeds: Number of random seeds.
-        fc_thresh: |FC| threshold for strong-connection subset.
-        n_jobs: Number of parallel workers.
+        n_seeds: Number of random seeds per subject.
+        fc_thresh: |FC_B| threshold for strong-connection subset.
+        n_jobs: Parallel workers.
         out_csv: Output CSV path.
 
     Returns:
@@ -319,31 +321,29 @@ def run_held_out_validation(
         return pd.DataFrame()
 
     df = pd.DataFrame(all_records)
-
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_csv, index=False)
     logger.info(f"Saved {len(df)} records → {out_csv}")
 
     # ── Summary ───────────────────────────────────────────────────────────────
-    cols = ["r_fc_AC", "rho_hat_T", "r_fc_BC", "r_fc_full",
-            "r_fc_AC_strong", "r_fc_full_strong"]
-    agg = df.groupby("sub_id")[cols].mean()
+    cols = ["r_fc_AB", "rho_hat_T_sw", "rho_hat_T_bp", "r_fc_BB", "r_fc_AB_strong"]
+    agg  = df.groupby("sub_id")[cols].mean()
 
-    print(f"\n{'='*60}")
-    print(f"Held-out Prediction Validation — atlas={atlas}")
+    print(f"\n{'='*65}")
+    print(f"Held-out Validation (Sliding-Window) — atlas={atlas}")
     print(f"  Subjects   : {agg.shape[0]}")
-    print(f"  Short scan : {short_sec:.0f}s (segment A)")
-    print(f"  Threshold  : |FC| >= {fc_thresh}")
-    print(f"{'='*60}")
+    print(f"  Short scan : {short_sec:.0f}s  (segment A)")
+    print(f"  Reference  : remaining full scan  (segment B)")
+    print(f"  Threshold  : |FC_B| >= {fc_thresh}")
+    print(f"{'='*65}")
     print(f"  All-pairs (mean across subjects × seeds):")
-    print(f"    r_FC(A,C)   = {agg['r_fc_AC'].mean():.3f}  ← uncorrected baseline")
-    print(f"    ρ̂T(A,B→C)  = {agg['rho_hat_T'].mean():.3f}  ← BS-NET correction")
-    print(f"    r_FC(B,C)   = {agg['r_fc_BC'].mean():.3f}  ← same-subject ceiling")
-    print(f"    r_FC(A,B+C) = {agg['r_fc_full'].mean():.3f}  ← ground truth (more data)")
-    print(f"  Strong-FC subset (|FC_C|>={fc_thresh}):")
-    print(f"    r_FC(A,C)   = {agg['r_fc_AC_strong'].mean():.3f}")
-    print(f"    r_FC(A,B+C) = {agg['r_fc_full_strong'].mean():.3f}")
-    print(f"{'='*60}")
+    print(f"    r_FC(A,B)      = {agg['r_fc_AB'].mean():.3f}   ← uncorrected baseline")
+    print(f"    ρ̂T (SW)        = {agg['rho_hat_T_sw'].mean():.3f}   ← BS-NET sliding-window")
+    print(f"    ρ̂T (bootstrap) = {agg['rho_hat_T_bp'].mean():.3f}   ← BS-NET simple bootstrap")
+    print(f"    r_FC(B1,B2)    = {agg['r_fc_BB'].mean():.3f}   ← within-B split-half ceiling")
+    print(f"  Strong-FC (|FC_B|>={fc_thresh}):")
+    print(f"    r_FC(A,B)      = {agg['r_fc_AB_strong'].mean():.3f}")
+    print(f"{'='*65}")
 
     return df
 
@@ -356,26 +356,23 @@ if __name__ == "__main__":
     )
 
     parser = argparse.ArgumentParser(
-        description="BS-NET held-out prediction validation (3-segment design)"
+        description="BS-NET held-out validation: 2-segment + sliding window"
     )
     parser.add_argument("--atlas",     default="4s256parcels",
                         help="Atlas key under data/ds000243/timeseries_cache_xcpd/")
     parser.add_argument("--short-sec", type=float, default=120.0,
                         help="Duration of short scan segment A in seconds (default: 120)")
-    parser.add_argument("--n-seeds",   type=int,   default=10,
-                        help="Number of random seeds per subject (default: 10)")
+    parser.add_argument("--n-seeds",   type=int,   default=5,
+                        help="Random seeds per subject (default: 5)")
     parser.add_argument("--fc-thresh", type=float, default=0.20,
-                        help="|FC| threshold for strong-connection subset (default: 0.20)")
+                        help="|FC_B| threshold for strong-FC subset (default: 0.20)")
     parser.add_argument("--n-jobs",    type=int,   default=4,
                         help="Parallel workers (default: 4)")
-    parser.add_argument("--out-csv",   type=Path,  default=None,
-                        help="Output CSV path (default: data/ds000243/results/held_out_validation_{atlas}.csv)")
+    parser.add_argument("--out-csv",   type=Path,  default=None)
     args = parser.parse_args()
 
     if args.out_csv is None:
-        args.out_csv = (
-            RESULTS_DIR / f"held_out_validation_{args.atlas}.csv"
-        )
+        args.out_csv = RESULTS_DIR / f"held_out_validation_sw_{args.atlas}.csv"
 
     run_held_out_validation(
         atlas=args.atlas,
