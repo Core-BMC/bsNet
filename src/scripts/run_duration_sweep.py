@@ -94,9 +94,11 @@ ATLAS_CHOICES = {
         "cc200", "cc400",
         "aal", "harvard_oxford",
     ],
-    # XCP-D post-processed variant: same atlases, different cache directory
+    # XCP-D post-processed variant: 4S series (Schaefer + Tian subcortical)
     # (data/ds000243/timeseries_cache_xcpd/{atlas}/)
     "ds000243_xcpd": [
+        "4s256parcels", "4s456parcels",
+        "4s156parcels", "4s356parcels",
         "schaefer200", "schaefer400",
         "cc200", "cc400",
         "aal", "harvard_oxford",
