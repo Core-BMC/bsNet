@@ -16,6 +16,9 @@ venv/
 __pycache__/
 .venv312/
 
+# Logs
+logs/
+
 # Mac
 .DS_Store
 
@@ -25,3 +28,6 @@ __pycache__/
 
 # Claude
 CLAUDE.md
+
+# License files (freesurfer, etc.)
+fs_license.txt
