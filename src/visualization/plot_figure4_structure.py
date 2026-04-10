@@ -8,15 +8,18 @@ Design: 10 seeds × 20 subjects × 100 ROIs
   - Single simulation pass computes both topology and community metrics
   - Panels A–C: global metrics (ARI, hub variance, small-worldness)
   - Panel D: network-level Jaccard similarity (7 Yeo networks)
+  - Panel E: sliding-window temporal stability metrics
   - Cross-seed variability shown via red diamond mean±SD markers
 
 Layout (GridSpec):
   ┌───────────┬───────────┬───────────┐
   │ A. ARI    │ B. Hub    │ C. Small- │
   │           │  Variance │  worldness│
-  ├───────────┴───────────┴───────────┤
-  │ D. Per-Network Jaccard Similarity │
-  └───────────────────────────────────┘
+  ├───────────┬───────────┴───────────┤
+  │ D. Per-   │ E. Sliding-window     │
+  │ network   │ temporal stability    │
+  │ Jaccard   │                       │
+  └───────────┴───────────────────────┘
 """
 
 from __future__ import annotations
@@ -24,6 +27,12 @@ from __future__ import annotations
 import argparse
 import warnings
 from pathlib import Path
+import sys
+
+# Allow direct script execution:
+#   python3 src/visualization/plot_figure4_structure.py
+if __package__ in (None, ""):
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -82,7 +91,7 @@ def run_single_seed(
     n_rois: int = 100,
     t_samples_long: int = 450,
     t_samples_short: int = 60,
-) -> tuple[list[dict], list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
     """Run combined topology + community analysis for a single seed.
 
     Args:
@@ -94,12 +103,13 @@ def run_single_seed(
         t_samples_short: Number of samples in the short (2-min) scan.
 
     Returns:
-        Tuple of (topology_results, ari_results, jaccard_results).
+        Tuple of (topology_results, ari_results, jaccard_results, sliding_results).
     """
     np.random.seed(seed)
     topology_results: list[dict] = []
     ari_results: list[dict] = []
     jaccard_results: list[dict] = []
+    sliding_results: list[dict] = []
 
     true_communities = compute_network_block_assignments(n_rois, config.n_networks)
 
@@ -191,7 +201,31 @@ def run_single_seed(
                     "Jaccard": best_jaccard,
                 })
 
-    return topology_results, ari_results, jaccard_results
+        # --- Sliding-window temporal stability metrics ---
+        win_size = t_samples_short
+        step = max(1, win_size // 2)
+        fc_window_vecs: list[np.ndarray] = []
+
+        for start in range(0, t_samples_long - win_size + 1, step):
+            ts_win = ts[start : start + win_size, :]
+            fc_win = get_fc_matrix(ts_win, vectorized=False, use_shrinkage=True)
+            fc_window_vecs.append(fc_win.flatten())
+            sliding_results.append({
+                "Seed": seed,
+                "Subject": sub,
+                "Metric": "Window vs Reference",
+                "Value": float(np.corrcoef(fc_win.flatten(), fc_true.flatten())[0, 1]),
+            })
+
+        for i in range(len(fc_window_vecs) - 1):
+            sliding_results.append({
+                "Seed": seed,
+                "Subject": sub,
+                "Metric": "Adjacent Window Consistency",
+                "Value": float(np.corrcoef(fc_window_vecs[i], fc_window_vecs[i + 1])[0, 1]),
+            })
+
+    return topology_results, ari_results, jaccard_results, sliding_results
 
 
 DOT_COLOR = "#333333"
@@ -297,20 +331,22 @@ def plot_merged_figure(
     df_topo: pd.DataFrame,
     df_ari: pd.DataFrame,
     df_jac: pd.DataFrame,
+    df_slide: pd.DataFrame,
 ) -> plt.Figure:
-    """Create the merged 4-panel Network Structure Preservation figure.
+    """Create the merged 5-panel Network Structure Preservation figure.
 
     Args:
         df_topo: Topology results (Degree Variance, Small-worldness).
         df_ari: ARI results (Global community overlap).
         df_jac: Per-network Jaccard results.
+        df_slide: Sliding-window temporal stability results.
 
     Returns:
         Matplotlib Figure object.
     """
     apply_bsnet_theme()
 
-    fig = plt.figure(figsize=(18, 12))
+    fig = plt.figure(figsize=(20, 12))
     gs = gridspec.GridSpec(
         2, 3, figure=fig,
         height_ratios=[1, 1.1],
@@ -369,8 +405,8 @@ def plot_merged_figure(
     ax_c.tick_params(axis="x", rotation=10)
     ax_c.legend(loc="upper right", fontsize=FONT["legend_small"])
 
-    # === Panel D: Per-Network Jaccard (full bottom row) ===
-    ax_d = fig.add_subplot(gs[1, :])
+    # === Panel D: Per-Network Jaccard (bottom-left, 2 columns) ===
+    ax_d = fig.add_subplot(gs[1, :2])
     sns.violinplot(
         data=df_jac, x="Network", y="Jaccard", hue="Model",
         palette=TWO_PALETTE, inner="box", linewidth=0, width=0.8,
@@ -425,6 +461,27 @@ def plot_merged_figure(
             unique_l.append(lbl)
     ax_d.legend(unique_h, unique_l, loc="lower right", fontsize=FONT["legend_small"])
 
+    # === Panel E: Sliding-window temporal stability (bottom-right) ===
+    ax_e = fig.add_subplot(gs[1, 2])
+    slide_order = ["Window vs Reference", "Adjacent Window Consistency"]
+    slide_palette = ["#95a5a6", "#fdae61"]
+    sns.violinplot(
+        data=df_slide, x="Metric", y="Value", order=slide_order,
+        palette=slide_palette, inner="box", linewidth=0, width=0.8,
+        cut=2, ax=ax_e,
+    )
+    _set_violin_alpha(ax_e)
+    _jitter_scatter(ax_e, df_slide, "Metric", "Value", slide_order, rng)
+    _add_mean_sd_diamond(ax_e, df_slide, "Metric", "Value", slide_order)
+    ax_e.axhline(
+        y=0.0, color=PALETTE["highlight"], linestyle="--", alpha=0.3, linewidth=1.2,
+    )
+    ax_e.set_title("E. Sliding-window Temporal Stability", fontweight="bold", fontsize=FONT["title"])
+    ax_e.set_ylabel("Correlation (r)", fontsize=FONT["axis_label"])
+    ax_e.set_xlabel("")
+    ax_e.tick_params(axis="x", rotation=10)
+    ax_e.legend(loc="lower right", fontsize=FONT["legend_small"])
+
     return fig
 
 
@@ -448,7 +505,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    print("--- Figure 4: Network Structure Preservation (merged) ---")
+    print("--- Figure 4: Network Structure Preservation + Sliding-window (merged) ---")
     config = BSNetConfig()
     out_dir = Path(config.artifacts_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -456,10 +513,11 @@ def main() -> None:
     all_topo: list[dict] = []
     all_ari: list[dict] = []
     all_jac: list[dict] = []
+    all_slide: list[dict] = []
 
     for i, seed in enumerate(SEEDS):
         print(f"  Seed {i + 1}/{len(SEEDS)} (seed={seed})...")
-        topo, ari, jac = run_single_seed(
+        topo, ari, jac, slide = run_single_seed(
             seed, config,
             n_subjects=args.n_subjects,
             n_rois=args.n_rois,
@@ -467,15 +525,18 @@ def main() -> None:
         all_topo.extend(topo)
         all_ari.extend(ari)
         all_jac.extend(jac)
+        all_slide.extend(slide)
 
     df_topo = pd.DataFrame(all_topo).dropna()
     df_ari = pd.DataFrame(all_ari)
     df_jac = pd.DataFrame(all_jac)
+    df_slide = pd.DataFrame(all_slide)
 
     # Save intermediate CSVs
     df_topo.to_csv(out_dir / "figure4_topology.csv", index=False)
     df_ari.to_csv(out_dir / "figure4_ari.csv", index=False)
     df_jac.to_csv(out_dir / "figure4_jaccard.csv", index=False)
+    df_slide.to_csv(out_dir / "figure4_sliding_window.csv", index=False)
 
     # Cross-seed summary
     print("\n--- Cross-seed Summary ---")
@@ -491,9 +552,14 @@ def main() -> None:
                 f"  {metric}  {model}: "
                 f"{seed_means.mean():.3f} ± {seed_means.std():.3f}"
             )
+    for metric in ["Window vs Reference", "Adjacent Window Consistency"]:
+        seed_means = (
+            df_slide[df_slide["Metric"] == metric].groupby("Seed")["Value"].mean()
+        )
+        print(f"  Sliding  {metric}: {seed_means.mean():.3f} ± {seed_means.std():.3f}")
 
     # Plot and save
-    fig = plot_merged_figure(df_topo, df_ari, df_jac)
+    fig = plot_merged_figure(df_topo, df_ari, df_jac, df_slide)
     save_figure(fig, "Figure4_Structure_Preservation.png")
     print("\nFigure 4 saved: Figure4_Structure_Preservation.png")
 

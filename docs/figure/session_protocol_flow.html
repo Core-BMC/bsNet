@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BS-NET Session Protocol</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  .container { max-width: 900px; width: 100%; }
+  h1 {
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 36px;
+  }
+
+  /* Phase headers */
+  .phase {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    margin-top: 32px;
+  }
+  .phase:first-of-type { margin-top: 0; }
+  .phase-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 12px;
+    border-radius: 999px;
+  }
+  .phase-recall .phase-badge { background: #1e3a5f; color: #60a5fa; }
+  .phase-work .phase-badge   { background: #3b2f1a; color: #fbbf24; }
+  .phase-relay .phase-badge  { background: #1a3a2a; color: #4ade80; }
+  .phase-label { font-size: 1.05rem; font-weight: 600; color: #cbd5e1; }
+
+  /* Step cards */
+  .steps { display: flex; flex-direction: column; gap: 2px; margin-left: 20px; }
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: #1e293b;
+    border-left: 3px solid transparent;
+    transition: background 0.15s;
+  }
+  .step:hover { background: #263348; }
+  .phase-recall .step { border-left-color: #3b82f6; }
+  .phase-work .step   { border-left-color: #f59e0b; }
+  .phase-relay .step  { border-left-color: #22c55e; }
+
+  .step-num {
+    flex-shrink: 0;
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .phase-recall .step-num { background: #1e3a5f; color: #60a5fa; }
+  .phase-work .step-num   { background: #3b2f1a; color: #fbbf24; }
+  .phase-relay .step-num  { background: #1a3a2a; color: #4ade80; }
+
+  .step-body { flex: 1; }
+  .step-title { font-size: 0.9rem; font-weight: 600; color: #f1f5f9; margin-bottom: 2px; }
+  .step-desc  { font-size: 0.78rem; color: #94a3b8; line-height: 1.45; }
+  .step-file  {
+    display: inline-block;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.72rem;
+    background: #334155;
+    color: #93c5fd;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-top: 3px;
+  }
+
+  /* Connector arrows */
+  .connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0;
+    margin-left: 32px;
+  }
+  .connector svg { opacity: 0.35; }
+
+  /* Principle box */
+  .principle-box {
+    margin-top: 36px;
+    padding: 20px 24px;
+    border-radius: 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+  }
+  .principle-box h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+  .principle-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+  .principle-row:last-child { margin-bottom: 0; }
+  .principle-tag {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 999px;
+    min-width: 110px;
+    text-align: center;
+  }
+  .tag-blue   { background: #1e3a5f; color: #60a5fa; }
+  .tag-green  { background: #1a3a2a; color: #4ade80; }
+  .tag-gray   { background: #334155; color: #94a3b8; }
+  .principle-text { font-size: 0.82rem; color: #cbd5e1; line-height: 1.5; }
+
+  /* Loop arrow */
+  .loop-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 24px;
+    gap: 10px;
+  }
+  .loop-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>BS-NET Session Protocol</h1>
+  <p class="subtitle">Recall → Work → Relay 순환 — 모든 AI 에이전트 공통</p>
+
+  <!-- RECALL -->
+  <div class="phase phase-recall">
+    <span class="phase-badge">Recall</span>
+    <span class="phase-label">세션 시작 — 기억 복원</span>
+  </div>
+  <div class="steps phase-recall">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">프로젝트 가이드 읽기</div>
+        <div class="step-desc">정책, 현재 상태, 컨벤션 파악</div>
+        <span class="step-file">CLAUDE.md</span> <span class="step-file">AGENTS.md</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">최근 dev log 읽기</div>
+        <div class="step-desc">직전 세션의 상세 작업 내역 + TODO 확인 → 시작점 결정</div>
+        <span class="step-file">docs/dev/*_dev_logs.md</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">Git 상태 확인</div>
+        <div class="step-desc">커밋 이후 미반영 변경 사항 파악</div>
+        <span class="step-file">git status -s</span> <span class="step-file">git log --oneline -5</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">TODO 기반 작업 계획</div>
+        <div class="step-desc">직전 dev log의 TODO 섹션을 오늘 작업의 시작점으로 삼기</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Arrow -->
+  <div class="connector">
+    <svg width="24" height="28" viewBox="0 0 24 28"><path d="M12 2 L12 22 M6 16 L12 22 L18 16" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+
+  <!-- WORK -->
+  <div class="phase phase-work">
+    <span class="phase-badge">Work</span>
+    <span class="phase-label">작업 수행</span>
+  </div>
+  <div class="steps phase-work">
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">코드 / 문서 / 실험 작업</div>
+        <div class="step-desc">병행하여 dev log에 기록 (Added / Changed / Fixed / Experiments)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Arrow -->
+  <div class="connector">
+    <svg width="24" height="28" viewBox="0 0 24 28"><path d="M12 2 L12 22 M6 16 L12 22 L18 16" stroke="#22c55e" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+
+  <!-- RELAY -->
+  <div class="phase phase-relay">
+    <span class="phase-badge">Relay</span>
+    <span class="phase-label">세션 종료 — 기억 전달</span>
+  </div>
+  <div class="steps phase-relay">
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <div class="step-title">Dev log 갱신</div>
+        <div class="step-desc">오늘 날짜 파일에 새 Session 섹션 추가 (없으면 생성). TODO 반드시 작성.</div>
+        <span class="step-file">docs/dev/YY-MM-DD-HH-MM_dev_logs.md</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <div class="step-title">Current Status 간략 갱신</div>
+        <div class="step-desc">날짜 + 세션 번호 업데이트, 핵심 변경 1–3줄</div>
+        <span class="step-file">CLAUDE.md</span> <span class="step-file">AGENTS.md</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">8</div>
+      <div class="step-body">
+        <div class="step-title">양쪽 파일 동기화</div>
+        <div class="step-desc">CLAUDE.md ↔ AGENTS.md 내용이 다르면 최신 쪽으로 통일</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">9</div>
+      <div class="step-body">
+        <div class="step-title">Pending Tasks + Next Session TODO</div>
+        <div class="step-desc">완료 항목 체크, 신규 항목 추가 → 다음 세션이 바로 착수 가능하도록</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loop indicator -->
+  <div class="loop-wrap">
+    <svg width="32" height="32" viewBox="0 0 32 32">
+      <path d="M16 28 C8.268 28 2 21.732 2 14 C2 6.268 8.268 0 16 0 C23.732 0 28 4.5 28 10" stroke="#64748b" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M24 6 L28 10 L32 6" stroke="#64748b" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="loop-label">다음 세션 → Recall로 순환</span>
+  </div>
+
+  <!-- Principle box -->
+  <div class="principle-box">
+    <h3>기록 원칙 — 역할 분리</h3>
+    <div class="principle-row">
+      <span class="principle-tag tag-blue">CLAUDE.md</span>
+      <span class="principle-text">간결한 현황 + 지침 — <strong>What &amp; Where</strong></span>
+    </div>
+    <div class="principle-row">
+      <span class="principle-tag tag-green">docs/dev/*.md</span>
+      <span class="principle-text">상세 이력 + 의사결정 근거 — <strong>Why &amp; How</strong></span>
+    </div>
+    <div class="principle-row">
+      <span class="principle-tag tag-gray">중복 금지</span>
+      <span class="principle-text">상세 내용은 항상 dev log에, CLAUDE.md에서는 참조만</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

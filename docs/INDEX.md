@@ -16,10 +16,10 @@
 - **`2.5_log_experiment_20260401.md`**: 4차 작업 (세션 3). Figure 1/2/7 재설계, style.py ATLAS_META 통합, ds000243 파이프라인 인프라 구축, run_duration_sweep.py ds000243 지원 추가.
 
 ## 3. 정량 분석 결과 및 시각화 캡션 (Validation Results & Legends)
-- **`3.1_res_figure_legends.md`**: Figure 1~4 전체에 대한 통합 아카데믹 레전드. 패널별 축·통계량·해석을 포함한 마스터 캡션 문서.
-- **`3.2_res_abide_figure_legends.md`**: ABIDE PCP 실증 Figure 5~7b 레전드. Multi-seed (CC200/CC400), Ceiling effect 4-method 비교.
-- **`3.3_res_adhd_figure_legends.md`**: ADHD-200 실증 Figure 8~12 레전드. Single/multi-seed, group comparison (ADHD vs Control), atlas comparison.
-- **`3.4_res_classification_legend.md`**: Track H — ADHD vs Control 분류 실험 Figure 7 레전드. Linear SVM 3-condition × 2-atlas 비교, Reference FC paradox 해석, 선행 연구 비교.
+- **`3.1_res_figure_legends.md`**: 메인 논문 Figure 1~7 canonical 레전드. (resting-state 중심, Figure 4 sliding-window 포함)
+- **`3.2_res_abide_figure_legends.md`**: ABIDE 확장 보충 캡션(Supplementary S*). CC400 확장, ceiling-method 비교.
+- **`3.3_res_adhd_figure_legends.md`**: ADHD 확장 보충 캡션(Supplementary S*). single/multi-seed 상세, multi-atlas 비교.
+- **`3.4_res_classification_legend.md`**: Main Figure 7(Track H) 상세 레전드. Linear SVM 3-condition × 2-atlas 비교, Reference FC paradox 해석.
 
 ## 4. 퍼블리케이션 및 최종 보고서 (Final Reports)
 - **`4.1_pub_report_academic.md`**: BS-NET의 Phase 1~4(이론 증명, 대규모 실증, 토폴로지 검증) 전 과정을 피어리뷰 학술 저널 형식으로 정리한 영문 학술 보고서.
@@ -34,6 +34,9 @@
 - **`5.6_failure_characterization.md`**: 9% 실패 피험자 특성 분석. N=300 (3 noise levels) 시뮬레이션, SNR≈1:1까지 100% pass 확인.
 - **`5.7_stationarity_discussion.md`**: Stationarity test 결과 논문 반영 방식 확정. Cheng et al. (2021) 선례 기반 방어 논증 3단계.
 - **`5.8_ceiling_effect_correction.md`**: Track G — Ceiling effect 원인 분석 및 보정. Fisher z-space correction(Shou 2014, Teeuw 2021)을 포함한 4-method 비교. ABIDE N=468 실증에서 original 85% ceiling → Fisher z 0% 해소. DOI 5건.
+- **`5.9_manuscript_why_questions_and_figure_map.md`**: 논문 집필 전용 why 질문 체크리스트 + 메인 Figure 1–7 canonical map + 번호 충돌 정리 규칙.
+- **`5.10_figure_design_audit_20260410.md`**: Figure 디자인 재점검 리포트. 메인/추가 Figure 최종 수정일·수정 횟수·완성도 및 공통 디자인 수정안(P0/P1/P2) 포함.
+- **`5.11_storyline_figure_decision_matrix.md`**: 논문 스토리라인 우선 고정 + Figure별 재활용/신규/아카이브 의사결정 매트릭스.
 
 ## 6. 운영 및 파이프라인 가이드 (Operations & Pipeline)
 - **`6.1_ops_local_setup.md`**: 로컬 환경 설정 가이드. Python venv/conda, 의존성 설치, Schaefer atlas 배치, FreeSurfer 라이선스 등.
@@ -53,10 +56,10 @@
 
 | # | 파일명 | 내용 | 스크립트 |
 |---|--------|------|---------|
-| Fig 1 | `Figure1_ds007535_DurationSweep.png` | Duration Sweep — ds007535 실데이터 (6 atlas, 투명도 계층, cross-subject reliability G1/G2) | `plot_figure1_ds007535.py` |
+| Fig 1 | `Figure1_ds000243_DurationSweep.png` | Duration Sweep — resting-state(ds000243) 기준 메인 정본 | `plot_figure1_ds000243.py` |
 | Fig 2 | `Figure2_Validation_ds007535.png` | Empirical Validation — ds007535 N=30 (6 atlas, full BS-NET pipeline, 4-panel) | `plot_figure2_validation.py` |
 | Fig 3 | `Figure3_ComponentNecessity.png` | Component Necessity — ABIDE N=468 실데이터 violin+jitter (SB/Prior/LW leave-one-out) | `plot_figure3_component.py` |
-| Fig 4 | `Figure4_Structure_Preservation.png` | Network Structure Preservation — ARI, Hub Variance, Small-worldness, Jaccard 합병 4-panel | `plot_figure4_structure.py` |
+| Fig 4 | `Figure4_Structure_Preservation.png` | Network Structure Preservation + sliding-window stability (본문 포함) | `plot_figure4_structure.py` |
 | Fig 5 | `Figure5_ABIDE_Validation.png` | ABIDE Empirical Validation (N=468, CC200, 10 seeds, Fisher z, 4-panel) | `plot_figure5_abide_v2.py` |
 | Fig 6 | `Figure6_ADHD_Validation.png` | Cross-Dataset Generalization (N=40, CC200, 10 seeds, Fisher z, 4-panel) | `plot_figure6_adhd_v2.py` |
 | Fig 7 | `Figure7_ADHD_Classification.png` | Clinical Classification — grouped bar (CC200/CC400 hatching, 3 FC conditions) | `plot_figure7_classification.py` |
@@ -65,7 +68,9 @@
 
 | # | 파일명 | 내용 |
 |---|--------|------|
-| Fig S1 | *(생성 예정)* | ABIDE CC400 멀티시드 |
-| Fig S2 | *(생성 예정)* | ADHD CC400 멀티시드 |
-| Fig S3 | *(생성 예정)* | Ceiling effect 4-method 비교 (CC200/CC400) |
-| Fig S4 | *(생성 예정)* | Component Necessity (Synthetic, 구버전) |
+| Fig S1 | *(생성 예정)* | ABIDE CC400 멀티시드 확장 |
+| Fig S2 | *(생성 예정)* | ABIDE ceiling-method 비교 (CC200) |
+| Fig S3 | *(생성 예정)* | ABIDE ceiling-method 비교 (CC400) |
+| Fig S4 | *(생성 예정)* | ADHD CC400 상세 validation |
+| Fig S5 | *(생성 예정)* | ADHD single vs multi-seed 비교 |
+| Fig S6 | *(생성 예정)* | ADHD multi-atlas 비교 |
