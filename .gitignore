@@ -27,7 +27,6 @@ logs/
 .vscode/
 
 # Claude
-CLAUDE.md
 
 # License files (freesurfer, etc.)
 fs_license.txt
