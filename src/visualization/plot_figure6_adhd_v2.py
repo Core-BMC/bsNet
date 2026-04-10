@@ -17,8 +17,14 @@ from __future__ import annotations
 import argparse
 import csv as csv_mod
 import logging
+import sys
 import warnings
 from pathlib import Path
+
+# Allow direct script execution:
+#   python src/visualization/plot_figure6_adhd_v2.py
+if __package__ in (None, ""):
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,6 +32,9 @@ import pandas as pd
 import seaborn as sns
 
 from src.visualization.style import (
+    ACCENT_COLORS,
+    CONDITION_PALETTE,
+    DOT_COLOR,
     FONT,
     LINE,
     apply_bsnet_theme,
@@ -36,12 +45,11 @@ logger = logging.getLogger(__name__)
 
 RESULTS_DIR = Path("data/adhd/results")
 
-# Fig 4/7 color schema
-COLOR_RAW = "#fdae61"
-COLOR_BSNET = "#4A90E2"
-COLOR_ADHD = "#d7191c"
-COLOR_CONTROL = "#2c7bb6"
-DOT_COLOR = "#333333"
+# Fig 4/7 color schema — from style.py
+COLOR_RAW = CONDITION_PALETTE["raw"]
+COLOR_BSNET = CONDITION_PALETTE["bsnet"]
+COLOR_ADHD = ACCENT_COLORS["adhd_group"]
+COLOR_CONTROL = ACCENT_COLORS["control_group"]
 DOT_SIZE = 8.0
 DOT_ALPHA = 0.40
 JITTER_X = 0.06

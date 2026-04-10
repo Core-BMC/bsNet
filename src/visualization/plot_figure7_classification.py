@@ -15,12 +15,19 @@ from __future__ import annotations
 
 import csv as csv_mod
 import logging
+import sys
 from pathlib import Path
+
+# Allow direct script execution:
+#   python src/visualization/plot_figure7_classification.py
+if __package__ in (None, ""):
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from src.visualization.style import (
+    CONDITION_PALETTE,
     FONT,
     apply_bsnet_theme,
     save_figure,
@@ -30,10 +37,14 @@ logger = logging.getLogger(__name__)
 
 RESULTS_DIR = Path("data/adhd/results")
 
-# Condition order & colors (Gray/Amber/Blue — Fig 3–6 schema)
+# Condition order & colors (Gray/Amber/Blue — Fig 3–6 schema, from style.py)
 CONDITION_ORDER = ["raw_short", "bsnet", "reference"]
 CONDITION_LABELS = ["Raw FC\n(2 min)", "BS-NET\n(2 min)", "Reference\n(full)"]
-CONDITION_COLORS = ["#fdae61", "#4A90E2", "#95a5a6"]  # Amber, Blue, Gray
+CONDITION_COLORS = [
+    CONDITION_PALETTE["raw"],        # Amber
+    CONDITION_PALETTE["bsnet"],      # Blue
+    CONDITION_PALETTE["reference"],  # Gray
+]
 
 # Atlas hatching for visual separation within grouped bars
 ATLAS_HATCHES = {"cc200": None, "cc400": "///"}

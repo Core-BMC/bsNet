@@ -86,6 +86,22 @@ CONDITION_PALETTE: dict[str, str] = {
 }
 """Dict[str, str]: 3-color scheme for Fig 3–7 (Gray/Amber/Blue)."""
 
+# Accent colors for specific panels (Fig 5/6 improvement & seed variability)
+ACCENT_COLORS: dict[str, str] = {
+    "improvement": "#E891B2",  # Δ improvement distribution (pink)
+    "seed_sigma": "#7BC8A4",   # Seed variability (green)
+    "adhd_group": "#d7191c",   # ADHD group marker (red)
+    "control_group": "#2c7bb6",  # Control group marker (blue)
+}
+"""Dict[str, str]: Panel-specific accent colors for Fig 5–6."""
+
+# Common dot/marker colors for jitter scatter overlays
+DOT_COLOR: str = "#333333"
+"""str: Dark dot color for jitter/swarm scatter overlays on violin plots."""
+
+MEAN_DIAMOND_COLOR: str = "#d7191c"
+"""str: Red diamond marker for mean±SD annotations on violin plots."""
+
 # ============================================================================
 # ATLAS METADATA  (Figure 1 multi-atlas standard)
 # ============================================================================

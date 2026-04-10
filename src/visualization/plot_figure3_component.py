@@ -18,8 +18,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 import warnings
 from pathlib import Path
+
+# Allow direct script execution:
+#   python src/visualization/plot_figure3_component.py
+if __package__ in (None, ""):
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,8 +33,11 @@ import pandas as pd
 import seaborn as sns
 
 from src.visualization.style import (
+    CONDITION_PALETTE,
+    DOT_COLOR,
     FONT,
     LINE,
+    PALETTE,
     apply_bsnet_theme,
     save_figure,
 )
@@ -50,21 +59,20 @@ CONDITION_LABELS: dict[str, str] = {
 
 # Fig 4/7 color schema: Full=blue(hero), ablated conditions by impact
 CONDITION_COLORS: dict[str, str] = {
-    "L_full": "#4A90E2",     # blue — full pipeline (hero)
-    "L_no_sb": "#d7191c",    # red — critical component
-    "L_no_lw": "#95a5a6",    # gray — negligible
-    "L_no_boot": "#2ecc71",  # green — inflated
-    "L_no_prior": "#fdae61", # amber — critical
-    "L_no_atten": "#E27396", # pink — modest
+    "L_full": CONDITION_PALETTE["bsnet"],       # blue — full pipeline (hero)
+    "L_no_sb": PALETTE["highlight"],             # red — critical component
+    "L_no_lw": CONDITION_PALETTE["reference"],   # gray — negligible
+    "L_no_boot": PALETTE["pass_excellent"],      # green — inflated
+    "L_no_prior": CONDITION_PALETTE["raw"],      # amber — critical
+    "L_no_atten": PALETTE["original"],           # pink — modest
 }
 
 # Δρ panel: color by direction/magnitude
-DELTA_NEG_COLOR = "#d7191c"     # red for negative (performance drop)
-DELTA_POS_COLOR = "#2ecc71"     # green for positive (inflation)
-DELTA_NEUTRAL_COLOR = "#95a5a6" # gray for negligible
+DELTA_NEG_COLOR = PALETTE["highlight"]            # red for negative (performance drop)
+DELTA_POS_COLOR = PALETTE["pass_excellent"]       # green for positive (inflation)
+DELTA_NEUTRAL_COLOR = CONDITION_PALETTE["reference"]  # gray for negligible
 
-# Scatter styling (matching Fig 4/7)
-DOT_COLOR = "#333333"
+# Scatter styling (matching Fig 4/7) — DOT_COLOR imported from style
 DOT_SIZE = 3.6
 DOT_ALPHA = 0.35
 JITTER_X_SIGMA = 0.08

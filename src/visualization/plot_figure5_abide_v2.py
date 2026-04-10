@@ -18,8 +18,14 @@ from __future__ import annotations
 import argparse
 import csv as csv_mod
 import logging
+import sys
 import warnings
 from pathlib import Path
+
+# Allow direct script execution:
+#   python src/visualization/plot_figure5_abide_v2.py
+if __package__ in (None, ""):
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,6 +33,9 @@ import pandas as pd
 import seaborn as sns
 
 from src.visualization.style import (
+    ACCENT_COLORS,
+    CONDITION_PALETTE,
+    DOT_COLOR,
     FONT,
     LINE,
     apply_bsnet_theme,
@@ -37,12 +46,11 @@ logger = logging.getLogger(__name__)
 
 RESULTS_DIR = Path("data/abide/results")
 
-# Fig 4/7 color schema
-COLOR_RAW = "#fdae61"    # amber
-COLOR_BSNET = "#4A90E2"  # blue
-COLOR_IMPROVE = "#E891B2" # pink (Panel C)
-COLOR_SEED = "#7BC8A4"    # green (Panel D)
-DOT_COLOR = "#333333"
+# Fig 4/7 color schema — from style.py
+COLOR_RAW = CONDITION_PALETTE["raw"]          # amber
+COLOR_BSNET = CONDITION_PALETTE["bsnet"]      # blue
+COLOR_IMPROVE = ACCENT_COLORS["improvement"]  # pink (Panel C)
+COLOR_SEED = ACCENT_COLORS["seed_sigma"]      # green (Panel D)
 DOT_SIZE = 3.6
 DOT_ALPHA = 0.35
 JITTER_X = 0.08

@@ -158,7 +158,7 @@ def compute_jaccard_overlap(
 
     Args:
         true_communities: List of sets, each containing node indices for a
-            ground truth community.
+            reference community.
         pred_labels: Array (n,) of predicted community labels per node.
         network_names: Optional list of names corresponding to true_communities.
             If None, uses integer indices.
@@ -202,14 +202,14 @@ def compute_jaccard_overlap(
 def compute_network_block_assignments(
     n_rois: int, n_networks: int = DEFAULT_N_NETWORKS
 ) -> list[set]:
-    """Generate ground truth community sets based on block structure.
+    """Generate reference community sets based on block structure.
 
     Creates a block-diagonal assignment where ROIs are evenly partitioned
     into n_networks communities (as used in simulate.py for Yeo 7-networks).
 
     Args:
         n_rois: Total number of ROIs/nodes.
-        n_networks: Number of ground truth networks/communities.
+        n_networks: Number of reference networks/communities.
             Default is 7.
 
     Returns:

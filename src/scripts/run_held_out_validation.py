@@ -11,7 +11,7 @@ Design (2-segment, clinically realistic):
 
   1. A  → BS-NET input  (run_sliding_window_prediction)
   2. B  → reference FC  (LW-shrinkage FC vector)
-           AND ground truth  r_FC(A, B)
+           AND reference  r_FC(A, B)
 
 Rationale for sliding-window:
   run_sliding_window_prediction() applies the full BS-NET pipeline

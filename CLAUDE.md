@@ -73,9 +73,9 @@
 ## Pending Tasks
 
 ### Tier 1 (reject 방지 — 필수)
-- [ ] `reliability_coeff=0.98`을 "within-session scanner reliability"로 명시적 정의 (코드 주석 + 문서)
-- [ ] BCa vs percentile CI 불일치 해결 (문서에서 BCa 언급 제거 또는 구현)
-- [ ] "ground truth" → "reference FC" 용어 변경 (코드/문서 전체)
+- [x] `reliability_coeff=0.98`을 "within-session scanner reliability"로 명시적 정의 — config.py/bootstrap.py에 Friedman 2008 주석 완비
+- [x] BCa vs percentile CI 불일치 해결 — percentile로 통일 완료 (5.4/5.5 문서 확인, 코드에 BCa 미구현)
+- [x] "ground truth" → "reference" 용어 변경 — graph_metrics.py, run_held_out_validation.py, test_graph_metrics.py, 1.2_arch_pipeline.md 완료
 - [x] 전처리 파이프라인 상세 기술 (Methods 섹션용) — 5.5 문서 코드 일치 완료
 - [ ] Sensitivity analysis 재설계 (oracle noise 패턴 문제 해결)
 - [x] Ceiling effect 보정 — Fisher z-space correction 구현 및 4-method 비교 (Track G)
@@ -100,7 +100,7 @@
 - [ ] `preprocess_ds007535.py` 실행 → .npy timeseries 생성
 - [ ] `run_duration_sweep.py --dataset ds007535` 실행
 - [ ] Figure 1 plotting 스크립트 작성/교체
-- [ ] style.py에 Fig 3-7 Gray/Amber/Blue 3색 스키마 공식 등록
+- [x] style.py에 Fig 3-7 Gray/Amber/Blue 3색 스키마 공식 등록 + DOT_COLOR/ACCENT_COLORS 추가, Fig 3–7 하드코딩 정리
 
 ### ds000243 (WashU resting-state) — 주력 검증 데이터셋
 - [x] `preprocess_ds000243.py` 작성 (36P confound regression only, no task regression)

@@ -25,9 +25,9 @@ Layout (GridSpec):
 from __future__ import annotations
 
 import argparse
+import sys
 import warnings
 from pathlib import Path
-import sys
 
 # Allow direct script execution:
 #   python3 src/visualization/plot_figure4_structure.py
@@ -59,6 +59,8 @@ from src.core.graph_metrics import (
 from src.core.simulate import generate_synthetic_timeseries
 from src.data.data_loader import get_fc_matrix
 from src.visualization.style import (
+    CONDITION_PALETTE,
+    DOT_COLOR,
     FONT,
     PALETTE,
     apply_bsnet_theme,
@@ -70,17 +72,17 @@ warnings.filterwarnings("ignore")
 # Reproducible 10-seed set (shared across all figures)
 SEEDS: list[int] = [42, 123, 777, 2026, 9999, 314, 628, 1414, 2718, 3141]
 
-# Three-model order and palette (reference, raw, BS-NET)
-# Fig 7 color schema: gray (Reference) + amber (Raw) + blue (BS-NET)
+# Three-model order and palette (reference, raw, BS-NET) — from style.py
 THREE_MODELS: list[str] = ["Reference FC (15m)", "Raw FC (2m)", "BS-NET (2m)"]
-THREE_PALETTE: list[str] = ["#95a5a6", "#fdae61", "#4A90E2"]
-#   Reference: silver-gray (neutral baseline)
-#   Raw FC:    amber (matches Fig7 CC400 tone)
-#   BS-NET:    blue  (matches Fig7 CC200 tone, hero)
+THREE_PALETTE: list[str] = [
+    CONDITION_PALETTE["reference"],
+    CONDITION_PALETTE["raw"],
+    CONDITION_PALETTE["bsnet"],
+]
 
 # Two-model order (raw, BS-NET) — for ARI and Jaccard
 TWO_MODELS: list[str] = ["Raw FC (2m)", "BS-NET (2m)"]
-TWO_PALETTE: list[str] = ["#fdae61", "#4A90E2"]
+TWO_PALETTE: list[str] = [CONDITION_PALETTE["raw"], CONDITION_PALETTE["bsnet"]]
 
 
 
@@ -228,7 +230,7 @@ def run_single_seed(
     return topology_results, ari_results, jaccard_results, sliding_results
 
 
-DOT_COLOR = "#333333"
+# DOT_COLOR imported from style.py
 DOT_SIZE = 3.6
 DOT_ALPHA = 0.50
 JITTER_X_SIGMA = 0.04
@@ -464,7 +466,7 @@ def plot_merged_figure(
     # === Panel E: Sliding-window temporal stability (bottom-right) ===
     ax_e = fig.add_subplot(gs[1, 2])
     slide_order = ["Window vs Reference", "Adjacent Window Consistency"]
-    slide_palette = ["#95a5a6", "#fdae61"]
+    slide_palette = [CONDITION_PALETTE["reference"], CONDITION_PALETTE["raw"]]
     sns.violinplot(
         data=df_slide, x="Metric", y="Value", order=slide_order,
         palette=slide_palette, inner="box", linewidth=0, width=0.8,

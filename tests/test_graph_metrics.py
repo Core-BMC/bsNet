@@ -154,7 +154,7 @@ class TestComputeJaccardOverlap:
 
 
 class TestComputeNetworkBlockAssignments:
-    """Tests for ground truth block community generation."""
+    """Tests for reference block community generation."""
 
     def test_seven_networks(self) -> None:
         comms = compute_network_block_assignments(n_rois=70, n_networks=7)
