@@ -1,4 +1,4 @@
-"""Generate Figure 4: Network Structure Preservation (merged topology + community).
+"""Figure 5: Network Structure Preservation (merged topology + community).
 
 Validates that BS-NET predictions preserve network topology (hub variance,
 small-worldness) and community structure (ARI, per-network Jaccard) compared
@@ -562,8 +562,8 @@ def main() -> None:
 
     # Plot and save
     fig = plot_merged_figure(df_topo, df_ari, df_jac, df_slide)
-    save_figure(fig, "Figure4_Structure_Preservation.png")
-    print("\nFigure 4 saved: Figure4_Structure_Preservation.png")
+    save_figure(fig, "Fig5_Structure_Preservation.png")
+    print("\nFigure 5 saved: Fig5_Structure_Preservation.png")
 
 
 if __name__ == "__main__":

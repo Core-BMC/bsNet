@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
+
+from tqdm import tqdm
 from pathlib import Path
 from typing import NamedTuple
 
@@ -500,22 +502,20 @@ def main() -> None:
                     executor.submit(_subject_worker, task): task
                     for task in tasks
                 }
-                for i, future in enumerate(as_completed(futures), 1):
-                    try:
-                        results.extend(future.result())
-                    except Exception as e:
-                        task = futures[future]
-                        logger.error(f"Failed: {task[0].name} seed={task[1]}: {e}")
-                    if i % 50 == 0:
-                        logger.info(f"Progress: {i}/{total_tasks} tasks")
+                with tqdm(total=total_tasks, desc="Component necessity", unit="task") as pbar:
+                    for future in as_completed(futures):
+                        try:
+                            results.extend(future.result())
+                        except Exception as e:
+                            task = futures[future]
+                            logger.error(f"Failed: {task[0].name} seed={task[1]}: {e}")
+                        pbar.update(1)
         else:
-            for i, task in enumerate(tasks):
+            for task in tqdm(tasks, desc="Component necessity", unit="task"):
                 try:
                     results.extend(_subject_worker(task))
                 except Exception as e:
                     logger.error(f"Failed: {task[0].name} seed={task[1]}: {e}")
-                if (i + 1) % 10 == 0:
-                    logger.info(f"Progress: {i + 1}/{total_tasks} tasks")
 
         # Output filename
         if args.output:
@@ -542,7 +542,7 @@ def main() -> None:
             for seed in seeds
         ]
 
-        for task in tasks:
+        for task in tqdm(tasks, desc="Component necessity", unit="seed"):
             results.extend(_subject_worker(task))
 
         if args.output:

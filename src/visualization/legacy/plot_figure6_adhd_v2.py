@@ -251,8 +251,8 @@ def main() -> None:
         print(f"  {g.upper()}: ρ̂T={rho[mask].mean():.3f}±{rho[mask].std():.3f}")
 
     fig = plot_figure6(data, args.atlas)
-    save_figure(fig, "Figure6_ADHD_Validation.png")
-    print("\nFigure 6 saved: Figure6_ADHD_Validation.png")
+    save_figure(fig, "Fig4_ADHD_Validation.png")
+    print("\nFigure 4 saved: Fig4_ADHD_Validation.png")
 
 
 if __name__ == "__main__":

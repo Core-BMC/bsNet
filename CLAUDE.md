@@ -56,19 +56,19 @@
 → Spearman-Brown prophecy (k=7.5) → Bayesian empirical prior → Attenuation correction
 → **Fisher z-space bounding** → ρ̂T
 
-## Current Status (2026-04-10, updated session 5)
+## Current Status (2026-04-14, updated session 6)
 
 > 상세 이력: `docs/dev/` 참조 (세션별 Added/Changed/Fixed/TODO 기록)
 
-- **Session 1–4 요약**: 코드 리팩토링, 방어 실험 Track A–H, ABIDE/ADHD 실증, Figure 1–7 통합, ds000243 파이프라인 완료
-- **Figure 4 확장**: 4-panel → 5-panel (Panel E: sliding-window temporal stability 추가, 본문 포함 확정)
-- **Figure legend 전면 개편**: docs/3.1–3.4 → Main Figure 1–7 canonical + Supplementary S* 체계
-- **스토리라인 확정**: resting-state 중심 내러티브, sliding-window 본문 포함, task-residual(ds007535)은 보조
-- **Fig 1 정본**: ds000243 (resting-state) 확정
-- **Figure 번호 체계**: Main 1–7 + Supplementary S1–S6 확정, 구 번호(Figure 8–12) 폐기
-- **논문 집필 준비 문서**: 5.9(why 질문 + Figure map), 5.10(디자인 audit), 5.11(스토리라인 결정 매트릭스)
-- **TimesFM comparator 메모**: cross-paradigm comparator 포지셔닝 (Option A: forecasting → FC → compare)
-- **테스트**: ruff 0 errors, pytest 74/74 passed
+- **Session 1–4 요약**: 코드 리팩토링, 방어 실험 Track A–H, ABIDE/ADHD 실증, ds000243 파이프라인 완료
+- **Session 5**: Fig 1 (FC Intuition) 3×3 figure 완성, Figure legend 상세 작성
+- **Session 6 (현재)**: Figure 번호 체계 재구성 (7→6), Fig 1–6 전체 재생성, Fig 2 스타일 변경
+- **Figure 번호 체계**: Main 1–6 canonical 확정 (구 Fig 1/2 → Fig 1에 통합)
+  - Fig 1: FC Intuition (ds000243) | Fig 2: Component Necessity | Fig 3: ABIDE | Fig 4: ADHD | Fig 5: Structure | Fig 6: Classification
+- **Fig 2 데이터셋 변경**: ABIDE N=468 → ds000243 N=52 (Fig 1과 동일 데이터셋으로 통일, 실행 완료 대기)
+- **Fig 2 스타일 변경**: 바이올린 → range bar (IQR) + scatter dots + mean±SD diamond
+- **Legacy figures**: `docs/figure/legacy/`에 보존
+- **스토리라인**: FC Intuition → Mechanism → Validation → Cross-Dataset → Safety → Utility
 
 ## Pending Tasks
 
@@ -216,12 +216,12 @@ bsNet/
 ```
 
 ## Next Session TODO
-1. ds007535 bold.nii.gz 다운로드 완료 확인 (`ls -lhL data/ds007535/raw/sub-01/func/*_bold.nii.gz`)
-2. `preprocess_ds007535.py` 실행: `python src/scripts/preprocess_ds007535.py --input-dir data/ds007535/raw --max-subjects 10`
-3. `run_duration_sweep.py` 실행: `python src/scripts/run_duration_sweep.py --dataset ds007535 --n-seeds 10 --n-jobs 4`
-4. 결과 확인 후 Figure 1 plotting 스크립트 작성
-5. style.py에 3색 스키마 등록 (Gray/Amber/Blue)
-6. Git commit: Figure 5-7 변경 + ds007535 스크립트 + duration sweep
+1. ds000243 component necessity CSV 확인 → Fig 2 재생성 (ds000243, N=52, Schaefer 200)
+2. Fig 2 plotting 스크립트에 ds000243 CSV 자동 탐지 로직 추가
+3. Figure legend 문서에 ds000243 기반 Fig 2 통계 업데이트
+4. Supplementary figure 번호 체계 확정 (S1–S6)
+5. Git commit: Figure 번호 재구성 + Fig 2 스타일/데이터셋 변경
+6. 논문 Methods/Results 섹션 초고 작성 시작
 
 ## Key References
 - Cheng et al. (2021): Split-half + CTT framework on HCP N=1003, DOI: 10.1016/j.neuroimage.2021.118005

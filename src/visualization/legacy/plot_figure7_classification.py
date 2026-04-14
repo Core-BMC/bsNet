@@ -222,7 +222,7 @@ def plot_classification_figure() -> None:
                 summaries, seeds, atlases)
     ax2.set_ylim(0.2, 1.0)
 
-    save_figure(fig, "Figure7_ADHD_Classification.png")
+    save_figure(fig, "Fig6_ADHD_Classification.png")
 
     # Print summary
     for atlas in atlases:

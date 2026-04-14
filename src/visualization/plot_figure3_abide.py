@@ -1,4 +1,4 @@
-"""Generate Figure 5: ABIDE Empirical Validation (redesigned).
+"""Figure 3: ABIDE Large-Scale Validation (N=468, redesigned).
 
 Four-panel layout matching Fig 3/4/7 style:
   A. Scatter: r_FC (raw) vs ρ̂T (BS-NET) per subject — identity line reference
@@ -255,8 +255,8 @@ def main() -> None:
     print(f"  Seed σ: {data['rho_std'].mean():.4f} (mean)")
 
     fig = plot_figure5(data, args.atlas)
-    save_figure(fig, "Figure5_ABIDE_Validation.png")
-    print("\nFigure 5 saved: Figure5_ABIDE_Validation.png")
+    save_figure(fig, "Fig3_ABIDE_Validation.png")
+    print("\nFigure 3 saved: Fig3_ABIDE_Validation.png")
 
 
 if __name__ == "__main__":

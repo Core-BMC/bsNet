@@ -1,0 +1,29 @@
+network_i,network_j,pair_type,mean_fc_raw,mean_fc_lw,mean_fc_reference,delta_raw_vs_ref,delta_lw_vs_ref
+Visual,Visual,within,0.2836,0.2218,0.2817,0.0019,-0.0599
+Visual,Somatomotor,between,0.0177,0.0146,0.0193,-0.0016,-0.0047
+Visual,Dorsal Attn,between,0.0481,0.0364,0.0422,0.0059,-0.0058
+Visual,Ventral Attn,between,0.0259,0.0201,0.0112,0.0147,0.0089
+Visual,Limbic,between,-0.0305,-0.0184,-0.0259,-0.0046,0.0075
+Visual,Control,between,-0.1016,-0.0787,-0.0956,-0.006,0.017
+Visual,Default Mode,between,-0.1123,-0.0884,-0.1022,-0.0101,0.0138
+Somatomotor,Somatomotor,within,0.3328,0.254,0.3293,0.0035,-0.0753
+Somatomotor,Dorsal Attn,between,0.0676,0.0517,0.0519,0.0157,-0.0003
+Somatomotor,Ventral Attn,between,0.1343,0.1048,0.1201,0.0142,-0.0153
+Somatomotor,Limbic,between,-0.0127,-0.0073,-0.0098,-0.0029,0.0025
+Somatomotor,Control,between,-0.0953,-0.075,-0.1063,0.011,0.0313
+Somatomotor,Default Mode,between,-0.1085,-0.0866,-0.0801,-0.0285,-0.0065
+Dorsal Attn,Dorsal Attn,within,0.2995,0.2425,0.2841,0.0154,-0.0416
+Dorsal Attn,Ventral Attn,between,0.1091,0.087,0.0995,0.0096,-0.0125
+Dorsal Attn,Limbic,between,-0.0235,-0.0171,-0.0275,0.004,0.0104
+Dorsal Attn,Control,between,0.0159,0.0144,0.0211,-0.0051,-0.0067
+Dorsal Attn,Default Mode,between,-0.1692,-0.1353,-0.1586,-0.0106,0.0233
+Ventral Attn,Ventral Attn,within,0.3161,0.2507,0.2695,0.0467,-0.0188
+Ventral Attn,Limbic,between,-0.0268,-0.0163,-0.0139,-0.013,-0.0024
+Ventral Attn,Control,between,-0.0065,-0.004,0.0022,-0.0087,-0.0062
+Ventral Attn,Default Mode,between,-0.1504,-0.1212,-0.1228,-0.0276,0.0016
+Limbic,Limbic,within,0.1308,0.0559,0.0743,0.0565,-0.0184
+Limbic,Control,between,0.0015,0.0001,0.0033,-0.0018,-0.0032
+Limbic,Default Mode,between,0.0232,0.0134,0.0198,0.0033,-0.0065
+Control,Control,within,0.1508,0.1199,0.1533,-0.0025,-0.0334
+Control,Default Mode,between,0.0208,0.0168,0.0077,0.0131,0.0091
+Default Mode,Default Mode,within,0.207,0.1645,0.1845,0.0225,-0.02
