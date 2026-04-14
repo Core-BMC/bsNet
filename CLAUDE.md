@@ -56,18 +56,20 @@
 → Spearman-Brown prophecy (k=7.5) → Bayesian empirical prior → Attenuation correction
 → **Fisher z-space bounding** → ρ̂T
 
-## Current Status (2026-04-14, updated session 6)
+## Current Status (2026-04-15, updated session 7)
 
 > 상세 이력: `docs/dev/` 참조 (세션별 Added/Changed/Fixed/TODO 기록)
 
 - **Session 1–4 요약**: 코드 리팩토링, 방어 실험 Track A–H, ABIDE/ADHD 실증, ds000243 파이프라인 완료
 - **Session 5**: Fig 1 (FC Intuition) 3×3 figure 완성, Figure legend 상세 작성
-- **Session 6 (현재)**: Figure 번호 체계 재구성 (7→6), Fig 1–6 전체 재생성, Fig 2 스타일 변경
+- **Session 6**: Figure 번호 체계 재구성 (7→6), Fig 1–6 전체 재생성, Fig 2 스타일 변경
+- **Session 7 (현재)**: ADHD-200 PCP 전체 검증 (N=399) + Downstream Analysis + τ_min 개념
 - **Figure 번호 체계**: Main 1–6 canonical 확정 (구 Fig 1/2 → Fig 1에 통합)
   - Fig 1: FC Intuition (ds000243) | Fig 2: Component Necessity | Fig 3: ABIDE | Fig 4: ADHD | Fig 5: Structure | Fig 6: Classification
-- **Fig 2 데이터셋 변경**: ABIDE N=468 → ds000243 N=52 (Fig 1과 동일 데이터셋으로 통일, 실행 완료 대기)
-- **Fig 2 스타일 변경**: 바이올린 → range bar (IQR) + scatter dots + mean±SD diamond
-- **Legacy figures**: `docs/figure/legacy/`에 보존
+- **ADHD-200 PCP 검증**: N=399 (6 sites), r_FC=0.525→ρ̂T=0.725, 100% improved, ceiling=0
+- **Downstream Analysis**: 7-analysis suite 완료 (FC sim, connectome, Cohen's d, SVM, graph, ρ̂T-stratified, fingerprint)
+- **ρ̂T Dose-Response**: 3/3 monotonicity 확인 (T1<T2<T3), BS-NET = reliability estimator로 확정
+- **τ_min 개념**: Minimum Common Bootstrap Duration — hemodynamic low-freq cycle 기반 이론적 하한
 - **스토리라인**: FC Intuition → Mechanism → Validation → Cross-Dataset → Safety → Utility
 
 ## Pending Tasks
@@ -148,12 +150,26 @@
   - CC200: ADHD(n=20) ρ̂T=0.868 vs Control(n=20) ρ̂T=0.864 — 그룹 무관 일관 보정
   - CC400: ADHD(n=20) ρ̂T=0.857 vs Control(n=20) ρ̂T=0.854
 - **Cross-dataset consistency**: ABIDE (N=468) ρ̂T=0.843 vs ADHD (N=40) ρ̂T=0.866 — 독립 데이터셋 간 일관된 개선
+- **ADHD-200 PCP Full (N=399, CC200, Fisher z, 10 seeds)**: r_FC=0.525±0.087 → ρ̂T=0.725±0.049, Δ=0.201, 100% improved
+  - 6 sites: NYU(79), NeuroIMAGE(48), OHSU(78), Peking_1(85), Peking_2(67), Peking_3(42)
+  - Group: ADHD(186) ρ̂T=0.721 vs Control(213) ρ̂T=0.729
+- **Downstream Analysis (N=399)**: LW shrinkage 단독 개선 미미 (Δ<0.01 전 항목)
+  - SVM: raw=0.560, LW=0.560, ref=0.600
+  - Fingerprinting: 83.0% ID rate (2min scan → N=399 중 자기 자신 식별)
+- **ρ̂T Dose-Response (N=399, tertile stratification)**:
+  - T1(ρ̂T=0.670): FC_sim=0.430, Cohen_d_r=0.317, SVM=0.502
+  - T2(ρ̂T=0.730): FC_sim=0.534, Cohen_d_r=0.408, SVM=0.550
+  - T3(ρ̂T=0.775): FC_sim=0.610, Cohen_d_r=0.538, SVM=0.556
+  - **3/3 monotonicity 확인** → BS-NET = reliability estimator, not FC denoiser
 - **ds007535 (SpeechHemi)**: OpenNeuro, 56 subjects, task fMRI (speech lateralization), 450 vols × TR=2s = 900s (15min)
   - fMRIPrep 25.1.4 전처리 완료 상태로 제공 (MNI152NLin2009cAsym)
   - 데이터 구조: `sub-XX/func/` 하위에 직접 배치 (derivatives 폴더 없음)
   - `bold.nii.gz` = 전처리된 MNI space BOLD, `desc-confounds_timeseries.tsv` = fMRIPrep confounds
   - Task-residual FC 접근: HRF-convolved task regressors + 36P regress out → residual FC ≈ rest FC (r>0.9)
   - 근거: Cole et al. (2014, DOI: 10.1016/j.neuron.2014.05.014), Gratton et al. (2018, DOI: 10.1016/j.neuron.2018.03.035)
+- **τ_min (Minimum Common Bootstrap Duration)**: hemodynamic 0.01 Hz의 2 cycles ≥ 200s, 실용적 하한 ~120s
+  - ρ̂T(τ) plateau에서 τ_min 정의 가능 — duration sweep으로 empirical estimation
+  - 코호트/조건별 가변적이나 BS-NET이 판단 도구 제공
 - **Track H: ADHD vs Control Classification** (N=40, Linear SVM, 5-fold×5 repeats):
   - CC200: Raw Acc=0.710, BS-NET Acc=0.720 (+1.0pp), Reference Acc=0.625
   - CC400: Raw Acc=0.685, BS-NET Acc=0.700 (+1.5pp), Reference Acc=0.610
@@ -216,12 +232,13 @@ bsNet/
 ```
 
 ## Next Session TODO
-1. ds000243 component necessity CSV 확인 → Fig 2 재생성 (ds000243, N=52, Schaefer 200)
-2. Fig 2 plotting 스크립트에 ds000243 CSV 자동 탐지 로직 추가
-3. Figure legend 문서에 ds000243 기반 Fig 2 통계 업데이트
-4. Supplementary figure 번호 체계 확정 (S1–S6)
-5. Git commit: Figure 번호 재구성 + Fig 2 스타일/데이터셋 변경
-6. 논문 Methods/Results 섹션 초고 작성 시작
+1. τ_min 수식 정리 (Methods/Discussion 초고) — bootstrap-sufficient condition 정의
+2. τ_min empirical estimation: ds000243 duration sweep ρ̂T(τ) plateau 분석
+3. Fig 4 (ADHD Validation) 업데이트: ADHD-200 PCP N=399 기반 CONSORT + floating box plot
+4. Downstream utility figure 설계: ρ̂T tertile dose-response 시각화 (Fig 7 또는 Supplementary)
+5. ds000243 component necessity CSV 확인 → Fig 2 재생성
+6. Git commit: ADHD-200 PCP 스크립트 + downstream analysis + dev log
+7. 논문 Methods/Results 초고: ADHD-200 PCP cross-dataset validation + downstream utility + τ_min
 
 ## Key References
 - Cheng et al. (2021): Split-half + CTT framework on HCP N=1003, DOI: 10.1016/j.neuroimage.2021.118005
