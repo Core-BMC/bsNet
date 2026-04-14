@@ -61,6 +61,13 @@ DURATIONS_DS007535 = [30, 60, 90, 120, 180, 240, 300, 450]
 DURATIONS_DS000243      = [30, 60, 90, 120, 180, 240, 300, 450]
 DURATIONS_DS000243_XCPD = [30, 60, 90, 120, 180, 240, 300, 450]
 
+# Fine-grained durations for convergence validation (18 time points)
+# τ_short ∈ [30..150 @10s, 180, 240, 300, 360, 450]
+DURATIONS_FINE = [
+    30, 40, 50, 60, 70, 80, 90, 100, 110,
+    120, 130, 140, 150, 180, 240, 300, 360, 450,
+]
+
 DEFAULT_SEEDS = list(range(42, 52))  # 10 seeds: 42–51
 CORRECTION_METHOD = "fisher_z"
 N_BOOTSTRAPS = 100
@@ -377,6 +384,7 @@ def sweep_single_subject(
     durations: list[int],
     seed: int,
     target_duration_min: float = 15.0,
+    reference_mode: str = "full",
 ) -> list[dict]:
     """Run BS-NET at multiple durations for one subject × one seed.
 
@@ -385,6 +393,12 @@ def sweep_single_subject(
         durations: List of short-scan durations in seconds.
         seed: Bootstrap random seed.
         target_duration_min: Target extrapolation duration (minutes).
+        reference_mode: How to compute reference FC.
+            "full"  — full timeseries (legacy, short data overlaps reference).
+            "split" — non-overlapping: ts_ref = ts[short_vols:], so reference
+                      shrinks as τ_short grows.  This is the correct design
+                      for convergence validation (r_FC should → ρ̂T as τ_ref
+                      increases, i.e. τ_short decreases).
 
     Returns:
         List of result dicts (one per duration).
@@ -400,8 +414,13 @@ def sweep_single_subject(
         ts = ts[:, valid_cols]
         n_rois = ts.shape[1]
 
-    # Reference FC: full timeseries — Fisher z-space for unbiased comparison
-    fc_full_vec = get_fc_matrix(ts, vectorized=True, use_shrinkage=True, fisher_z=True)
+    # Pre-compute full-timeseries reference for "full" mode (constant across
+    # durations).  For "split" mode, reference is computed per-duration below.
+    fc_full_vec = None
+    if reference_mode == "full":
+        fc_full_vec = get_fc_matrix(
+            ts, vectorized=True, use_shrinkage=True, fisher_z=True,
+        )
 
     results = []
     for dur_sec in durations:
@@ -411,12 +430,28 @@ def sweep_single_subject(
             continue
 
         ts_short = ts[:short_vols, :]
+
+        # ── Reference FC ────────────────────────────────────────────────
+        if reference_mode == "split":
+            ts_ref = ts[short_vols:, :]
+            ref_vols = ts_ref.shape[0]
+            ref_sec = round(ref_vols * tr, 1)
+            # Need a reasonable minimum reference length (~30s / 12 vols)
+            if ref_vols < max(12, int(30 / tr)):
+                continue
+            fc_ref_vec = get_fc_matrix(
+                ts_ref, vectorized=True, use_shrinkage=True, fisher_z=True,
+            )
+        else:
+            fc_ref_vec = fc_full_vec
+            ref_sec = round(n_vols * tr, 1)
+
         fc_short_vec = get_fc_matrix(
-            ts_short, vectorized=True, use_shrinkage=True, fisher_z=True
+            ts_short, vectorized=True, use_shrinkage=True, fisher_z=True,
         )
 
         # Raw FC similarity (Pearson r between z-transformed FC vectors)
-        r_fc_raw = float(np.corrcoef(fc_short_vec, fc_full_vec)[0, 1])
+        r_fc_raw = float(np.corrcoef(fc_short_vec, fc_ref_vec)[0, 1])
 
         # BS-NET pipeline
         config = BSNetConfig(
@@ -430,7 +465,7 @@ def sweep_single_subject(
 
         try:
             result = run_bootstrap_prediction(
-                ts_short, fc_full_vec, config,
+                ts_short, fc_ref_vec, config,
                 correction_method=CORRECTION_METHOD,
                 fisher_z_fc=True,
             )
@@ -450,6 +485,8 @@ def sweep_single_subject(
             "tr": tr,
             "total_sec": sub["total_sec"],
             "duration_sec": dur_sec,
+            "ref_duration_sec": ref_sec,
+            "reference_mode": reference_mode,
             "seed": seed,
             "n_rois": n_rois,
             "r_fc_raw": round(r_fc_raw, 6),
@@ -467,8 +504,8 @@ def sweep_single_subject(
 
 def _worker(args: tuple) -> list[dict]:
     """Worker for ProcessPoolExecutor."""
-    sub, durations, seed, target_min = args
-    return sweep_single_subject(sub, durations, seed, target_min)
+    sub, durations, seed, target_min, ref_mode = args
+    return sweep_single_subject(sub, durations, seed, target_min, ref_mode)
 
 
 def _resolve_n_jobs(n_jobs: int) -> int:
@@ -572,11 +609,12 @@ def run_duration_sweep(
     max_subjects: int = 0,
     n_jobs: int = 1,
     target_duration_min: float = 15.0,
+    reference_mode: str = "full",
 ) -> Path:
     """Run duration sweep experiment.
 
     Args:
-        dataset: Dataset name ("abide" or "ds007535").
+        dataset: Dataset name ("abide", "ds007535", "ds000243", "ds000243_xcpd").
         atlas: Atlas name.
         durations: List of short-scan durations (seconds).
         seeds: List of random seeds.
@@ -584,6 +622,7 @@ def run_duration_sweep(
         max_subjects: Limit (0 = all).
         n_jobs: Parallel workers (1=sequential, -1=all cores).
         target_duration_min: Target extrapolation duration (minutes).
+        reference_mode: "full" (legacy overlap) or "split" (non-overlapping).
 
     Returns:
         Path to per-record CSV.
@@ -609,11 +648,12 @@ def run_duration_sweep(
     total_tasks = n_sub * n_seeds
     logger.info(
         f"Duration sweep [{dataset}]: {n_sub} subjects × {n_seeds} seeds × "
-        f"{n_dur} durations = {n_sub * n_seeds * n_dur} runs"
+        f"{n_dur} durations = {n_sub * n_seeds * n_dur} runs "
+        f"(reference_mode={reference_mode})"
     )
 
     tasks = [
-        (sub, durations, seed, target_duration_min)
+        (sub, durations, seed, target_duration_min, reference_mode)
         for sub in subjects
         for seed in seeds
     ]
@@ -661,9 +701,11 @@ def run_duration_sweep(
     results_dir = Path(f"data/{results_dataset}/results")
     results_dir.mkdir(parents=True, exist_ok=True)
 
-    csv_path = results_dir / f"{dataset}_duration_sweep_{atlas}.csv"
+    ref_suffix = f"_{reference_mode}" if reference_mode != "full" else ""
+    csv_path = results_dir / f"{dataset}_duration_sweep_{atlas}{ref_suffix}.csv"
     fieldnames = [
-        "sub_id", "site", "tr", "total_sec", "duration_sec", "seed",
+        "sub_id", "site", "tr", "total_sec", "duration_sec",
+        "ref_duration_sec", "reference_mode", "seed",
         "n_rois", "r_fc_raw", "rho_hat_T", "ci_lower", "ci_upper",
         "improvement",
     ]
@@ -677,17 +719,18 @@ def run_duration_sweep(
 
     # ── Aggregate ────────────────────────────────────────────────────────
     agg_path = (
-        results_dir / f"{dataset}_duration_sweep_{atlas}_aggregated.csv"
+        results_dir / f"{dataset}_duration_sweep_{atlas}{ref_suffix}_aggregated.csv"
     )
     _save_aggregated(all_results, agg_path, durations, seeds)
     logger.info(f"Aggregated CSV: {agg_path}")
 
     # ── Print summary ────────────────────────────────────────────────────
-    print(f"\n{'='*65}")
+    print(f"\n{'='*70}")
     print(f"Duration Sweep — {dataset.upper()} / {atlas.upper()}")
     print(f"  Subjects: {n_sub}, Seeds: {n_seeds}, Durations: {durations}")
-    print(f"  Target: {target_duration_min} min, Elapsed: {elapsed_total:.0f}s")
-    print(f"{'='*65}")
+    print(f"  Reference: {reference_mode}, Target: {target_duration_min} min, "
+          f"Elapsed: {elapsed_total:.0f}s")
+    print(f"{'='*70}")
     print(f"{'Duration':>10} {'N':>5} {'r_FC':>12} {'ρ̂T':>12} "
           f"{'Δ':>10} {'CI_width':>10}")
     print(f"{'-'*65}")
@@ -758,6 +801,24 @@ def main() -> None:
         "--target-duration-min", type=float, default=15.0,
         help="Target extrapolation duration in minutes (default: 15)",
     )
+    parser.add_argument(
+        "--reference-mode", default="full",
+        choices=["full", "split"],
+        help=(
+            "Reference FC computation mode (default: full). "
+            "'full': entire timeseries as reference (legacy, overlapping). "
+            "'split': non-overlapping ts_ref = ts[short_vols:] "
+            "(correct for convergence validation)."
+        ),
+    )
+    parser.add_argument(
+        "--fine-durations", action="store_true",
+        help=(
+            "Use fine-grained 18-point duration list "
+            f"({DURATIONS_FINE[0]}–{DURATIONS_FINE[-1]}s). "
+            "Overrides --durations."
+        ),
+    )
     args = parser.parse_args()
 
     # Per-dataset defaults
@@ -779,15 +840,21 @@ def main() -> None:
 
     seeds = list(range(42, 42 + args.n_seeds))
 
+    # --fine-durations overrides --durations
+    sweep_durations = args.durations
+    if args.fine_durations:
+        sweep_durations = DURATIONS_FINE
+
     run_duration_sweep(
         dataset=args.dataset,
         atlas=atlas,
-        durations=args.durations,
+        durations=sweep_durations,
         seeds=seeds,
         min_total_sec=min_total_sec,
         max_subjects=args.max_subjects,
         n_jobs=args.n_jobs,
         target_duration_min=args.target_duration_min,
+        reference_mode=args.reference_mode,
     )
 
 
