@@ -71,8 +71,8 @@ TAU_REF_LIST = [
     30, 60, 90, 120, 150, 180, 240, 300, 360, 450, 540, 660, 780,
 ]
 
-N_BOOTSTRAPS = 50
-DEFAULT_SEEDS = [42, 43, 44]  # 3 seeds for ρ̂T estimation
+N_BOOTSTRAPS = 100
+DEFAULT_SEEDS = list(range(42, 52))  # 10 seeds for publication-quality
 
 
 # ── Phase 1: r_FC sweep (no bootstrap) ──────────────────────────────────
