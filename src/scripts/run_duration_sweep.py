@@ -43,6 +43,8 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
+from tqdm import tqdm
+
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -70,7 +72,7 @@ DURATIONS_FINE = [
 
 DEFAULT_SEEDS = list(range(42, 52))  # 10 seeds: 42–51
 CORRECTION_METHOD = "fisher_z"
-N_BOOTSTRAPS = 100
+N_BOOTSTRAPS = 50  # 50 sufficient for convergence validation (was 100)
 
 # ── Dataset configurations ──────────────────────────────────────────────
 
@@ -662,33 +664,31 @@ def run_duration_sweep(
     t0 = time.time()
     actual_jobs = _resolve_n_jobs(n_jobs)
 
+    pbar = tqdm(
+        total=total_tasks,
+        desc=f"Sweep [{dataset}/{atlas}]",
+        unit="task",
+        bar_format=(
+            "{l_bar}{bar}| {n_fmt}/{total_fmt} tasks "
+            "[{elapsed}<{remaining}, {rate_fmt}]"
+        ),
+    )
+
     if actual_jobs <= 1:
-        for idx, task in enumerate(tasks):
+        for task in tasks:
             rows = _worker(task)
             all_results.extend(rows)
-            if (idx + 1) % 50 == 0:
-                elapsed = time.time() - t0
-                pct = (idx + 1) / total_tasks * 100
-                logger.info(
-                    f"  [{idx + 1}/{total_tasks}] {pct:.0f}% "
-                    f"({elapsed:.0f}s elapsed)"
-                )
+            pbar.update(1)
     else:
         logger.info(f"Using {actual_jobs} parallel workers")
         with ProcessPoolExecutor(max_workers=actual_jobs) as pool:
             futures = {pool.submit(_worker, t): t for t in tasks}
-            for done_count, future in enumerate(
-                as_completed(futures), start=1
-            ):
+            for future in as_completed(futures):
                 rows = future.result()
                 all_results.extend(rows)
-                if done_count % 100 == 0:
-                    elapsed = time.time() - t0
-                    pct = done_count / total_tasks * 100
-                    logger.info(
-                        f"  [{done_count}/{total_tasks}] {pct:.0f}% "
-                        f"({elapsed:.0f}s elapsed)"
-                    )
+                pbar.update(1)
+
+    pbar.close()
 
     elapsed_total = time.time() - t0
     logger.info(
