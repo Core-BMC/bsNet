@@ -477,7 +477,7 @@ def main() -> None:
         help=f"Reference durations to sweep (default: {TAU_REF_LIST})",
     )
     parser.add_argument(
-        "--n-seeds", type=int, default=3,
+        "--n-seeds", type=int, default=10,
         help="Seeds for BS-NET (default: 3)",
     )
     parser.add_argument("--min-total-sec", type=float, default=600.0)

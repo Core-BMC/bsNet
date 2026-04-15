@@ -56,17 +56,20 @@
 → Spearman-Brown prophecy (k=7.5) → Bayesian empirical prior → Attenuation correction
 → **Fisher z-space bounding** → ρ̂T
 
-## Current Status (2026-04-15, updated session 7)
+## Current Status (2026-04-16, updated session 8)
 
 > 상세 이력: `docs/dev/` 참조 (세션별 Added/Changed/Fixed/TODO 기록)
 
 - **Session 1–4 요약**: 코드 리팩토링, 방어 실험 Track A–H, ABIDE/ADHD 실증, ds000243 파이프라인 완료
 - **Session 5**: Fig 1 (FC Intuition) 3×3 figure 완성, Figure legend 상세 작성
 - **Session 6**: Figure 번호 체계 재구성 (7→6), Fig 1–6 전체 재생성, Fig 2 스타일 변경
-- **Session 7 (현재)**: ADHD-200 PCP 전체 검증 (N=399) + Downstream Analysis + τ_min 개념
+- **Session 7**: ADHD-200 PCP 전체 검증 (N=399) + Downstream Analysis + τ_min 개념
+- **Session 8 (현재)**: Convergence Validation 실험 + 시각화 + τ_min empirical estimation
 - **Figure 번호 체계**: Main 1–6 canonical 확정 (구 Fig 1/2 → Fig 1에 통합)
   - Fig 1: FC Intuition (ds000243) | Fig 2: Component Necessity | Fig 3: ABIDE | Fig 4: ADHD | Fig 5: Structure | Fig 6: Classification
 - **ADHD-200 PCP 검증**: N=399 (6 sites), r_FC=0.525→ρ̂T=0.725, 100% improved, ceiling=0
+- **Convergence Validation**: ds000243 N=49, 18 τ_short points, gap 100% positive, ρ̂T peak=0.774 at 150s
+- **τ_min**: empirical plateau [90, 180]s, 95% peak at 40s, 실용 권장 60-120s
 - **Downstream Analysis**: 7-analysis suite 완료 (FC sim, connectome, Cohen's d, SVM, graph, ρ̂T-stratified, fingerprint)
 - **ρ̂T Dose-Response**: 3/3 monotonicity 확인 (T1<T2<T3), BS-NET = reliability estimator로 확정
 - **τ_min 개념**: Minimum Common Bootstrap Duration — hemodynamic low-freq cycle 기반 이론적 하한
@@ -180,6 +183,16 @@
   - w/o Bayesian Prior: Δ=−0.051 (CRITICAL)
   - w/o Ledoit-Wolf: Δ=−0.002 (negligible)
   - Synthetic과 동일 패턴: SB > Prior > Attenuation > Bootstrap > LW
+- **Convergence Validation** (ds000243, N=49, 4S256Parcels, 100bs × 10seeds):
+  - τ_short=60s: ρ̂T=0.756±0.032, r_FC peak=0.566 (300s), gap=0.190, 49/49 positive
+  - τ_short=120s: ρ̂T=0.771±0.032, r_FC peak=0.638 (240s), gap=0.134, 25/25 positive
+  - τ_short=180s: ρ̂T=0.769±0.036, r_FC peak=0.657 (180s), gap=0.112, 46/46 positive
+  - Non-stationarity: r_FC peaks at τ_ref≈240-300s then declines — ρ̂T bypasses this
+- **τ_min Empirical** (18-point fine-grained):
+  - Peak ρ̂T=0.774 at τ_short=150s
+  - 95% threshold at 40s, plateau [90, 180]s
+  - Seed SD decreases monotonically: 0.011 (30s) → 0.003 (150s)
+  - Reference artifact: ρ̂T drops at τ_short≥240s (insufficient τ_ref for short-scan subjects)
 
 ## Conventions
 
@@ -232,13 +245,13 @@ bsNet/
 ```
 
 ## Next Session TODO
-1. τ_min 수식 정리 (Methods/Discussion 초고) — bootstrap-sufficient condition 정의
-2. τ_min empirical estimation: ds000243 duration sweep ρ̂T(τ) plateau 분석
-3. Fig 4 (ADHD Validation) 업데이트: ADHD-200 PCP N=399 기반 CONSORT + floating box plot
-4. Downstream utility figure 설계: ρ̂T tertile dose-response 시각화 (Fig 7 또는 Supplementary)
+1. 논문 Methods 초고: convergence validation 실험 설계 + τ_min 수식 정리
+2. 논문 Results 초고: 수렴 패턴 + gap 통계 + τ_min plateau 기술
+3. 논문 Discussion: τ_min 개념 + "Why ~2 minutes?" + non-stationarity 논점
+4. Downstream utility figure: ρ̂T tertile dose-response 시각화 (Fig 7 또는 Supplementary)
 5. ds000243 component necessity CSV 확인 → Fig 2 재생성
-6. Git commit: ADHD-200 PCP 스크립트 + downstream analysis + dev log
-7. 논문 Methods/Results 초고: ADHD-200 PCP cross-dataset validation + downstream utility + τ_min
+6. Git commit: convergence validation 스크립트 + figures + dev log
+7. Convergence figure를 논문 Figure 체계에 편입 (Fig 7? Supplementary?)
 
 ## Key References
 - Cheng et al. (2021): Split-half + CTT framework on HCP N=1003, DOI: 10.1016/j.neuroimage.2021.118005
