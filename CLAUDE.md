@@ -12,6 +12,11 @@
 - Claude는 스크립트 작성 후 **실행 명령어만 알려준다**.
 - 실행 환경: 항상 `.venv` 기준 (`source .venv/bin/activate` 또는 `(.venv)` 상태에서 `python3`)
 - **예외**: 사용자가 명시적으로 "돌려줘"라고 요청한 경우에만 Claude가 직접 실행.
+- **BLAS threading**: `ProcessPoolExecutor` + NumPy 병렬 실행 시 반드시 아래 환경변수 설정:
+  ```bash
+  export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
+  ```
+  미설정 시 worker × BLAS threads 경합으로 CPU 100% 포화 + 극심한 성능 저하 발생.
 
 ## Git Commit Policy
 - `git commit`은 **사용자가 직접 실행**한다.
