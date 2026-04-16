@@ -70,15 +70,18 @@
 - **Session 6**: Figure 번호 체계 재구성 (7→6), Fig 1–6 전체 재생성, Fig 2 스타일 변경
 - **Session 7**: ADHD-200 PCP 전체 검증 (N=399) + Downstream Analysis + τ_min 개념
 - **Session 8 (현재)**: Convergence Validation 실험 + 시각화 + τ_min empirical estimation
-- **Figure 번호 체계**: Main 1–6 canonical 확정 (구 Fig 1/2 → Fig 1에 통합)
-  - Fig 1: FC Intuition (ds000243) | Fig 2: Component Necessity | Fig 3: ABIDE | Fig 4: ADHD | Fig 5: Structure | Fig 6: Classification
+- **Figure 번호 체계**: Main 1–6 확정 (Session 8에서 Fig 1 전면 교체)
+  - **Fig 1: Method Overview** (A: Pipeline Schematic, B1–B3: Convergence Validation, C: τ_min Estimation)
+  - Fig 2: Component Necessity | Fig 3: ABIDE | Fig 4: ADHD | Fig 5: Structure | Fig 6: Classification
+  - 구 Fig 1 (FC Intuition 3×3) 폐기 사유: Panel A–F FC행렬이 "FC denoiser" 오해 유발, H/I는 구 설계 결함
+  - 구 Fig 1 Panel G (edge attenuation) → Supplementary 이동 가능
 - **ADHD-200 PCP 검증**: N=399 (6 sites), r_FC=0.525→ρ̂T=0.725, 100% improved, ceiling=0
 - **Convergence Validation**: ds000243 N=49, 18 τ_short points, gap 100% positive, ρ̂T peak=0.774 at 150s
 - **τ_min**: empirical plateau [90, 180]s, 95% peak at 40s, 실용 권장 60-120s
 - **Downstream Analysis**: 7-analysis suite 완료 (FC sim, connectome, Cohen's d, SVM, graph, ρ̂T-stratified, fingerprint)
 - **ρ̂T Dose-Response**: 3/3 monotonicity 확인 (T1<T2<T3), BS-NET = reliability estimator로 확정
 - **τ_min 개념**: Minimum Common Bootstrap Duration — hemodynamic low-freq cycle 기반 이론적 하한
-- **스토리라인**: FC Intuition → Mechanism → Validation → Cross-Dataset → Safety → Utility
+- **스토리라인**: Method+Proof(Fig1) → Mechanism(Fig2) → Validation(Fig3) → Cross-Dataset(Fig4) → Safety(Fig5) → Utility(Fig6)
 
 ## Pending Tasks
 
@@ -99,18 +102,17 @@
 - [x] ADHD 40명 검증 실행 — Fisher z, CC200 ρ̂T=0.866, CC400(356 ROIs) ρ̂T=0.855
 - [ ] Track E ABIDE 실데이터 결과 분석 (N=468, CC200+CC400 배치 실행 중)
 
-### Figure 1 실데이터 Duration Sweep (진행 중)
-- [x] ABIDE duration sweep 불가 판정 (최대 ~10min, 15min reference 부족)
-- [x] ds007535 (SpeechHemi) 선정: 56 subjects, 15min, TR=2s, fMRIPrep 25.1.4 전처리 완료
-- [x] Task-residual FC 방법론 채택: Cole 2014 + Gratton 2018 근거
-- [x] `preprocess_ds007535.py` 작성 (36P + HRF task regression → Schaefer parcellation)
-- [x] `run_duration_sweep.py` 작성 (범용: abide/ds007535/ds000243, durations 30-450s)
-- [x] json_path optional 처리 (TR=2.0 fallback)
-- [ ] ds007535 bold.nii.gz 다운로드 (pilot N=10, ~4.8GB) — **진행 중**
-- [ ] `preprocess_ds007535.py` 실행 → .npy timeseries 생성
-- [ ] `run_duration_sweep.py --dataset ds007535` 실행
-- [ ] Figure 1 plotting 스크립트 작성/교체
+### Figure 1 — Method Overview (Session 8에서 확정)
+- [x] 구 Fig 1 (FC Intuition 3×3) 폐기 결정: "FC denoiser" 오해 + Panel H/I 설계 결함
+- [x] 새 Fig 1 구성 확정: A(Pipeline Schematic) + B1-B3(Convergence) + C(τ_min)
+- [x] `plot_figure1_combined.py` 작성 — matplotlib 블록도 + convergence + τ_min 통합
+- [x] `Fig1_Method_Overview.png` 생성 완료
+- [x] Panel A: brain connectome 포함 일러스트레이션 완성 (지시사항: `docs/dev/26-04-15-00-00_dev_logs.md` Session 4)
 - [x] style.py에 Fig 3-7 Gray/Amber/Blue 3색 스키마 공식 등록 + DOT_COLOR/ACCENT_COLORS 추가, Fig 3–7 하드코딩 정리
+
+### ds007535 (SpeechHemi) — 보류
+- [x] ds007535 선정 및 전처리 스크립트 작성 완료
+- [ ] ds007535 bold.nii.gz 다운로드 — Fig 1 교체로 **우선순위 하락**, Supplementary 후보
 
 ### ds000243 (WashU resting-state) — 주력 검증 데이터셋
 - [x] `preprocess_ds000243.py` 작성 (36P confound regression only, no task regression)
@@ -121,9 +123,8 @@
 - [x] `preprocess_ds000243.py` 리팩토링: multi-run concat, confounds path 버그 수정, TR=2.5s, `--n-jobs 8`
 - [x] `run_ds000243_batch.sh` preprocess 단계 통합 (find pipefail 버그 수정)
 - [x] `run_ds000243_batch.sh` 실행 완료 (6 atlases × 52 subjects × 10 seeds, ~8.25h)
-- [ ] Figure 1 (duration sweep): ds000243 N=52 기반으로 plotting 스크립트 작성
-- [ ] Figure 2 (validation 4-panel): ds000243 기반으로 `plot_figure2_validation.py` 업데이트
-- [ ] Figure 3 (Component Necessity): ds000243 실데이터 버전 추가 (현재 ABIDE N=468 기반)
+- [x] Figure 1 (Method Overview): ds000243 convergence data 기반 `plot_figure1_combined.py` 완료
+- [ ] Figure 2 (Component Necessity): ds000243 실데이터 버전 추가 (현재 ABIDE N=468 기반)
 - [ ] Figure 4 (Network Structure Preservation): ds000243 기반 topology/community 분석
 
 ### 논문 작성
@@ -250,13 +251,13 @@ bsNet/
 ```
 
 ## Next Session TODO
-1. 논문 Methods 초고: convergence validation 실험 설계 + τ_min 수식 정리
-2. 논문 Results 초고: 수렴 패턴 + gap 통계 + τ_min plateau 기술
-3. 논문 Discussion: τ_min 개념 + "Why ~2 minutes?" + non-stationarity 논점
-4. Downstream utility figure: ρ̂T tertile dose-response 시각화 (Fig 7 또는 Supplementary)
+1. Fig 1A Pipeline schematic: Illustrator/외부 도구로 brain 이미지 포함 고급 버전 교체
+2. 논문 Methods 초고: convergence validation 실험 설계 + τ_min 수식 정리
+3. 논문 Results 초고: 수렴 패턴 + gap 통계 + τ_min plateau 기술
+4. 논문 Discussion: τ_min 개념 + "Why ~2 minutes?" + non-stationarity 논점
 5. ds000243 component necessity CSV 확인 → Fig 2 재생성
-6. Git commit: convergence validation 스크립트 + figures + dev log
-7. Convergence figure를 논문 Figure 체계에 편입 (Fig 7? Supplementary?)
+6. Downstream utility figure: ρ̂T tertile dose-response 시각화 (Supplementary)
+7. Git commit: Fig 1 교체 + convergence scripts + figures + dev log
 
 ## Key References
 - Cheng et al. (2021): Split-half + CTT framework on HCP N=1003, DOI: 10.1016/j.neuroimage.2021.118005

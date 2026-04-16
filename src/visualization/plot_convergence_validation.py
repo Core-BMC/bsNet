@@ -354,15 +354,6 @@ def plot_tau_min_figure(
     seed_sds = np.array(seed_sds)
     tau_shorts = np.array(tau_shorts)
 
-    # Find peak and 95% threshold
-    peak_idx = np.argmax(means)
-    peak_val = means[peak_idx]
-    threshold_95 = peak_val * PEAK_FRAC
-
-    # Find τ_min: first τ_short reaching 95% of peak
-    tau_min_idx = np.where(means >= threshold_95)[0][0]
-    tau_min_val = tau_shorts[tau_min_idx]
-
     # ── Figure layout: main + seed SD inset ──
     fig, ax_main = plt.subplots(1, 1, figsize=(10, 6))
 
@@ -373,15 +364,6 @@ def plot_tau_min_figure(
         color=COLOR_PLATEAU,
         alpha=0.10,
         label=f"Plateau [{TAU_MIN_PLATEAU[0]}–{TAU_MIN_PLATEAU[1]}s]",
-    )
-
-    # --- 95% peak threshold ---
-    ax_main.axhline(
-        threshold_95,
-        color="#999999",
-        linestyle=":",
-        linewidth=LINE["thin"],
-        label=f"95% peak = {threshold_95:.3f}",
     )
 
     # --- ρ̂T(τ_short) curve ---
@@ -401,39 +383,6 @@ def plot_tau_min_figure(
         markersize=MARKER["secondary"],
         label=f"ρ̂T (N=49, 10 seeds)",
         zorder=5,
-    )
-
-    # --- Mark peak ---
-    ax_main.plot(
-        tau_shorts[peak_idx],
-        peak_val,
-        marker="*",
-        color="#d7191c",
-        markersize=14,
-        zorder=6,
-        label=f"Peak: {peak_val:.4f} at {tau_shorts[peak_idx]}s",
-    )
-
-    # --- Mark τ_min ---
-    ax_main.axvline(
-        tau_min_val,
-        color=COLOR_PLATEAU,
-        linewidth=LINE["reference"],
-        linestyle="--",
-        alpha=0.7,
-    )
-    ax_main.annotate(
-        f"τ_min ≈ {tau_min_val}s",
-        xy=(tau_min_val, means[tau_min_idx]),
-        xytext=(tau_min_val + 40, means[tau_min_idx] - 0.03),
-        fontsize=FONT["annotation"],
-        fontweight="bold",
-        color=COLOR_PLATEAU,
-        arrowprops=dict(
-            arrowstyle="->",
-            color=COLOR_PLATEAU,
-            lw=1.5,
-        ),
     )
 
     # --- Annotation: reference artifact zone ---
@@ -475,6 +424,9 @@ def plot_tau_min_figure(
     ax_seed.tick_params(axis="y", labelcolor="#7BC8A4", labelsize=FONT["tick"])
     ax_seed.set_ylim(0, max(seed_sds) * 3)
 
+    # --- Axis limits: extend upper range for legend/summary space ---
+    ax_main.set_ylim(None, max(means + stds) + 0.06)
+
     # --- Styling ---
     style_axis(
         ax_main,
@@ -483,31 +435,34 @@ def plot_tau_min_figure(
         ylabel="ρ̂T (mean ± SD across subjects)",
     )
 
-    # Combine legends from both axes
+    # Combine legends from both axes — upper right
     lines1, labels1 = ax_main.get_legend_handles_labels()
     lines2, labels2 = ax_seed.get_legend_handles_labels()
     ax_main.legend(
         lines1 + lines2,
         labels1 + labels2,
-        loc="lower right",
+        loc="upper right",
         fontsize=FONT["legend"],
     )
 
-    # Summary text box
+    # Summary text box — plateau-centric, positioned in green zone (upper left)
+    plateau_mask = (tau_shorts >= TAU_MIN_PLATEAU[0]) & (tau_shorts <= TAU_MIN_PLATEAU[1])
+    plateau_mean = means[plateau_mask].mean()
+    plateau_range = means[plateau_mask].max() - means[plateau_mask].min()
     summary = (
-        f"Peak ρ̂T = {peak_val:.4f} at τ_short = {tau_shorts[peak_idx]}s\n"
-        f"95% threshold = {threshold_95:.4f}\n"
-        f"τ_min ≈ {tau_min_val}s (first point ≥ 95% peak)\n"
-        f"Plateau range: [{TAU_MIN_PLATEAU[0]}, {TAU_MIN_PLATEAU[1]}]s"
+        f"Plateau [{TAU_MIN_PLATEAU[0]}–{TAU_MIN_PLATEAU[1]}s]: "
+        f"ρ̂T = {plateau_mean:.3f}, range = {plateau_range:.4f}\n"
+        f"Recommended: 60–120s (>97% of plateau mean)\n"
+        f"Seed SD at plateau: {seed_sds[plateau_mask].mean():.4f}"
     )
     ax_main.text(
         0.02,
-        0.02,
+        0.97,
         summary,
         transform=ax_main.transAxes,
         fontsize=FONT["annotation"] - 0.5,
-        verticalalignment="bottom",
-        bbox=dict(boxstyle="round,pad=0.4", facecolor="white", alpha=0.8),
+        verticalalignment="top",
+        bbox=dict(boxstyle="round,pad=0.4", facecolor="white", alpha=0.85),
     )
 
     fig.tight_layout(pad=3.0)

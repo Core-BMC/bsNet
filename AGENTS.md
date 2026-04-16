@@ -1,7 +1,7 @@
 # AGENTS.md — BS-NET Project
 
 ## Co-Author
-이 프로젝트의 리팩토링 작업은 Codex (Anthropic)의 지원을 받아 수행되었습니다.
+이 프로젝트의 리팩토링, 문서화, 시각화 작업은 각 에이전트 모델 (LLM Agent,   Gemini, GPT, Claude 등)의 지원을 받아 수행되었습니다.
 
 ## Git Policy
 - 커밋 메시지에 Co-Authored-By 트레일러를 포함하지 않는다.
@@ -9,13 +9,18 @@
 
 ## Script Execution Policy
 - 스크립트는 **사용자가 직접 실행**한다.
-- Codex는 스크립트 작성 후 **실행 명령어만 알려준다**.
+- Agent는 스크립트 작성 후 **실행 명령어만 알려준다**.
 - 실행 환경: 항상 `.venv` 기준 (`source .venv/bin/activate` 또는 `(.venv)` 상태에서 `python3`)
-- **예외**: 사용자가 명시적으로 "돌려줘"라고 요청한 경우에만 Codex가 직접 실행.
+- **예외**: 사용자가 명시적으로 "돌려줘"라고 요청한 경우에만 Agent가 직접 실행.
+- **BLAS threading**: `ProcessPoolExecutor` + NumPy 병렬 실행 시 반드시 아래 환경변수 설정:
+  ```bash
+  export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
+  ```
+  미설정 시 worker × BLAS threads 경합으로 CPU 100% 포화 + 극심한 성능 저하 발생.
 
 ## Git Commit Policy
 - `git commit`은 **사용자가 직접 실행**한다.
-- Codex는 staging(`git add`)까지만 처리하고, **커밋 메시지만 제공**한다.
+- Agent는 staging(`git add`)까지만 처리하고, **커밋 메시지만 제공**한다.
 - 커밋 메시지는 코드블록으로 복사 가능하게 제공한다.
 - **이유**: Cowork sandbox의 FUSE 파일시스템에서 `.git/index.lock` 제거 불가로 `git commit` 실행 불가.
 
@@ -56,19 +61,27 @@
 → Spearman-Brown prophecy (k=7.5) → Bayesian empirical prior → Attenuation correction
 → **Fisher z-space bounding** → ρ̂T
 
-## Current Status (2026-04-10, updated session 5)
+## Current Status (2026-04-16, updated session 8)
 
 > 상세 이력: `docs/dev/` 참조 (세션별 Added/Changed/Fixed/TODO 기록)
 
-- **Session 1–4 요약**: 코드 리팩토링, 방어 실험 Track A–H, ABIDE/ADHD 실증, Figure 1–7 통합, ds000243 파이프라인 완료
-- **Figure 4 확장**: 4-panel → 5-panel (Panel E: sliding-window temporal stability 추가, 본문 포함 확정)
-- **Figure legend 전면 개편**: docs/3.1–3.4 → Main Figure 1–7 canonical + Supplementary S* 체계
-- **스토리라인 확정**: resting-state 중심 내러티브, sliding-window 본문 포함, task-residual(ds007535)은 보조
-- **Fig 1 정본**: ds000243 (resting-state) 확정
-- **Figure 번호 체계**: Main 1–7 + Supplementary S1–S6 확정, 구 번호(Figure 8–12) 폐기
-- **논문 집필 준비 문서**: 5.9(why 질문 + Figure map), 5.10(디자인 audit), 5.11(스토리라인 결정 매트릭스)
-- **TimesFM comparator 메모**: cross-paradigm comparator 포지셔닝 (Option A: forecasting → FC → compare)
-- **테스트**: ruff 0 errors, pytest 74/74 passed
+- **Session 1–4 요약**: 코드 리팩토링, 방어 실험 Track A–H, ABIDE/ADHD 실증, ds000243 파이프라인 완료
+- **Session 5**: Fig 1 (FC Intuition) 3×3 figure 완성, Figure legend 상세 작성
+- **Session 6**: Figure 번호 체계 재구성 (7→6), Fig 1–6 전체 재생성, Fig 2 스타일 변경
+- **Session 7**: ADHD-200 PCP 전체 검증 (N=399) + Downstream Analysis + τ_min 개념
+- **Session 8 (현재)**: Convergence Validation 실험 + 시각화 + τ_min empirical estimation
+- **Figure 번호 체계**: Main 1–6 확정 (Session 8에서 Fig 1 전면 교체)
+  - **Fig 1: Method Overview** (A: Pipeline Schematic, B1–B3: Convergence Validation, C: τ_min Estimation)
+  - Fig 2: Component Necessity | Fig 3: ABIDE | Fig 4: ADHD | Fig 5: Structure | Fig 6: Classification
+  - 구 Fig 1 (FC Intuition 3×3) 폐기 사유: Panel A–F FC행렬이 "FC denoiser" 오해 유발, H/I는 구 설계 결함
+  - 구 Fig 1 Panel G (edge attenuation) → Supplementary 이동 가능
+- **ADHD-200 PCP 검증**: N=399 (6 sites), r_FC=0.525→ρ̂T=0.725, 100% improved, ceiling=0
+- **Convergence Validation**: ds000243 N=49, 18 τ_short points, gap 100% positive, ρ̂T peak=0.774 at 150s
+- **τ_min**: empirical plateau [90, 180]s, 95% peak at 40s, 실용 권장 60-120s
+- **Downstream Analysis**: 7-analysis suite 완료 (FC sim, connectome, Cohen's d, SVM, graph, ρ̂T-stratified, fingerprint)
+- **ρ̂T Dose-Response**: 3/3 monotonicity 확인 (T1<T2<T3), BS-NET = reliability estimator로 확정
+- **τ_min 개념**: Minimum Common Bootstrap Duration — hemodynamic low-freq cycle 기반 이론적 하한
+- **스토리라인**: Method+Proof(Fig1) → Mechanism(Fig2) → Validation(Fig3) → Cross-Dataset(Fig4) → Safety(Fig5) → Utility(Fig6)
 
 ## Pending Tasks
 
@@ -89,18 +102,17 @@
 - [x] ADHD 40명 검증 실행 — Fisher z, CC200 ρ̂T=0.866, CC400(356 ROIs) ρ̂T=0.855
 - [ ] Track E ABIDE 실데이터 결과 분석 (N=468, CC200+CC400 배치 실행 중)
 
-### Figure 1 실데이터 Duration Sweep (진행 중)
-- [x] ABIDE duration sweep 불가 판정 (최대 ~10min, 15min reference 부족)
-- [x] ds007535 (SpeechHemi) 선정: 56 subjects, 15min, TR=2s, fMRIPrep 25.1.4 전처리 완료
-- [x] Task-residual FC 방법론 채택: Cole 2014 + Gratton 2018 근거
-- [x] `preprocess_ds007535.py` 작성 (36P + HRF task regression → Schaefer parcellation)
-- [x] `run_duration_sweep.py` 작성 (범용: abide/ds007535/ds000243, durations 30-450s)
-- [x] json_path optional 처리 (TR=2.0 fallback)
-- [ ] ds007535 bold.nii.gz 다운로드 (pilot N=10, ~4.8GB) — **진행 중**
-- [ ] `preprocess_ds007535.py` 실행 → .npy timeseries 생성
-- [ ] `run_duration_sweep.py --dataset ds007535` 실행
-- [ ] Figure 1 plotting 스크립트 작성/교체
+### Figure 1 — Method Overview (Session 8에서 확정)
+- [x] 구 Fig 1 (FC Intuition 3×3) 폐기 결정: "FC denoiser" 오해 + Panel H/I 설계 결함
+- [x] 새 Fig 1 구성 확정: A(Pipeline Schematic) + B1-B3(Convergence) + C(τ_min)
+- [x] `plot_figure1_combined.py` 작성 — matplotlib 블록도 + convergence + τ_min 통합
+- [x] `Fig1_Method_Overview.png` 생성 완료
+- [ ] Panel A: 최종 논문용 Illustrator 교체 (현재 matplotlib placeholder)
 - [x] style.py에 Fig 3-7 Gray/Amber/Blue 3색 스키마 공식 등록 + DOT_COLOR/ACCENT_COLORS 추가, Fig 3–7 하드코딩 정리
+
+### ds007535 (SpeechHemi) — 보류
+- [x] ds007535 선정 및 전처리 스크립트 작성 완료
+- [ ] ds007535 bold.nii.gz 다운로드 — Fig 1 교체로 **우선순위 하락**, Supplementary 후보
 
 ### ds000243 (WashU resting-state) — 주력 검증 데이터셋
 - [x] `preprocess_ds000243.py` 작성 (36P confound regression only, no task regression)
@@ -111,9 +123,8 @@
 - [x] `preprocess_ds000243.py` 리팩토링: multi-run concat, confounds path 버그 수정, TR=2.5s, `--n-jobs 8`
 - [x] `run_ds000243_batch.sh` preprocess 단계 통합 (find pipefail 버그 수정)
 - [x] `run_ds000243_batch.sh` 실행 완료 (6 atlases × 52 subjects × 10 seeds, ~8.25h)
-- [ ] Figure 1 (duration sweep): ds000243 N=52 기반으로 plotting 스크립트 작성
-- [ ] Figure 2 (validation 4-panel): ds000243 기반으로 `plot_figure2_validation.py` 업데이트
-- [ ] Figure 3 (Component Necessity): ds000243 실데이터 버전 추가 (현재 ABIDE N=468 기반)
+- [x] Figure 1 (Method Overview): ds000243 convergence data 기반 `plot_figure1_combined.py` 완료
+- [ ] Figure 2 (Component Necessity): ds000243 실데이터 버전 추가 (현재 ABIDE N=468 기반)
 - [ ] Figure 4 (Network Structure Preservation): ds000243 기반 topology/community 분석
 
 ### 논문 작성
@@ -148,12 +159,26 @@
   - CC200: ADHD(n=20) ρ̂T=0.868 vs Control(n=20) ρ̂T=0.864 — 그룹 무관 일관 보정
   - CC400: ADHD(n=20) ρ̂T=0.857 vs Control(n=20) ρ̂T=0.854
 - **Cross-dataset consistency**: ABIDE (N=468) ρ̂T=0.843 vs ADHD (N=40) ρ̂T=0.866 — 독립 데이터셋 간 일관된 개선
+- **ADHD-200 PCP Full (N=399, CC200, Fisher z, 10 seeds)**: r_FC=0.525±0.087 → ρ̂T=0.725±0.049, Δ=0.201, 100% improved
+  - 6 sites: NYU(79), NeuroIMAGE(48), OHSU(78), Peking_1(85), Peking_2(67), Peking_3(42)
+  - Group: ADHD(186) ρ̂T=0.721 vs Control(213) ρ̂T=0.729
+- **Downstream Analysis (N=399)**: LW shrinkage 단독 개선 미미 (Δ<0.01 전 항목)
+  - SVM: raw=0.560, LW=0.560, ref=0.600
+  - Fingerprinting: 83.0% ID rate (2min scan → N=399 중 자기 자신 식별)
+- **ρ̂T Dose-Response (N=399, tertile stratification)**:
+  - T1(ρ̂T=0.670): FC_sim=0.430, Cohen_d_r=0.317, SVM=0.502
+  - T2(ρ̂T=0.730): FC_sim=0.534, Cohen_d_r=0.408, SVM=0.550
+  - T3(ρ̂T=0.775): FC_sim=0.610, Cohen_d_r=0.538, SVM=0.556
+  - **3/3 monotonicity 확인** → BS-NET = reliability estimator, not FC denoiser
 - **ds007535 (SpeechHemi)**: OpenNeuro, 56 subjects, task fMRI (speech lateralization), 450 vols × TR=2s = 900s (15min)
   - fMRIPrep 25.1.4 전처리 완료 상태로 제공 (MNI152NLin2009cAsym)
   - 데이터 구조: `sub-XX/func/` 하위에 직접 배치 (derivatives 폴더 없음)
   - `bold.nii.gz` = 전처리된 MNI space BOLD, `desc-confounds_timeseries.tsv` = fMRIPrep confounds
   - Task-residual FC 접근: HRF-convolved task regressors + 36P regress out → residual FC ≈ rest FC (r>0.9)
   - 근거: Cole et al. (2014, DOI: 10.1016/j.neuron.2014.05.014), Gratton et al. (2018, DOI: 10.1016/j.neuron.2018.03.035)
+- **τ_min (Minimum Common Bootstrap Duration)**: hemodynamic 0.01 Hz의 2 cycles ≥ 200s, 실용적 하한 ~120s
+  - ρ̂T(τ) plateau에서 τ_min 정의 가능 — duration sweep으로 empirical estimation
+  - 코호트/조건별 가변적이나 BS-NET이 판단 도구 제공
 - **Track H: ADHD vs Control Classification** (N=40, Linear SVM, 5-fold×5 repeats):
   - CC200: Raw Acc=0.710, BS-NET Acc=0.720 (+1.0pp), Reference Acc=0.625
   - CC400: Raw Acc=0.685, BS-NET Acc=0.700 (+1.5pp), Reference Acc=0.610
@@ -164,6 +189,16 @@
   - w/o Bayesian Prior: Δ=−0.051 (CRITICAL)
   - w/o Ledoit-Wolf: Δ=−0.002 (negligible)
   - Synthetic과 동일 패턴: SB > Prior > Attenuation > Bootstrap > LW
+- **Convergence Validation** (ds000243, N=49, 4S256Parcels, 100bs × 10seeds):
+  - τ_short=60s: ρ̂T=0.756±0.032, r_FC peak=0.566 (300s), gap=0.190, 49/49 positive
+  - τ_short=120s: ρ̂T=0.771±0.032, r_FC peak=0.638 (240s), gap=0.134, 25/25 positive
+  - τ_short=180s: ρ̂T=0.769±0.036, r_FC peak=0.657 (180s), gap=0.112, 46/46 positive
+  - Non-stationarity: r_FC peaks at τ_ref≈240-300s then declines — ρ̂T bypasses this
+- **τ_min Empirical** (18-point fine-grained):
+  - Peak ρ̂T=0.774 at τ_short=150s
+  - 95% threshold at 40s, plateau [90, 180]s
+  - Seed SD decreases monotonically: 0.011 (30s) → 0.003 (150s)
+  - Reference artifact: ρ̂T drops at τ_short≥240s (insufficient τ_ref for short-scan subjects)
 
 ## Conventions
 
@@ -216,12 +251,13 @@ bsNet/
 ```
 
 ## Next Session TODO
-1. ds007535 bold.nii.gz 다운로드 완료 확인 (`ls -lhL data/ds007535/raw/sub-01/func/*_bold.nii.gz`)
-2. `preprocess_ds007535.py` 실행: `python src/scripts/preprocess_ds007535.py --input-dir data/ds007535/raw --max-subjects 10`
-3. `run_duration_sweep.py` 실행: `python src/scripts/run_duration_sweep.py --dataset ds007535 --n-seeds 10 --n-jobs 4`
-4. 결과 확인 후 Figure 1 plotting 스크립트 작성
-5. style.py에 3색 스키마 등록 (Gray/Amber/Blue)
-6. Git commit: Figure 5-7 변경 + ds007535 스크립트 + duration sweep
+1. Fig 1A Pipeline schematic: Illustrator/외부 도구로 brain 이미지 포함 고급 버전 교체
+2. 논문 Methods 초고: convergence validation 실험 설계 + τ_min 수식 정리
+3. 논문 Results 초고: 수렴 패턴 + gap 통계 + τ_min plateau 기술
+4. 논문 Discussion: τ_min 개념 + "Why ~2 minutes?" + non-stationarity 논점
+5. ds000243 component necessity CSV 확인 → Fig 2 재생성
+6. Downstream utility figure: ρ̂T tertile dose-response 시각화 (Supplementary)
+7. Git commit: Fig 1 교체 + convergence scripts + figures + dev log
 
 ## Key References
 - Cheng et al. (2021): Split-half + CTT framework on HCP N=1003, DOI: 10.1016/j.neuroimage.2021.118005
