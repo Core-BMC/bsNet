@@ -143,7 +143,9 @@ run_one() {
     fi
     [[ -f "$bids_dir/participants.tsv" ]] && cp "$bids_dir/participants.tsv" "$staging_dir/participants.tsv"
     [[ -f "$bids_dir/participants.json" ]] && cp "$bids_dir/participants.json" "$staging_dir/participants.json"
-    cp -R "$bids_dir/$sub_id" "$staging_dir/$sub_id"
+    # DataLad/git-annex datasets often keep file pointers as symlinks.
+    # Use -L to copy dereferenced file contents into staging so Docker can read them.
+    cp -R -L "$bids_dir/$sub_id" "$staging_dir/$sub_id"
 
     local cmd=(
         docker run --rm
@@ -178,6 +180,8 @@ run_one() {
         return 0
     else
         echo "  FAIL: $ds_id/$sub_id (see $log_file)"
+        echo "  ----- log tail (last 40) -----"
+        tail -n 40 "$log_file" | sed 's/^/    | /' || true
         return 1
     fi
 }

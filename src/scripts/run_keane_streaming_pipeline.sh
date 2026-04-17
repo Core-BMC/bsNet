@@ -187,6 +187,13 @@ ensure_subject_present() {
     local sub_dir="$DATA_ROOT/$ds/$sub"
 
     if [[ -d "$sub_dir" ]]; then
+        # Even when directory exists, ensure annexed payload is materialized.
+        if [[ "$AUTO_DATALAD_GET" -eq 1 && "$HAS_DATALAD" -eq 1 ]]; then
+            log "datalad get (refresh): $ds/$sub"
+            if ! run_cmd datalad get -r "$sub_dir"; then
+                warn "datalad get refresh failed for $sub_dir (continue with local files)"
+            fi
+        fi
         return 0
     fi
     if [[ "$AUTO_DATALAD_GET" -eq 0 ]]; then
