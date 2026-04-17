@@ -558,6 +558,10 @@ def _run_one_repeat(
                     eval_scheme=eval_scheme,
                 )
 
+            bal_p = float(pvals.get("bal_acc_p_perm", np.nan))
+            auc_p = float(pvals.get("roc_auc_p_perm", np.nan))
+            pr_p = float(pvals.get("auprc_p_perm", np.nan))
+
             rows.append({
                 "stratum": stratum_name,
                 "repeat": rep,
@@ -575,7 +579,9 @@ def _run_one_repeat(
                 "rho_weight_gamma": rho_weight_gamma,
                 "pca_var": pca_var,
                 **obs,
-                **pvals,
+                "bal_acc_p_perm": bal_p,
+                "roc_auc_p_perm": auc_p,
+                "auprc_p_perm": pr_p,
             })
 
     return {"rows": rows}
