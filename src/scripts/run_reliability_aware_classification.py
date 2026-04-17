@@ -298,32 +298,19 @@ def _permute_within_groups(
     return y_perm
 
 
-def _evaluate_cv(
+def _prepare_split_payloads(
     *,
     subs: list[dict],
     ts_list: list[np.ndarray],
-    y: np.ndarray,
-    groups: np.ndarray,
     splits: list[tuple[np.ndarray, np.ndarray]],
     fc_method: str,
-    model_name: str,
     pca_var: float,
     include_covariates: bool,
-    rho_weight_gamma: float,
-    seed: int,
-) -> dict[str, float]:
-    """Evaluate one config with fixed folds and labels."""
-    y_pred_all = np.full(len(y), -1, dtype=int)
-    score_all = np.full(len(y), np.nan, dtype=float)
-    feature_dims: list[int] = []
-    used_splits = 0
+) -> list[dict]:
+    """Precompute split-wise features once (expensive step)."""
+    payloads: list[dict] = []
 
-    for split_i, (train_idx, test_idx) in enumerate(splits):
-        y_train = y[train_idx]
-        y_test = y[test_idx]
-        if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
-            continue
-
+    for train_idx, test_idx in splits:
         train_ts = [ts_list[i] for i in train_idx]
         test_ts = [ts_list[i] for i in test_idx]
         x_train_fc, x_test_fc = _build_fc_train_test(
@@ -343,7 +330,43 @@ def _evaluate_cv(
             x_train = x_train_fc
             x_test = x_test_fc
 
-        feature_dims.append(int(x_train.shape[1]))
+        payloads.append({
+            "train_idx": train_idx,
+            "test_idx": test_idx,
+            "x_train": x_train,
+            "x_test": x_test,
+            "feature_dim": int(x_train.shape[1]),
+        })
+
+    return payloads
+
+
+def _evaluate_from_payloads(
+    *,
+    payloads: list[dict],
+    y: np.ndarray,
+    subs: list[dict],
+    model_name: str,
+    rho_weight_gamma: float,
+    seed: int,
+) -> dict[str, float]:
+    """Evaluate model using precomputed split payloads."""
+    y_pred_all = np.full(len(y), -1, dtype=int)
+    score_all = np.full(len(y), np.nan, dtype=float)
+    feature_dims: list[int] = []
+    used_splits = 0
+
+    for split_i, p in enumerate(payloads):
+        train_idx = p["train_idx"]
+        test_idx = p["test_idx"]
+        x_train = p["x_train"]
+        x_test = p["x_test"]
+        y_train = y[train_idx]
+        y_test = y[test_idx]
+        if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
+            continue
+
+        feature_dims.append(int(p["feature_dim"]))
 
         if rho_weight_gamma > 0:
             rho_train = np.array([float(subs[i]["rho_hat_T"]) for i in train_idx], dtype=float)
@@ -403,31 +426,22 @@ def _evaluate_cv(
 
 def _permutation_pvals(
     *,
+    payloads: list[dict],
     subs: list[dict],
-    ts_list: list[np.ndarray],
     y_true: np.ndarray,
     groups: np.ndarray,
-    splits: list[tuple[np.ndarray, np.ndarray]],
-    fc_method: str,
     model_name: str,
-    pca_var: float,
-    include_covariates: bool,
     rho_weight_gamma: float,
     seed: int,
     n_permutations: int,
     eval_scheme: str,
 ) -> dict[str, float]:
     """Compute one-sided permutation p-values for BalAcc/AUC/AUPRC."""
-    obs = _evaluate_cv(
+    obs = _evaluate_from_payloads(
+        payloads=payloads,
         subs=subs,
-        ts_list=ts_list,
         y=y_true,
-        groups=groups,
-        splits=splits,
-        fc_method=fc_method,
         model_name=model_name,
-        pca_var=pca_var,
-        include_covariates=include_covariates,
         rho_weight_gamma=rho_weight_gamma,
         seed=seed,
     )
@@ -446,16 +460,11 @@ def _permutation_pvals(
         else:
             y_perm = rng.permutation(y_true)
 
-        m = _evaluate_cv(
+        m = _evaluate_from_payloads(
+            payloads=payloads,
             subs=subs,
-            ts_list=ts_list,
             y=y_perm,
-            groups=groups,
-            splits=splits,
-            fc_method=fc_method,
             model_name=model_name,
-            pca_var=pca_var,
-            include_covariates=include_covariates,
             rho_weight_gamma=rho_weight_gamma,
             seed=seed + i * 17,
         )
@@ -512,17 +521,21 @@ def _run_one_repeat(
 
     rows: list[dict] = []
     for fc_method in FC_METHODS:
+        payloads = _prepare_split_payloads(
+            subs=subs_rep,
+            ts_list=ts_list,
+            splits=splits,
+            fc_method=fc_method,
+            pca_var=pca_var,
+            include_covariates=include_covariates,
+        )
+
         for model_name in MODELS:
-            obs = _evaluate_cv(
+            obs = _evaluate_from_payloads(
+                payloads=payloads,
                 subs=subs_rep,
-                ts_list=ts_list,
                 y=y,
-                groups=groups,
-                splits=splits,
-                fc_method=fc_method,
                 model_name=model_name,
-                pca_var=pca_var,
-                include_covariates=include_covariates,
                 rho_weight_gamma=rho_weight_gamma,
                 seed=rep_seed,
             )
@@ -534,15 +547,11 @@ def _run_one_repeat(
             )
             if run_perm:
                 pvals = _permutation_pvals(
+                    payloads=payloads,
                     subs=subs_rep,
-                    ts_list=ts_list,
                     y_true=y,
                     groups=groups,
-                    splits=splits,
-                    fc_method=fc_method,
                     model_name=model_name,
-                    pca_var=pca_var,
-                    include_covariates=include_covariates,
                     rho_weight_gamma=rho_weight_gamma,
                     seed=rep_seed,
                     n_permutations=n_permutations,
