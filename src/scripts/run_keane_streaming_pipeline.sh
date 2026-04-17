@@ -181,6 +181,29 @@ if command -v datalad >/dev/null 2>&1; then
     HAS_DATALAD=1
 fi
 
+datalad_get_minimal_subject() {
+    local ds="$1"
+    local sub="$2"
+    local sub_dir="$DATA_ROOT/$ds/$sub"
+    local files=()
+
+    shopt -s nullglob
+    files+=("$sub_dir"/anat/*T1w*.nii* "$sub_dir"/anat/*T1w*.json)
+    files+=("$sub_dir"/anat/*T2w*.nii* "$sub_dir"/anat/*T2w*.json)
+    files+=("$sub_dir"/func/*task-rest*bold.nii* "$sub_dir"/func/*task-rest*bold.json)
+    files+=("$sub_dir"/func/*task-rest*sbref.nii* "$sub_dir"/func/*task-rest*sbref.json)
+    files+=("$sub_dir"/fmap/*.nii* "$sub_dir"/fmap/*.json)
+    shopt -u nullglob
+
+    if [[ ${#files[@]} -eq 0 ]]; then
+        warn "No candidate minimal files discovered for $ds/$sub (skip)"
+        return 1
+    fi
+
+    log "datalad get (minimal rest inputs): $ds/$sub"
+    run_cmd datalad get "${files[@]}"
+}
+
 ensure_subject_present() {
     local ds="$1"
     local sub="$2"
@@ -189,9 +212,8 @@ ensure_subject_present() {
     if [[ -d "$sub_dir" ]]; then
         # Even when directory exists, ensure annexed payload is materialized.
         if [[ "$AUTO_DATALAD_GET" -eq 1 && "$HAS_DATALAD" -eq 1 ]]; then
-            log "datalad get (refresh): $ds/$sub"
-            if ! run_cmd datalad get -r "$sub_dir"; then
-                warn "datalad get refresh failed for $sub_dir (continue with local files)"
+            if ! datalad_get_minimal_subject "$ds" "$sub"; then
+                warn "datalad minimal get failed for $sub_dir (continue with local files)"
             fi
         fi
         return 0
@@ -205,14 +227,21 @@ ensure_subject_present() {
         warn "datalad not found; cannot auto-download $sub (skip)"
         return 2
     fi
-    log "datalad get: $ds/$sub"
-    if ! run_cmd datalad get -r "$sub_dir"; then
-        warn "datalad get failed for $sub_dir (skip)"
+
+    # Materialize the subject tree first, then fetch only minimal rest inputs.
+    log "datalad get (subject tree): $ds/$sub"
+    if ! run_cmd datalad get "$sub_dir"; then
+        warn "datalad get failed for subject tree $sub_dir (skip)"
         warn "Current dataset tree may not be a datalad-install with retrievable subject paths."
         return 2
     fi
     if [[ ! -d "$sub_dir" ]]; then
         warn "Subject still missing after datalad get: $sub_dir (skip)"
+        return 2
+    fi
+
+    if ! datalad_get_minimal_subject "$ds" "$sub"; then
+        warn "Minimal datalad get failed for $sub_dir (skip)"
         return 2
     fi
 }

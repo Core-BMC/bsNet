@@ -143,9 +143,33 @@ run_one() {
     fi
     [[ -f "$bids_dir/participants.tsv" ]] && cp "$bids_dir/participants.tsv" "$staging_dir/participants.tsv"
     [[ -f "$bids_dir/participants.json" ]] && cp "$bids_dir/participants.json" "$staging_dir/participants.json"
-    # DataLad/git-annex datasets often keep file pointers as symlinks.
-    # Use -L to copy dereferenced file contents into staging so Docker can read them.
-    cp -R -L "$bids_dir/$sub_id" "$staging_dir/$sub_id"
+
+    # Build minimal subject tree for REST-only fMRIPrep.
+    # Avoid copying unrelated task files to reduce I/O/storage.
+    local stage_sub="$staging_dir/$sub_id"
+    mkdir -p "$stage_sub/anat" "$stage_sub/func"
+    [[ -d "$bids_dir/$sub_id/fmap" ]] && mkdir -p "$stage_sub/fmap"
+
+    local anat_files=()
+    local func_files=()
+    local fmap_files=()
+    shopt -s nullglob
+    anat_files+=("$bids_dir/$sub_id"/anat/*T1w*.nii* "$bids_dir/$sub_id"/anat/*T1w*.json)
+    anat_files+=("$bids_dir/$sub_id"/anat/*T2w*.nii* "$bids_dir/$sub_id"/anat/*T2w*.json)
+    func_files+=("$bids_dir/$sub_id"/func/*task-rest*bold.nii* "$bids_dir/$sub_id"/func/*task-rest*bold.json)
+    func_files+=("$bids_dir/$sub_id"/func/*task-rest*sbref.nii* "$bids_dir/$sub_id"/func/*task-rest*sbref.json)
+    fmap_files+=("$bids_dir/$sub_id"/fmap/*.nii* "$bids_dir/$sub_id"/fmap/*.json)
+    shopt -u nullglob
+
+    for f in "${anat_files[@]}"; do
+        cp -L "$f" "$stage_sub/anat/"
+    done
+    for f in "${func_files[@]}"; do
+        cp -L "$f" "$stage_sub/func/"
+    done
+    for f in "${fmap_files[@]}"; do
+        cp -L "$f" "$stage_sub/fmap/"
+    done
 
     local cmd=(
         docker run --rm
