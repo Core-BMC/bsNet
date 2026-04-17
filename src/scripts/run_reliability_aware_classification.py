@@ -36,6 +36,11 @@ from sklearn.model_selection import LeaveOneGroupOut, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
+try:
+    from tqdm.auto import tqdm
+except ImportError:  # pragma: no cover - optional dependency
+    tqdm = None
+
 logger = logging.getLogger(__name__)
 
 SHORT_TRS = 60
@@ -715,7 +720,15 @@ def main() -> None:
             continue
 
         if args.n_jobs <= 1:
-            for rep in range(args.n_repeats):
+            rep_iter = range(args.n_repeats)
+            if tqdm is not None:
+                rep_iter = tqdm(
+                    rep_iter,
+                    total=args.n_repeats,
+                    desc=f"{stratum_name}: repeats",
+                    leave=False,
+                )
+            for rep in rep_iter:
                 try:
                     result = _run_one_repeat(
                         stratum_name=stratum_name,
@@ -763,7 +776,15 @@ def main() -> None:
                     ): rep
                     for rep in range(args.n_repeats)
                 }
-                for fut in as_completed(futs):
+                fut_iter = as_completed(futs)
+                if tqdm is not None:
+                    fut_iter = tqdm(
+                        fut_iter,
+                        total=len(futs),
+                        desc=f"{stratum_name}: repeats",
+                        leave=False,
+                    )
+                for fut in fut_iter:
                     rep = futs[fut]
                     try:
                         result = fut.result()
