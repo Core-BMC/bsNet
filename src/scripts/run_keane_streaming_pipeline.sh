@@ -16,7 +16,7 @@
 #     --subject sub-B06 \
 #     --cleanup-level minimal
 #
-#   # subject 자동 감지 (dataset의 sub-* 전체)
+#   # subject 자동 감지 (dataset의 sub-* 또는 participants.tsv 기반)
 #   bash src/scripts/run_keane_streaming_pipeline.sh \
 #     --dataset ds005073 \
 #     --cleanup-level minimal
@@ -72,6 +72,36 @@ log() { echo "[INFO] $*"; }
 warn() { echo "[WARN] $*"; }
 err() { echo "[ERR ] $*" >&2; }
 
+discover_subjects_from_participants() {
+    local ds_dir="$1"
+    local tsv="$ds_dir/participants.tsv"
+    [[ -f "$tsv" ]] || return 1
+
+    # Find participant_id column index from header.
+    local header
+    header="$(head -n 1 "$tsv")"
+    local idx=0
+    local pid_col=0
+    IFS=$'\t' read -r -a cols <<< "$header"
+    for c in "${cols[@]}"; do
+        idx=$((idx + 1))
+        if [[ "$c" == "participant_id" ]]; then
+            pid_col="$idx"
+            break
+        fi
+    done
+    [[ "$pid_col" -gt 0 ]] || return 1
+
+    # Emit unique non-empty participant IDs.
+    awk -F'\t' -v col="$pid_col" '
+        NR > 1 {
+            gsub(/^[ \t]+|[ \t]+$/, "", $col);
+            if ($col != "") print $col
+        }
+    ' "$tsv" | sort -u
+    return 0
+}
+
 usage() {
     sed -n '3,56p' "$0" | sed 's/^# \{0,1\}//'
 }
@@ -114,13 +144,21 @@ if [[ ${#SUBJECTS[@]} -eq 0 ]]; then
         err "Dataset directory not found for auto-discovery: $ds_dir"
         exit 1
     fi
+    # 1) Prefer physically present subject directories.
     while IFS= read -r sub; do
-        SUBJECTS+=("$sub")
-    done < <(find "$ds_dir" -maxdepth 1 -type d -name 'sub-*' -print | xargs -I{} basename "{}" | sort)
+        [[ -n "$sub" ]] && SUBJECTS+=("$sub")
+    done < <(find "$ds_dir" -maxdepth 1 -type d -name 'sub-*' -print | xargs -I{} basename "{}" | sort || true)
+
+    # 2) Fallback to participants.tsv (for not-yet-downloaded subjects).
+    if [[ ${#SUBJECTS[@]} -eq 0 ]]; then
+        while IFS= read -r sub; do
+            [[ -n "$sub" ]] && SUBJECTS+=("$sub")
+        done < <(discover_subjects_from_participants "$ds_dir" || true)
+    fi
 
     if [[ ${#SUBJECTS[@]} -eq 0 ]]; then
-        err "No subjects found in $ds_dir (expected sub-* directories)"
-        err "Provide explicit --subject or download subject directories first."
+        err "No subjects found in $ds_dir (sub-* or participants.tsv participant_id)"
+        err "Provide explicit --subject or ensure participants.tsv exists."
         exit 1
     fi
     log "Auto-discovered subjects: ${#SUBJECTS[@]}"
@@ -139,9 +177,9 @@ ensure_subject_present() {
         return 0
     fi
     if [[ "$AUTO_DATALAD_GET" -eq 0 ]]; then
-        err "Missing subject directory: $sub_dir"
-        err "Download first, or pass --auto-datalad-get (if dataset is datalad-enabled)."
-        return 1
+        warn "Missing subject directory: $sub_dir (skip)"
+        warn "Use --auto-datalad-get to fetch on demand."
+        return 2
     fi
     if ! command -v datalad >/dev/null 2>&1; then
         err "datalad not found; cannot auto-download $sub"
@@ -263,12 +301,20 @@ echo "============================================================"
 
 N_OK=0
 N_FAIL=0
+N_SKIP=0
 
 for sub in "${SUBJECTS[@]}"; do
     echo ""
     echo "---- [$sub] ----"
-    if ! ensure_subject_present "$DATASET" "$sub"; then
+    ensure_subject_present "$DATASET" "$sub" || rc=$?
+    rc=${rc:-0}
+    if [[ "$rc" -eq 2 ]]; then
+        N_SKIP=$((N_SKIP + 1))
+        rc=0
+        continue
+    elif [[ "$rc" -ne 0 ]]; then
         N_FAIL=$((N_FAIL + 1))
+        rc=0
         continue
     fi
     if ! run_fmriprep_one "$DATASET" "$sub"; then
@@ -289,6 +335,7 @@ echo ""
 echo "============================================================"
 echo " Streaming Summary"
 echo "   Success: $N_OK"
+echo "   Skipped: $N_SKIP"
 echo "   Failed : $N_FAIL"
 echo "============================================================"
 
