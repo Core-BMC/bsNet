@@ -48,8 +48,8 @@ SHORT_TRS = 60
 SUBJECTS_JSON = Path("data/adhd/pcp/results/adhd200_subjects_cc200.json")
 RHO_CSV = Path("data/adhd/pcp/results/adhd200_multiseed_cc200_10seeds_filtered_strict.csv")
 OUT_DIR = Path("data/adhd/pcp/results")
-RUNS_CSV = OUT_DIR / "adhd200_reliability_classification_runs.csv"
-SUMMARY_CSV = OUT_DIR / "adhd200_reliability_classification_summary.csv"
+RUNS_CSV_NAME = "adhd200_reliability_classification_runs.csv"
+SUMMARY_CSV_NAME = "adhd200_reliability_classification_summary.csv"
 
 FC_METHODS = ("correlation", "partial correlation", "tangent")
 MODELS = ("logistic_l2", "linear_svm")
@@ -682,6 +682,12 @@ def main() -> None:
         default=1,
         help="Worker processes for repeat-level parallelism.",
     )
+    parser.add_argument(
+        "--output-tag",
+        type=str,
+        default="",
+        help="Optional suffix tag for output CSV filenames.",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -697,6 +703,15 @@ def main() -> None:
         )
 
     _warn_blas_oversubscription(args.n_jobs)
+
+    output_tag = args.output_tag.strip()
+    if output_tag:
+        safe_tag = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in output_tag)
+        runs_csv_path = OUT_DIR / f"adhd200_reliability_classification_runs_{safe_tag}.csv"
+        summary_csv_path = OUT_DIR / f"adhd200_reliability_classification_summary_{safe_tag}.csv"
+    else:
+        runs_csv_path = OUT_DIR / RUNS_CSV_NAME
+        summary_csv_path = OUT_DIR / SUMMARY_CSV_NAME
 
     subs = _load_subjects_strict()
     rho_map = _load_rho_map()
@@ -815,11 +830,11 @@ def main() -> None:
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     run_fields = list(runs[0].keys())
-    with open(RUNS_CSV, "w", newline="") as f:
+    with open(runs_csv_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=run_fields)
         writer.writeheader()
         writer.writerows(runs)
-    logger.info(f"Saved runs: {RUNS_CSV}")
+    logger.info(f"Saved runs: {runs_csv_path}")
 
     grouped: dict[tuple[str, str, str, str], list[dict]] = {}
     for r in runs:
@@ -871,11 +886,11 @@ def main() -> None:
         key=lambda r: (r["stratum"], r["eval_scheme"], r["model"], r["fc_method"]),
     )
 
-    with open(SUMMARY_CSV, "w", newline="") as f:
+    with open(summary_csv_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(summary_rows[0].keys()))
         writer.writeheader()
         writer.writerows(summary_rows)
-    logger.info(f"Saved summary: {SUMMARY_CSV}")
+    logger.info(f"Saved summary: {summary_csv_path}")
 
     logger.info("\nPrimary report:")
     for stratum in ("all", "T1_low", "T2_mid", "T3_high"):
