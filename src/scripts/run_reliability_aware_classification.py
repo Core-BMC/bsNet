@@ -362,8 +362,7 @@ def _evaluate_from_payloads(
         x_train = p["x_train"]
         x_test = p["x_test"]
         y_train = y[train_idx]
-        y_test = y[test_idx]
-        if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
+        if len(np.unique(y_train)) < 2:
             continue
 
         feature_dims.append(int(p["feature_dim"]))
