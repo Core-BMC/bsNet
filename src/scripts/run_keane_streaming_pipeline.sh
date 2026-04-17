@@ -35,6 +35,13 @@
 #     --auto-datalad-get \
 #     --cleanup-level minimal
 #
+#   # datalad clone 자동 설치 + subject on-demand get
+#   bash src/scripts/run_keane_streaming_pipeline.sh \
+#     --dataset ds005073 \
+#     --auto-datalad-install \
+#     --auto-datalad-get \
+#     --cleanup-level minimal
+#
 # cleanup-level:
 #   - minimal: bsnet 출력만 보존 (raw subject + fmriprep subject/work 삭제)
 #   - debug  : raw subject는 삭제, fmriprep 결과는 보존
@@ -58,6 +65,7 @@ MEM_MB="${BSNET_MEM_MB:-12000}"
 VERBOSE=0
 DRY_RUN=0
 AUTO_DATALAD_GET=0
+AUTO_DATALAD_INSTALL=0
 CLEANUP_LEVEL="minimal"   # minimal|debug|full
 HAS_DATALAD=0
 
@@ -122,6 +130,7 @@ while [[ $# -gt 0 ]]; do
         --mem-mb) MEM_MB="$2"; shift 2 ;;
         --cleanup-level) CLEANUP_LEVEL="$2"; shift 2 ;;
         --auto-datalad-get) AUTO_DATALAD_GET=1; shift ;;
+        --auto-datalad-install) AUTO_DATALAD_INSTALL=1; shift ;;
         --dry-run) DRY_RUN=1; shift ;;
         --verbose) VERBOSE=1; shift ;;
         -h|--help) usage; exit 0 ;;
@@ -190,7 +199,15 @@ ensure_subject_present() {
         return 2
     fi
     log "datalad get: $ds/$sub"
-    run_cmd datalad get -r "$sub_dir"
+    if ! run_cmd datalad get -r "$sub_dir"; then
+        warn "datalad get failed for $sub_dir (skip)"
+        warn "Current dataset tree may not be a datalad-install with retrievable subject paths."
+        return 2
+    fi
+    if [[ ! -d "$sub_dir" ]]; then
+        warn "Subject still missing after datalad get: $sub_dir (skip)"
+        return 2
+    fi
 }
 
 run_fmriprep_one() {
