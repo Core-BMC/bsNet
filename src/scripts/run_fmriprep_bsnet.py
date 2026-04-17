@@ -95,7 +95,31 @@ def find_atlas(n_parcels: int = 100) -> Path:
     for c in candidates:
         if c.exists():
             return c
-    msg = f"Atlas not found ({n_parcels} parcels). Searched: {[str(c) for c in candidates]}"
+
+    # Fallback: fetch via nilearn into project atlas cache.
+    # This keeps CLI usage simple on fresh environments.
+    try:
+        from nilearn import datasets
+
+        ATLAS_DIR.mkdir(parents=True, exist_ok=True)
+        atlas = datasets.fetch_atlas_schaefer_2018(
+            n_rois=n_parcels,
+            yeo_networks=7,
+            resolution_mm=2,
+            data_dir=str(ATLAS_DIR),
+        )
+        fetched = Path(atlas["maps"])
+        if fetched.exists():
+            logger.info(f"Fetched Schaefer atlas: {fetched}")
+            return fetched
+    except Exception as e:  # pragma: no cover - network/runtime dependent
+        logger.warning(f"Atlas auto-fetch failed: {e}")
+
+    msg = (
+        f"Atlas not found ({n_parcels} parcels). "
+        f"Searched: {[str(c) for c in candidates]}. "
+        "Also failed nilearn auto-fetch."
+    )
     raise FileNotFoundError(msg)
 
 
