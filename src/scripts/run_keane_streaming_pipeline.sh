@@ -59,6 +59,7 @@ VERBOSE=0
 DRY_RUN=0
 AUTO_DATALAD_GET=0
 CLEANUP_LEVEL="minimal"   # minimal|debug|full
+HAS_DATALAD=0
 
 run_cmd() {
     if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -167,6 +168,9 @@ fi
 if [[ "$DRY_RUN" -eq 0 ]]; then
     command -v python3 >/dev/null 2>&1 || { err "python3 not found"; exit 1; }
 fi
+if command -v datalad >/dev/null 2>&1; then
+    HAS_DATALAD=1
+fi
 
 ensure_subject_present() {
     local ds="$1"
@@ -181,9 +185,9 @@ ensure_subject_present() {
         warn "Use --auto-datalad-get to fetch on demand."
         return 2
     fi
-    if ! command -v datalad >/dev/null 2>&1; then
-        err "datalad not found; cannot auto-download $sub"
-        return 1
+    if [[ "$HAS_DATALAD" -eq 0 ]]; then
+        warn "datalad not found; cannot auto-download $sub (skip)"
+        return 2
     fi
     log "datalad get: $ds/$sub"
     run_cmd datalad get -r "$sub_dir"
