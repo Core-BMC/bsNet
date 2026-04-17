@@ -61,7 +61,7 @@
 → Spearman-Brown prophecy (k=7.5) → Bayesian empirical prior → Attenuation correction
 → **Fisher z-space bounding** → ρ̂T
 
-## Current Status (2026-04-16, updated session 8)
+## Current Status (2026-04-17, updated session 9)
 
 > 상세 이력: `docs/dev/` 참조 (세션별 Added/Changed/Fixed/TODO 기록)
 
@@ -69,11 +69,14 @@
 - **Session 5**: Fig 1 (FC Intuition) 3×3 figure 완성, Figure legend 상세 작성
 - **Session 6**: Figure 번호 체계 재구성 (7→6), Fig 1–6 전체 재생성, Fig 2 스타일 변경
 - **Session 7**: ADHD-200 PCP 전체 검증 (N=399) + Downstream Analysis + τ_min 개념
-- **Session 8 (현재)**: Convergence Validation 실험 + 시각화 + τ_min empirical estimation
-- **Figure 번호 체계**: Main 1–6 확정 (Session 8에서 Fig 1 전면 교체)
+- **Session 8**: Convergence Validation 실험 + 시각화 + τ_min empirical estimation
+- **Session 9 (현재)**: Fig 2 완성 + Supplementary S1/S2 신규 작성 + progressive ablation 스크립트
+- **Figure 번호 체계**: Main 1–6 확정, Supplementary S1–S2 추가
   - **Fig 1: Method Overview** (A: Pipeline Schematic, B1–B3: Convergence Validation, C: τ_min Estimation)
-  - Fig 2: Component Necessity | Fig 3: ABIDE | Fig 4: ADHD | Fig 5: Structure | Fig 6: Classification
-  - 구 Fig 1 (FC Intuition 3×3) 폐기 사유: Panel A–F FC행렬이 "FC denoiser" 오해 유발, H/I는 구 설계 결함
+  - **Fig 2: Component Necessity** (A: LOO, B: Progressive 4-level, C: Cross-dataset, D: Distribution) — **완료**
+  - Fig 3: ABIDE | Fig 4: ADHD | Fig 5: Structure | Fig 6: Classification
+  - **Fig S1: 6-Level Progressive by k-Group** (3×2: ds000243 + ABIDE 4개 k-group + summary table) — **완료**
+  - **Fig S2: k-Stratification Analysis** (A: grouped boxplot, B: dose-response scatter, C: per-site table) — **완료**
   - 구 Fig 1 Panel G (edge attenuation) → Supplementary 이동 가능
 - **ADHD-200 PCP 검증**: N=399 (6 sites), r_FC=0.525→ρ̂T=0.725, 100% improved, ceiling=0
 - **Convergence Validation**: ds000243 N=49, 18 τ_short points, gap 100% positive, ρ̂T peak=0.774 at 150s
@@ -124,8 +127,13 @@
 - [x] `run_ds000243_batch.sh` preprocess 단계 통합 (find pipefail 버그 수정)
 - [x] `run_ds000243_batch.sh` 실행 완료 (6 atlases × 52 subjects × 10 seeds, ~8.25h)
 - [x] Figure 1 (Method Overview): ds000243 convergence data 기반 `plot_figure1_combined.py` 완료
-- [ ] Figure 2 (Component Necessity): ds000243 실데이터 버전 추가 (현재 ABIDE N=468 기반)
+- [x] Figure 2 (Component Necessity): ds000243+ABIDE 실데이터, k≥3 필터링, 4-panel 완성
 - [ ] Figure 4 (Network Structure Preservation): ds000243 기반 topology/community 분석
+
+### Supplementary Figures (Session 9에서 완료)
+- [x] Fig S1: 6-level progressive ablation × k-group (3×2 layout) — `plot_figure_s1_progressive_full.py`
+- [x] Fig S2: k-stratification dose-response + per-site summary — `plot_figure_s2_k_stratification.py`
+- [x] `run_progressive_ablation.py`: L0→L5 cumulative 6-level 실데이터 ablation 스크립트
 
 ### 논문 작성
 - [ ] Abstract, Introduction, Methods, Discussion, Limitations 집필
@@ -189,6 +197,15 @@
   - w/o Bayesian Prior: Δ=−0.051 (CRITICAL)
   - w/o Ledoit-Wolf: Δ=−0.002 (negligible)
   - Synthetic과 동일 패턴: SB > Prior > Attenuation > Bootstrap > LW
+- **Progressive Ablation — ds000243** (N=52, CC200, 10 seeds):
+  - L0(Raw)=0.698 → L1(+LW)=0.699 → L2(+Boot)=0.645 → L3(+SB+Att)=0.795 → L4(+Prior)=0.802 → L5(Full)=0.806
+  - L2 dip: bootstrap resampling 효과 (effective sample shortening)
+  - 4-level monotonic: L0→L1→L3→L5
+- **Progressive Ablation — ABIDE** (N=468, CC200, 10 seeds):
+  - L0=0.830 → L5=0.859, k≥3 필터링 후 monotonic pattern 확인
+  - k<2: Δ≈0 (short≈total), k≥4: Δ scales with k (dose-response)
+  - ABIDE k range: 1.3 (OHSU) – 5.3 (UM_2), 20 sites heterogeneity
+- **k-Filtering Decision**: Main Fig 2에 k≥3 적용 (N=223), k<3은 Supplementary S1/S2에서 분석
 - **Convergence Validation** (ds000243, N=49, 4S256Parcels, 100bs × 10seeds):
   - τ_short=60s: ρ̂T=0.756±0.032, r_FC peak=0.566 (300s), gap=0.190, 49/49 positive
   - τ_short=120s: ρ̂T=0.771±0.032, r_FC peak=0.638 (240s), gap=0.134, 25/25 positive
@@ -255,9 +272,8 @@ bsNet/
 2. 논문 Methods 초고: convergence validation 실험 설계 + τ_min 수식 정리
 3. 논문 Results 초고: 수렴 패턴 + gap 통계 + τ_min plateau 기술
 4. 논문 Discussion: τ_min 개념 + "Why ~2 minutes?" + non-stationarity 논점
-5. ds000243 component necessity CSV 확인 → Fig 2 재생성
-6. Downstream utility figure: ρ̂T tertile dose-response 시각화 (Supplementary)
-7. Git commit: Fig 1 교체 + convergence scripts + figures + dev log
+5. Downstream utility figure: ρ̂T tertile dose-response 시각화 (Supplementary S3 후보)
+6. Git commit: Fig 2 + Fig S1/S2 + progressive ablation + dev log
 
 ## Key References
 - Cheng et al. (2021): Split-half + CTT framework on HCP N=1003, DOI: 10.1016/j.neuroimage.2021.118005
