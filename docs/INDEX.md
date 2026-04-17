@@ -37,6 +37,8 @@
 - **`5.9_manuscript_why_questions_and_figure_map.md`**: 논문 집필 전용 why 질문 체크리스트 + 메인 Figure 1–7 canonical map + 번호 충돌 정리 규칙.
 - **`5.10_figure_design_audit_20260410.md`**: Figure 디자인 재점검 리포트. 메인/추가 Figure 최종 수정일·수정 횟수·완성도 및 공통 디자인 수정안(P0/P1/P2) 포함.
 - **`5.11_storyline_figure_decision_matrix.md`**: 논문 스토리라인 우선 고정 + Figure별 재활용/신규/아카이브 의사결정 매트릭스.
+- **`5.12_patient_utility_reliability_aware_clustering.md`**: 환자 데이터 활용성 보강 계획. `ρ̂T` strata 기반 HC/Patients 분리(비지도) 분석 설계, nilearn FC 방법 비교, 결과 figure 설계.
+- **`5.13_adhd_discrimination_citation_guide.md`**: ADHD vs HC discrimination을 위한 인용 중심 작성 가이드. tangent-linear 권장 조합, site/confound 통제, permutation/LOSO 권장, claim-to-citation 매핑 및 본문 템플릿 포함.
 
 ## 6. 운영 및 파이프라인 가이드 (Operations & Pipeline)
 - **`6.1_ops_local_setup.md`**: 로컬 환경 설정 가이드. Python venv/conda, 의존성 설치, Schaefer atlas 배치, FreeSurfer 라이선스 등.

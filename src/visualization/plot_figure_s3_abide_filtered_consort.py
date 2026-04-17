@@ -1,24 +1,19 @@
-"""Figure 4: Cross-Dataset Generalization — ADHD-200 PCP (N=399).
+"""Supplementary Figure S3: ABIDE strict-filtered validation + CONSORT.
 
-Two-row layout (matching Fig 3 ABIDE style):
+Two-row layout:
   Row 1 (A): CONSORT-style quality-filtering flowchart
-             768 converted → 497 known DX → 496 k≥2 → 399 ref≥5min
   Row 2 (B–E): Validation panels
-    B. Scatter: r_FC (raw) vs ρ̂T (BS-NET) per subject, group-colored
-    C. Floating box: Raw FC vs BS-NET ρ̂T distribution
+    B. Scatter: r_FC (raw) vs ρ̂T (BS-NET) per subject
+    C. Floating box: Raw FC vs BS-NET ρ̂T distribution (IQR bar + scatter + diamond)
     D. Floating box: Improvement (Δ = ρ̂T − r_FC)
     E. Floating box: Seed σ (cross-seed stability)
 
-Style: BS-NET theme (style.py), IQR floating bar + scatter dots + red diamond
+Style: BS-NET theme (style.py), IQR floating bar + scatter dots + red diamond mean±SD
+       (consistent with Fig 2 Panel A)
 Color: Amber (Raw) + Blue (BS-NET) — Fig 3–6 schema
-       Scatter: Red (ADHD) + Blue (Control)
 
-Data: data/adhd/pcp/results/adhd200_multiseed_cc200_10seeds_filtered_strict.csv
-Output: Fig4_ADHD_Validation.png
-
-Usage:
-    PYTHONPATH=. python src/visualization/plot_figure4_adhd.py
-    PYTHONPATH=. python src/visualization/plot_figure4_adhd.py --atlas cc200
+Data: data/abide/results/abide_multiseed_cc200_10seeds_filtered_strict.csv
+Output: FigS3_ABIDE_Filtered_CONSORT.png
 """
 
 from __future__ import annotations
@@ -28,6 +23,7 @@ import csv as csv_mod
 import json
 import logging
 import sys
+from collections import Counter
 from pathlib import Path
 
 if __package__ in (None, ""):
@@ -49,17 +45,15 @@ from src.visualization.style import (
 
 logger = logging.getLogger(__name__)
 
-RESULTS_DIR = Path("data/adhd/pcp/results")
+RESULTS_DIR = Path("data/abide/results")
 
 # ── Colors ──
 COLOR_RAW = CONDITION_PALETTE["raw"]
 COLOR_BSNET = CONDITION_PALETTE["bsnet"]
 COLOR_IMPROVE = ACCENT_COLORS["improvement"]
 COLOR_SEED = ACCENT_COLORS["seed_sigma"]
-COLOR_ADHD = ACCENT_COLORS["adhd_group"]
-COLOR_CONTROL = ACCENT_COLORS["control_group"]
 
-# Violin+box style (matching finalized Fig 3 scheme)
+# Violin+box style (matching Fig 2 Panel D scheme)
 VIOLIN_ALPHA = 0.45
 BOX_ALPHA = 0.80
 VIOLIN_WIDTH = 0.5
@@ -67,33 +61,39 @@ BOX_WIDTH = 0.24
 OUTLIER_MARKER_SIZE = 3.0
 OUTLIER_ALPHA = 0.35
 
-# CONSORT box colors (matching Fig 3)
+# CONSORT box colors — using muted tones consistent with BS-NET palette
 CONSORT_COLORS = {
-    "enrolled": "#E8F5E9",
-    "stage": "#E3F2FD",
-    "excluded": "#FFEBEE",
-    "final": "#FFF9C4",
+    "enrolled": "#E8F5E9",   # light green
+    "stage": "#E3F2FD",      # light blue (matches bsnet palette)
+    "excluded": "#FFEBEE",   # light red
+    "final": "#FFF9C4",      # light yellow
     "edge": "#666666",
     "edge_excl": "#E57373",
     "arrow": "#333333",
     "arrow_excl": "#999999",
 }
 
+SHORT_TRS = 60
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # Data loading
 # ═══════════════════════════════════════════════════════════════════════
 
-def load_multiseed(atlas: str) -> dict:
-    """Load ADHD-200 PCP multi-seed CSV.
+def load_multiseed(atlas: str, filtered: bool = True) -> dict:
+    """Load ABIDE multi-seed CSV.
 
     Args:
-        atlas: Atlas name (cc200).
+        atlas: Atlas name.
+        filtered: If True, load filtered_strict CSV.
 
     Returns:
-        Dict with r_fc, rho_mean, rho_std, group, site, n.
+        Dict with r_fc, rho_mean, rho_std, site, n.
     """
-    csv_path = RESULTS_DIR / f"adhd200_multiseed_{atlas}_10seeds_filtered_strict.csv"
+    if filtered:
+        csv_path = RESULTS_DIR / f"abide_multiseed_{atlas}_10seeds_filtered_strict.csv"
+    else:
+        csv_path = RESULTS_DIR / f"abide_multiseed_{atlas}_10seeds.csv"
 
     if not csv_path.exists():
         raise FileNotFoundError(f"CSV not found: {csv_path}")
@@ -104,33 +104,85 @@ def load_multiseed(atlas: str) -> dict:
         "r_fc": np.array([float(r["r_fc_raw"]) for r in rows]),
         "rho_mean": np.array([float(r["rho_hat_T_mean"]) for r in rows]),
         "rho_std": np.array([float(r["rho_hat_T_std"]) for r in rows]),
-        "group": np.array([r["group"].lower().strip() for r in rows]),
         "site": [r["site"] for r in rows],
         "n": len(rows),
     }
 
 
-def load_consort_stages(atlas: str) -> list[dict]:
+def load_consort_stages(atlas: str) -> list[dict] | None:
     """Load CONSORT stages from summary JSON.
 
     Returns:
-        List of stage dicts with name, n, n_excluded.
+        List of stage dicts, or None if not found.
     """
-    json_path = RESULTS_DIR / f"adhd200_filtered_strict_{atlas}_summary.json"
+    json_path = RESULTS_DIR / f"abide_filtered_strict_{atlas}_summary.json"
     if not json_path.exists():
-        raise FileNotFoundError(f"Summary JSON not found: {json_path}")
-
+        return None
     with open(json_path) as f:
         summary = json.load(f)
+    return summary.get("stages", None)
 
-    stages = summary.get("stages", [])
-    if not stages:
-        raise ValueError(f"No stages found in {json_path}")
 
-    # Add site count from summary for display
-    n_sites = summary.get("n_sites", 6)
-    if stages:
-        stages[-1]["n_sites"] = n_sites
+def compute_consort_data(atlas: str) -> list[dict]:
+    """Compute CONSORT stages from raw subject data (fallback).
+
+    Returns:
+        List of stage dicts with name, n, n_excluded, excl_sites.
+    """
+    subj_path = RESULTS_DIR / f"abide_subjects_{atlas}.json"
+    with open(subj_path) as f:
+        raw = json.load(f)
+
+    subjects = []
+    for s in raw:
+        ts_path = s["ts_path"]
+        if not Path(ts_path).exists():
+            continue
+        ts = np.load(ts_path)
+        n_trs = ts.shape[0]
+        tr = s.get("tr", 2.0)
+        subjects.append({
+            "sub_id": s["sub_id"], "site": s["site"],
+            "tr": tr, "n_trs": n_trs,
+            "total_s": n_trs * tr,
+            "ref_s": (n_trs - SHORT_TRS) * tr,
+            "k": n_trs / SHORT_TRS,
+        })
+
+    stages = []
+    current = subjects
+
+    stages.append({
+        "name": "ABIDE PCP (Controls)",
+        "n": len(current),
+        "n_sites": len(set(s["site"] for s in current)),
+        "n_excluded": 0,
+        "excl_sites": {},
+    })
+
+    # k >= 2
+    excluded = [s for s in current if s["k"] < 2.0]
+    current = [s for s in current if s["k"] >= 2.0]
+    stages.append({
+        "name": "k ≥ 2.0",
+        "n": len(current),
+        "n_sites": len(set(s["site"] for s in current)),
+        "n_excluded": len(excluded),
+        "excl_sites": dict(Counter(s["site"] for s in excluded)),
+        "reason": "k < 2\n(ref < short scan)",
+    })
+
+    # ref >= 5 min
+    excluded = [s for s in current if s["ref_s"] < 300]
+    current = [s for s in current if s["ref_s"] >= 300]
+    stages.append({
+        "name": "Reference ≥ 5 min",
+        "n": len(current),
+        "n_sites": len(set(s["site"] for s in current)),
+        "n_excluded": len(excluded),
+        "excl_sites": dict(Counter(s["site"] for s in excluded)),
+        "reason": "Reference < 5 min",
+    })
 
     return stages
 
@@ -142,14 +194,14 @@ def load_consort_stages(atlas: str) -> list[dict]:
 def _draw_consort_panel(ax: plt.Axes, stages: list[dict]) -> None:
     """Draw CONSORT flowchart on a single Axes.
 
-    ADHD-200 PCP stages:
-      768 Converted → 497 Known DX → 496 k≥2 → 399 ref≥5min → Analysis Set
+    Appends an "Analysis Set" box after the last filtering stage.
+    Uses BS-NET FONT sizes and color palette.
     """
     ax.set_xlim(0, 10)
     ax.set_ylim(-0.5, 10.5)
     ax.axis("off")
 
-    # Append Analysis Set node
+    # Build display list: original stages + final "Analysis Set" node
     last = stages[-1]
     display = list(stages) + [{
         "name": "Analysis Set",
@@ -164,9 +216,10 @@ def _draw_consort_panel(ax: plt.Axes, stages: list[dict]) -> None:
     excl_w, excl_h = 2.5, 1.1
     center_x = 2.8
     excl_x = 6.8
-    pad = 0.08
-    arrow_gap = 0.08
+    pad = 0.08  # FancyBboxPatch padding
+    arrow_gap = 0.08  # small gap between arrow tip and box edge
     y_top = 9.5
+    # Compact spacing: total vertical span = y_top - 0.5, distribute evenly
     y_step = (y_top - 0.5) / max(n_display - 1, 1)
 
     font_box = FONT["tick"]
@@ -183,24 +236,19 @@ def _draw_consort_panel(ax: plt.Axes, stages: list[dict]) -> None:
                 fontsize=fs, linespacing=1.35)
 
     def _arrow_down(x, y1, y2):
+        # Start/end just outside the pad region
         ax.annotate("", xy=(x, y2 + pad + arrow_gap),
                      xytext=(x, y1 - pad - arrow_gap),
                      arrowprops=dict(arrowstyle="->",
                                      color=CONSORT_COLORS["arrow"], lw=1.3))
 
     def _arrow_right(x1, y, x2):
+        # Start after main box pad, end before excl box pad
         ax.annotate("", xy=(x2 - pad - arrow_gap, y),
                      xytext=(x1 + pad + arrow_gap, y),
                      arrowprops=dict(arrowstyle="->",
                                      color=CONSORT_COLORS["arrow_excl"],
                                      lw=1.0, linestyle="--"))
-
-    # Exclusion reasons for each stage
-    excl_reasons = {
-        "Known DX": "Unknown DX\n(competition test set)",
-        "k ≥ 2.0 (ref ≥ short)": "k < 2\n(ref < short scan)",
-        "Reference ≥ 5 min": "Reference < 5 min\n(KKI site)",
-    }
 
     for i, stage in enumerate(display):
         y = y_top - i * y_step
@@ -211,13 +259,13 @@ def _draw_consort_panel(ax: plt.Axes, stages: list[dict]) -> None:
         site_str = f", {n_sites} sites" if n_sites else ""
 
         if is_first:
-            text = f"ADHD-200 PCP\nN = {stage['n']} (9 sites)"
+            text = f"{stage['name']}\nN = {stage['n']}{site_str}"
             color = CONSORT_COLORS["enrolled"]
         elif is_final:
             text = f"Analysis Set\nN = {stage['n']}{site_str}"
             color = CONSORT_COLORS["final"]
         else:
-            text = f"{stage['name']}\nN = {stage['n']}"
+            text = f"{stage['name']}\nN = {stage['n']}{site_str}"
             color = CONSORT_COLORS["stage"]
 
         _box(center_x, y, box_w, box_h, text,
@@ -231,10 +279,17 @@ def _draw_consort_panel(ax: plt.Axes, stages: list[dict]) -> None:
         # Exclusion box
         n_excl = stage.get("n_excluded", 0)
         if n_excl > 0 and not is_first:
-            reason = excl_reasons.get(stage["name"], "")
-            excl_text = f"Excluded: n = {n_excl}"
-            if reason:
-                excl_text += f"\n{reason}"
+            excl_sites = stage.get("excl_sites", {})
+            reason = stage.get("reason", "")
+            site_list = ", ".join(
+                f"{s}({n})" for s, n in
+                sorted(excl_sites.items(), key=lambda x: -x[1])[:4]
+            )
+            if len(excl_sites) > 4:
+                site_list += f" +{len(excl_sites)-4}"
+            excl_text = f"Excluded: n = {n_excl}\n{reason}"
+            if site_list:
+                excl_text += f"\n{site_list}"
 
             _box(excl_x, y, excl_w, excl_h, excl_text,
                  CONSORT_COLORS["excluded"], CONSORT_COLORS["edge_excl"],
@@ -242,22 +297,23 @@ def _draw_consort_panel(ax: plt.Axes, stages: list[dict]) -> None:
             _arrow_right(center_x + box_w / 2, y,
                          excl_x - excl_w / 2)
 
+    # Panel label
     ax.set_title("A. Quality Filtering (CONSORT)",
                  fontweight="bold", fontsize=FONT["title"],
                  pad=FONT["title_pad"])
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Validation panel helpers (matching Fig 3 exactly)
+# Validation panel helpers
 # ═══════════════════════════════════════════════════════════════════════
 
-def _violin_boxplot(
+def _violin_box_sd(
     ax: plt.Axes,
     data: list[np.ndarray],
     positions: list[float],
     colors: list[str],
 ) -> None:
-    """Draw violin + boxplot + outlier dots."""
+    """Draw violin + boxplot + mean±SD + outlier dots."""
     vp = ax.violinplot(
         data,
         positions=positions,
@@ -292,17 +348,16 @@ def _violin_boxplot(
         patch.set_alpha(BOX_ALPHA)
         patch.set_edgecolor(colors[i])
 
-
 # ═══════════════════════════════════════════════════════════════════════
 # Main figure
 # ═══════════════════════════════════════════════════════════════════════
 
-def plot_figure4(data: dict, atlas: str, stages: list[dict]) -> plt.Figure:
-    """Create Figure 4: ADHD-200 PCP Validation with CONSORT + 4 panels.
+def plot_figure3(data: dict, atlas: str, stages: list[dict]) -> plt.Figure:
+    """Create Figure 3: ABIDE Validation with CONSORT + 4 validation panels.
 
     Layout:
         Row 1: [A. CONSORT flowchart — spans full width]
-        Row 2: [B. Scatter (group-colored)] [C. Distribution] [D. Improvement] [E. Seed σ]
+        Row 2: [B. Scatter] [C. Distribution] [D. Improvement] [E. Seed σ]
 
     Args:
         data: Dict from load_multiseed().
@@ -317,12 +372,8 @@ def plot_figure4(data: dict, atlas: str, stages: list[dict]) -> plt.Figure:
     r_fc = data["r_fc"]
     rho = data["rho_mean"]
     rho_std = data["rho_std"]
-    group = data["group"]
     improvement = rho - r_fc
     n = data["n"]
-
-    is_adhd = group == "adhd"
-    is_ctrl = ~is_adhd
 
     fig = plt.figure(figsize=(22, 16))
     gs = gridspec.GridSpec(
@@ -336,21 +387,11 @@ def plot_figure4(data: dict, atlas: str, stages: list[dict]) -> plt.Figure:
     ax_consort = fig.add_subplot(gs[0, :])
     _draw_consort_panel(ax_consort, stages)
 
-    # ── Row 2, Panel B: Scatter r_FC vs ρ̂T (group-colored) ──
+    # ── Row 2, Panel B: Scatter r_FC vs ρ̂T ──
     ax_scatter = fig.add_subplot(gs[1, 0])
     ax_scatter.scatter(
-        r_fc[is_ctrl], rho[is_ctrl],
-        s=18, c=COLOR_CONTROL, alpha=0.55,
+        r_fc, rho, s=18, c=COLOR_BSNET, alpha=0.6,
         edgecolors="white", linewidth=0.3, zorder=3,
-        label=f"Control (n={int(np.sum(is_ctrl))})",
-        marker="o",
-    )
-    ax_scatter.scatter(
-        r_fc[is_adhd], rho[is_adhd],
-        s=18, c=COLOR_ADHD, alpha=0.55,
-        edgecolors="white", linewidth=0.3, zorder=3,
-        label=f"ADHD (n={int(np.sum(is_adhd))})",
-        marker="^",
     )
     lims = [min(r_fc.min(), rho.min()) - 0.05,
             max(r_fc.max(), rho.max()) + 0.05]
@@ -371,7 +412,7 @@ def plot_figure4(data: dict, atlas: str, stages: list[dict]) -> plt.Figure:
 
     # ── Row 2, Panel C: Violin+box — Raw FC vs BS-NET ──
     ax_comp = fig.add_subplot(gs[1, 1])
-    _violin_boxplot(
+    _violin_box_sd(
         ax_comp,
         data=[r_fc, rho],
         positions=[0, 1],
@@ -400,7 +441,7 @@ def plot_figure4(data: dict, atlas: str, stages: list[dict]) -> plt.Figure:
 
     # ── Row 2, Panel D: Violin+box — Improvement (Δ) ──
     ax_imp = fig.add_subplot(gs[1, 2])
-    _violin_boxplot(
+    _violin_box_sd(
         ax_imp,
         data=[improvement],
         positions=[0],
@@ -408,8 +449,7 @@ def plot_figure4(data: dict, atlas: str, stages: list[dict]) -> plt.Figure:
     )
     ax_imp.axhline(0, color="black", linewidth=0.8, alpha=0.5)
     ax_imp.set_xticks([0])
-    ax_imp.set_xticklabels([r"Δ ($\hat{\rho}_T - r_{FC}$)"],
-                           fontsize=FONT["legend_small"])
+    ax_imp.set_xticklabels(["Δ (ρ̂T − r_FC)"], fontsize=FONT["legend_small"])
     ax_imp.set_title(
         "D. Improvement (Δ)",
         fontweight="bold", fontsize=FONT["title"],
@@ -421,7 +461,7 @@ def plot_figure4(data: dict, atlas: str, stages: list[dict]) -> plt.Figure:
 
     # ── Row 2, Panel E: Violin+box — Seed σ ──
     ax_seed = fig.add_subplot(gs[1, 3])
-    _violin_boxplot(
+    _violin_box_sd(
         ax_seed,
         data=[rho_std],
         positions=[0],
@@ -446,38 +486,41 @@ def plot_figure4(data: dict, atlas: str, stages: list[dict]) -> plt.Figure:
 # ═══════════════════════════════════════════════════════════════════════
 
 def main() -> None:
-    """Generate Figure 4."""
+    """Generate Supplementary Figure S3."""
     parser = argparse.ArgumentParser(
-        description="Figure 4: ADHD-200 PCP Validation (N=399)"
+        description="Supplementary Figure S3: ABIDE filtered + CONSORT",
     )
     parser.add_argument("--atlas", default="cc200", choices=["cc200", "cc400"])
+    parser.add_argument(
+        "--no-filter",
+        action="store_true",
+        help="Use unfiltered N=468 CSV (legacy sensitivity).",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
 
-    data = load_multiseed(args.atlas)
-    stages = load_consort_stages(args.atlas)
+    use_filtered = not args.no_filter
+    data = load_multiseed(args.atlas, filtered=use_filtered)
 
     r_fc = data["r_fc"]
     rho = data["rho_mean"]
-    group = data["group"]
     improvement = rho - r_fc
 
-    print(f"ADHD-200 PCP {args.atlas.upper()} — N={data['n']}")
+    print(f"ABIDE {args.atlas.upper()} — N={data['n']}")
     print(f"  r_FC:  {r_fc.mean():.3f} ± {r_fc.std():.3f}")
     print(f"  ρ̂T:   {rho.mean():.3f} ± {rho.std():.3f}")
     print(f"  Δ:     {improvement.mean():+.3f} ± {improvement.std():.3f}")
     print(f"  Improved: {np.sum(improvement > 0)}/{data['n']} "
           f"({np.mean(improvement > 0)*100:.1f}%)")
     print(f"  Seed σ: {data['rho_std'].mean():.4f} (mean)")
-    for g in ["adhd", "control"]:
-        mask = group == g
-        print(f"  {g.upper()} (n={mask.sum()}): "
-              f"ρ̂T={rho[mask].mean():.3f}±{rho[mask].std():.3f}")
 
-    fig = plot_figure4(data, args.atlas, stages)
-    save_figure(fig, "Fig4_ADHD_Validation.png")
-    print("\nFigure 4 saved: Fig4_ADHD_Validation.png")
+    # Compute CONSORT stages from raw subject data (includes site-level detail)
+    stages = compute_consort_data(args.atlas)
+
+    fig = plot_figure3(data, args.atlas, stages)
+    save_figure(fig, "FigS3_ABIDE_Filtered_CONSORT.png")
+    print("\nSupplementary Figure S3 saved: FigS3_ABIDE_Filtered_CONSORT.png")
 
 
 if __name__ == "__main__":

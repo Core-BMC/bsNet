@@ -51,6 +51,47 @@
   python src/scripts/run_adhd_classification.py --atlas cc200 cc400 --n-bootstraps 100
   ```
 
+### `run_reliability_aware_clustering.py` — ρ̂T 기반 비지도 환자 분리 분석 (신규)
+- **용도**: ADHD-200 PCP strict subset에서 `ρ̂T` tertile(T1/T2/T3)별 HC/Patients 분리도를 비지도 방식으로 정량화.
+- **FC 방법**: nilearn `ConnectivityMeasure` (`correlation`, `partial correlation`, `tangent`)
+- **클러스터링**: KMeans(주력), GMM, Spectral
+- **평가 지표**: ARI, NMI, silhouette, balanced accuracy(라벨 flip 최적 매핑)
+- **CLI**: `--n-repeats`, `--random-seed`, `--pca-var`, `--min-subjects`
+- **출력**:
+  - `data/adhd/pcp/results/adhd200_reliability_clustering_runs.csv`
+  - `data/adhd/pcp/results/adhd200_reliability_clustering_summary.csv`
+- **예시**:
+  ```bash
+  python src/scripts/run_reliability_aware_clustering.py --n-repeats 20 --random-seed 42
+  ```
+
+### `run_reliability_aware_classification.py` — ρ̂T 기반 감독 분류 (신규)
+- **용도**: ADHD-200 PCP strict subset에서 ADHD vs Control 분류를 reliability-aware 방식으로 평가.
+- **평가 설계**: LOSO(기본) 또는 Stratified K-fold.
+- **FC 방법**: nilearn `ConnectivityMeasure` (`correlation`, `partial correlation`, `tangent`)
+- **모델**: `logistic_l2`, `linear_svm`
+- **보강 요소**:
+  - repeat-wise class-balance downsampling
+  - age/sex/site covariates (fold-safe)
+  - `rho_hat_T` 기반 sample weighting (`--rho-weight-gamma`)
+  - permutation p-value (`--n-permutations`, primary-only 옵션)
+  - repeat-level parallelism (`--n-jobs`)
+- **출력**:
+  - `data/adhd/pcp/results/adhd200_reliability_classification_runs.csv`
+  - `data/adhd/pcp/results/adhd200_reliability_classification_summary.csv`
+- **예시**:
+  ```bash
+  python src/scripts/run_reliability_aware_classification.py \
+    --eval-scheme loso \
+    --balance-classes \
+    --n-repeats 20 \
+    --n-permutations 1000 \
+    --permute-primary-only \
+    --primary-fc tangent \
+    --primary-model logistic_l2 \
+    --n-jobs 8
+  ```
+
 ### `run_fmriprep_bsnet.py` — fMRIPrep/XCP-D 기반 검증
 - **용도**: XCP-D (기본) 또는 fMRIPrep-direct (레거시) 처리 결과에서 BS-NET 실행. Schaefer 100/400.
 - **CLI**: `--subject`, `--run-all`, `--input-mode {xcpd,fmriprep}`, `--parcels {100,400}`, `--xcpd-dir`, `--fmriprep-dir`, `-v`
@@ -131,6 +172,7 @@ python src/scripts/run_component_necessity.py --input-npy data/abide/timeseries_
 | `plot_figure6_adhd.py` | Fig 6 | ADHD single/multi-seed + atlas comparison |
 | `plot_figure7_classification.py` | Fig 7 | Track H classification (Accuracy/AUC bars + scatter, ΔAcc, Summary) |
 | `plot_component_necessity.py` | — | Component necessity bars + Δρ waterfall |
+| `plot_patient_utility_clustering.py` | Fig S6 (proposal) | ρ̂T strata별 비지도 분리도(ARI/BalAcc) + FC method heatmap |
 | `style.py` | — | 공용 matplotlib 스타일 설정 (library) |
 
 ---

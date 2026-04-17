@@ -1,13 +1,16 @@
 # AGENTS.md — BS-NET Project
 
 ## Co-Author
+
 이 프로젝트의 리팩토링, 문서화, 시각화 작업은 각 에이전트 모델 (LLM Agent,   Gemini, GPT, Claude 등)의 지원을 받아 수행되었습니다.
 
 ## Git Policy
+
 - 커밋 메시지에 Co-Authored-By 트레일러를 포함하지 않는다.
 - Co-author 정보는 이 문서에만 기록한다.
 
 ## Script Execution Policy
+
 - 스크립트는 **사용자가 직접 실행**한다.
 - Agent는 스크립트 작성 후 **실행 명령어만 알려준다**.
 - 실행 환경: 항상 `.venv` 기준 (`source .venv/bin/activate` 또는 `(.venv)` 상태에서 `python3`)
@@ -16,9 +19,11 @@
   ```bash
   export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
   ```
+
   미설정 시 worker × BLAS threads 경합으로 CPU 100% 포화 + 극심한 성능 저하 발생.
 
 ## Git Commit Policy
+
 - `git commit`은 **사용자가 직접 실행**한다.
 - Agent는 staging(`git add`)까지만 처리하고, **커밋 메시지만 제공**한다.
 - 커밋 메시지는 코드블록으로 복사 가능하게 제공한다.
@@ -29,12 +34,14 @@
 > 모든 AI 에이전트(Claude, Codex 등)는 세션 시작/종료 시 이 프로토콜을 따른다.
 
 ### 세션 시작 (Recall)
+
 1. **이 파일** (`CLAUDE.md` 또는 `AGENTS.md`) 읽기 → 프로젝트 개요, 정책, 현재 상태 파악
 2. **`docs/dev/`** 디렉토리에서 **가장 최근 dev log** 읽기 → 직전 세션의 상세 작업 내역 + TODO 확인
 3. `git status -s` + `git log --oneline -5` → 커밋 이후 미반영 변경 사항 파악
 4. 직전 dev log의 **TODO 섹션**을 오늘 작업의 시작점으로 삼기
 
 ### 세션 종료 (Relay)
+
 1. **dev log 갱신** (`docs/dev/YY-MM-DD-HH-MM_dev_logs.md`)
    - 오늘 날짜 파일이 있으면 새 Session 섹션 추가, 없으면 신규 생성
    - 형식: Added / Changed / Fixed / Experiments / TODO (상세 지침: `docs/dev/README.md`)
@@ -47,6 +54,7 @@
 5. **Next Session TODO** 갱신 — 다음에 바로 착수할 구체적 작업 목록
 
 ### 기록 원칙
+
 - **CLAUDE.md / AGENTS.md**: 간결한 현황 + 지침 (What & Where)
 - **docs/dev/*.md**: 상세 이력 + 의사결정 근거 (Why & How)
 - 중복 기록 금지 — 상세 내용은 항상 dev log에, 여기서는 참조만
@@ -54,6 +62,7 @@
 ---
 
 ## Project Overview
+
 **BS-NET** (Bootstrap reliability-adjusted FC Network Estimation)는 2분 rsfMRI 스캔으로부터
 15분 상당의 FC(Functional Connectivity)를 외삽(extrapolate)하는 방법론이다.
 
@@ -86,54 +95,61 @@
 ## Pending Tasks
 
 ### Tier 1 (reject 방지 — 필수)
-- [x] `reliability_coeff=0.98`을 "within-session scanner reliability"로 명시적 정의 — config.py/bootstrap.py에 Friedman 2008 주석 완비
-- [x] BCa vs percentile CI 불일치 해결 — percentile로 통일 완료 (5.4/5.5 문서 확인, 코드에 BCa 미구현)
-- [x] "ground truth" → "reference" 용어 변경 — graph_metrics.py, run_held_out_validation.py, test_graph_metrics.py, 1.2_arch_pipeline.md 완료
-- [x] 전처리 파이프라인 상세 기술 (Methods 섹션용) — 5.5 문서 코드 일치 완료
+
+- [X] `reliability_coeff=0.98`을 "within-session scanner reliability"로 명시적 정의 — config.py/bootstrap.py에 Friedman 2008 주석 완비
+- [X] BCa vs percentile CI 불일치 해결 — percentile로 통일 완료 (5.4/5.5 문서 확인, 코드에 BCa 미구현)
+- [X] "ground truth" → "reference" 용어 변경 — graph_metrics.py, run_held_out_validation.py, test_graph_metrics.py, 1.2_arch_pipeline.md 완료
+- [X] 전처리 파이프라인 상세 기술 (Methods 섹션용) — 5.5 문서 코드 일치 완료
 - [ ] Sensitivity analysis 재설계 (oracle noise 패턴 문제 해결)
-- [x] Ceiling effect 보정 — Fisher z-space correction 구현 및 4-method 비교 (Track G)
+- [X] Ceiling effect 보정 — Fisher z-space correction 구현 및 4-method 비교 (Track G)
 
 ### Tier 2 (major revision 방지)
+
 - [ ] 9% 실패 피험자 특성 분석
 - [ ] Stationarity test 결과 논문 반영 방식 확정 (ICC=-0.16, Cheng et al. 2021 선례 활용)
-- [x] docs/INDEX.md에 신규 문서 반영
-- [x] ABIDE 전체 N=468 Fisher z multi-seed 실행 완료 (ρ̂T=0.843±0.036, ceiling 0%)
-- [x] CC400 atlas 비교 완료 (ρ̂T=0.834±0.037, 97.4% improved)
-- [x] ADHD 40명 검증 실행 — Fisher z, CC200 ρ̂T=0.866, CC400(356 ROIs) ρ̂T=0.855
+- [X] docs/INDEX.md에 신규 문서 반영
+- [X] ABIDE 전체 N=468 Fisher z multi-seed 실행 완료 (ρ̂T=0.843±0.036, ceiling 0%)
+- [X] CC400 atlas 비교 완료 (ρ̂T=0.834±0.037, 97.4% improved)
+- [X] ADHD 40명 검증 실행 — Fisher z, CC200 ρ̂T=0.866, CC400(356 ROIs) ρ̂T=0.855
 - [ ] Track E ABIDE 실데이터 결과 분석 (N=468, CC200+CC400 배치 실행 중)
 
 ### Figure 1 — Method Overview (Session 8에서 확정)
-- [x] 구 Fig 1 (FC Intuition 3×3) 폐기 결정: "FC denoiser" 오해 + Panel H/I 설계 결함
-- [x] 새 Fig 1 구성 확정: A(Pipeline Schematic) + B1-B3(Convergence) + C(τ_min)
-- [x] `plot_figure1_combined.py` 작성 — matplotlib 블록도 + convergence + τ_min 통합
-- [x] `Fig1_Method_Overview.png` 생성 완료
-- [ ] Panel A: 최종 논문용 Illustrator 교체 (현재 matplotlib placeholder)
-- [x] style.py에 Fig 3-7 Gray/Amber/Blue 3색 스키마 공식 등록 + DOT_COLOR/ACCENT_COLORS 추가, Fig 3–7 하드코딩 정리
+
+- [X] 구 Fig 1 (FC Intuition 3×3) 폐기 결정: "FC denoiser" 오해 + Panel H/I 설계 결함
+- [X] 새 Fig 1 구성 확정: A(Pipeline Schematic) + B1-B3(Convergence) + C(τ_min)
+- [X] `plot_figure1_combined.py` 작성 — matplotlib 블록도 + convergence + τ_min 통합
+- [X] `Fig1_Method_Overview.png` 생성 완료
+- [X] Panel A: 최종 논문용 Illustrator 교체 (현재 matplotlib placeholder)
+- [X] style.py에 Fig 3-7 Gray/Amber/Blue 3색 스키마 공식 등록 + DOT_COLOR/ACCENT_COLORS 추가, Fig 3–7 하드코딩 정리
 
 ### ds007535 (SpeechHemi) — 보류
-- [x] ds007535 선정 및 전처리 스크립트 작성 완료
+
+- [X] ds007535 선정 및 전처리 스크립트 작성 완료
 - [ ] ds007535 bold.nii.gz 다운로드 — Fig 1 교체로 **우선순위 하락**, Supplementary 후보
 
 ### ds000243 (WashU resting-state) — 주력 검증 데이터셋
-- [x] `preprocess_ds000243.py` 작성 (36P confound regression only, no task regression)
-- [x] `run_duration_sweep.py`에 ds000243 지원 추가 (`discover_subjects_ds000243`)
-- [x] `run_ds000243_batch.sh` 작성 (6-atlas batch sweep)
-- [x] `data/ds000243/{raw,timeseries_cache,results}/` 디렉토리 생성
-- [x] ds000243 fMRIPrep 출력물 업로드 완료 (N=52, MNI152NLin6Asym, TR=2.5s 확인)
-- [x] `preprocess_ds000243.py` 리팩토링: multi-run concat, confounds path 버그 수정, TR=2.5s, `--n-jobs 8`
-- [x] `run_ds000243_batch.sh` preprocess 단계 통합 (find pipefail 버그 수정)
-- [x] `run_ds000243_batch.sh` 실행 완료 (6 atlases × 52 subjects × 10 seeds, ~8.25h)
-- [x] Figure 1 (Method Overview): ds000243 convergence data 기반 `plot_figure1_combined.py` 완료
-- [ ] Figure 2 (Component Necessity): ds000243 실데이터 버전 추가 (현재 ABIDE N=468 기반)
+
+- [X] `preprocess_ds000243.py` 작성 (36P confound regression only, no task regression)
+- [X] `run_duration_sweep.py`에 ds000243 지원 추가 (`discover_subjects_ds000243`)
+- [X] `run_ds000243_batch.sh` 작성 (6-atlas batch sweep)
+- [X] `data/ds000243/{raw,timeseries_cache,results}/` 디렉토리 생성
+- [X] ds000243 fMRIPrep 출력물 업로드 완료 (N=52, MNI152NLin6Asym, TR=2.5s 확인)
+- [X] `preprocess_ds000243.py` 리팩토링: multi-run concat, confounds path 버그 수정, TR=2.5s, `--n-jobs 8`
+- [X] `run_ds000243_batch.sh` preprocess 단계 통합 (find pipefail 버그 수정)
+- [X] `run_ds000243_batch.sh` 실행 완료 (6 atlases × 52 subjects × 10 seeds, ~8.25h)
+- [X] Figure 1 (Method Overview): ds000243 convergence data 기반 `plot_figure1_combined.py` 완료
+- [X] Figure 2 (Component Necessity): ds000243 실데이터 버전 추가 (현재 ABIDE N=468 기반)
 - [ ] Figure 4 (Network Structure Preservation): ds000243 기반 topology/community 분석
 
 ### 논문 작성
+
 - [ ] Abstract, Introduction, Methods, Discussion, Limitations 집필
 - [ ] Methods에 Fisher z-space correction 기술 포함
 - [ ] Methods에 task-residual FC 방법론 기술 (ds007535, Cole 2014, Gratton 2018)
 - [ ] Supplementary: 4-method ceiling comparison table/figure
 
 ## Key Experimental Findings
+
 - **Component Necessity — Synthetic** (n_rois=50, 900/120): SB 제거 시 Δρ=-0.307, Prior 제거 시 Δρ=-0.187 → 두 구성요소가 핵심
 - **Component Necessity — ABIDE pilot** (N=3, CC200, Fisher z): SB 제거 Δρ=-0.092, Prior 제거 Δρ=-0.046 — 실데이터에서도 동일 패턴 확인
 - **Noise Degradation**: noise≈1.0 (SNR=1:1)에서 성능 경계 확인
@@ -203,19 +219,22 @@
 ## Conventions
 
 ### Code Style
+
 - Python 3.9+, PEP 8, Black (88 cols), isort, ruff
 - Type hints, Google Style docstrings, snake_case
 - N806/N815 exemption: neuroimaging domain variables (fc_true_T, rho_hat_T, G, C, L)
 - Tests: pytest with mock-based dry-run (nilearn/nibabel not required)
 
 ### Metric Naming Convention
+
 | Context | 외삽 신뢰도 (pipeline output) | FC 일치도 (validation) |
-|---------|-------------------------------|----------------------|
-| LaTeX   | `\hat{\rho}_T`                | `r_{\mathrm{FC}}`   |
-| Inline  | ρ̂T                           | rFC                  |
-| Code    | `rho_hat_T`                   | `r_fc`               |
+| ------- | ----------------------------- | ---------------------- |
+| LaTeX   | `\hat{\rho}_T`              | `r_{\mathrm{FC}}`    |
+| Inline  | ρ̂T                         | rFC                    |
+| Code    | `rho_hat_T`                 | `r_fc`               |
 
 ### Ruff Configuration (pyproject.toml)
+
 ```toml
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
@@ -226,6 +245,7 @@ ignore = ["E501", "N815"]
 ```
 
 ## Project Structure
+
 ```
 bsNet/
 ├── src/
@@ -251,6 +271,7 @@ bsNet/
 ```
 
 ## Next Session TODO
+
 1. Fig 1A Pipeline schematic: Illustrator/외부 도구로 brain 이미지 포함 고급 버전 교체
 2. 논문 Methods 초고: convergence validation 실험 설계 + τ_min 수식 정리
 3. 논문 Results 초고: 수렴 패턴 + gap 통계 + τ_min plateau 기술
@@ -260,6 +281,7 @@ bsNet/
 7. Git commit: Fig 1 교체 + convergence scripts + figures + dev log
 
 ## Key References
+
 - Cheng et al. (2021): Split-half + CTT framework on HCP N=1003, DOI: 10.1016/j.neuroimage.2021.118005
 - Friedman et al. (2008): Within-session ICC > 0.95, DOI: 10.1016/j.neuroimage.2008.02.005
 - Pitsialis et al. (2022): LW vs OAS shrinkage, DOI: 10.1016/j.neuroimage.2022.119244
@@ -271,14 +293,15 @@ bsNet/
 - Gratton et al. (2018): FC dominated by stable individual factors, DOI: 10.1016/j.neuron.2018.03.035
 
 ## Correction Method Selection Guide
+
 BS-NET `correct_attenuation()` 함수의 `method` 파라미터:
 
-| Method | 코드 | 설명 | 논문 근거 | Ceiling 해소 |
-|--------|------|------|-----------|-------------|
-| Original | `"original"` | 표준 CTT 보정 + hard clip | Spearman (1904) | ✗ (85%) |
-| **Fisher z** | `"fisher_z"` | z-space에서 가법 보정 → tanh 역변환 | Shou (2014), Teeuw (2021) | **✓ (0%)** |
-| Partial | `"partial"` | α=0.5 감쇠 보정 | Zimmerman (2007) | ✓ (0%) |
-| Soft clamp | `"soft_clamp"` | tanh 압축 (순위 보존) | — | ✓ (0%) |
+| Method             | 코드             | 설명                                 | 논문 근거                 | Ceiling 해소      |
+| ------------------ | ---------------- | ------------------------------------ | ------------------------- | ----------------- |
+| Original           | `"original"`   | 표준 CTT 보정 + hard clip            | Spearman (1904)           | ✗ (85%)          |
+| **Fisher z** | `"fisher_z"`   | z-space에서 가법 보정 → tanh 역변환 | Shou (2014), Teeuw (2021) | **✓ (0%)** |
+| Partial            | `"partial"`    | α=0.5 감쇠 보정                     | Zimmerman (2007)          | ✓ (0%)           |
+| Soft clamp         | `"soft_clamp"` | tanh 압축 (순위 보존)                | —                        | ✓ (0%)           |
 
 **권장**: `"fisher_z"` (학술적으로 가장 방어 가능, ceiling 완전 해소, 의미 있는 improvement 유지)
 
@@ -287,14 +310,15 @@ BS-NET `correct_attenuation()` 함수의 `method` 파라미터:
 XCP-D v26.x NIfTI 처리 시 `Schaefer200`/`Schaefer400` 이름은 인식되지 않음.
 내장 아틀라스는 **Schaefer (피질) + Tian (피질하) 결합 4S 시리즈**로 제공됨.
 
-| BS-NET 아틀라스 | XCP-D 4S 이름 | 피질 ROI | 피질하 ROI | 총 ROI |
-|----------------|---------------|----------|------------|--------|
-| schaefer200    | `4S256Parcels` | 200      | 56         | 256    |
-| schaefer400    | `4S456Parcels` | 400      | 56         | 456    |
-| schaefer100    | `4S156Parcels` | 100      | 56         | 156    |
-| schaefer300    | `4S356Parcels` | 300      | 56         | 356    |
+| BS-NET 아틀라스 | XCP-D 4S 이름    | 피질 ROI | 피질하 ROI | 총 ROI |
+| --------------- | ---------------- | -------- | ---------- | ------ |
+| schaefer200     | `4S256Parcels` | 200      | 56         | 256    |
+| schaefer400     | `4S456Parcels` | 400      | 56         | 456    |
+| schaefer100     | `4S156Parcels` | 100      | 56         | 156    |
+| schaefer300     | `4S356Parcels` | 300      | 56         | 356    |
 
 **XCP-D Docker 실행 옵션** (ds000243, NIfTI 모드):
+
 ```bash
 docker run --rm \
   -v /path/to/fmriprep:/data:ro \
@@ -313,6 +337,7 @@ docker run --rm \
 ```
 
 **필수 전처리**: fMRIPrep 출력에 native-space T1w symlink 필요
+
 ```bash
 # fMRIPrep이 MNI-space T1w만 출력한 경우
 cd data/derivatives/fmriprep/sub-XXX/anat/
@@ -323,8 +348,8 @@ ln -s sub-XXX_space-MNI152NLin6Asym_res-2_desc-brain_mask.nii.gz \
 ```
 
 **convert_xcpd_to_npy.py ATLAS_NAME_MAP** — 4S 시리즈 키:
+
 - `"4S156Parcels"` → `"4s156parcels"`
 - `"4S256Parcels"` → `"4s256parcels"`
 - `"4S356Parcels"` → `"4s356parcels"`
 - `"4S456Parcels"` → `"4s456parcels"`
-
