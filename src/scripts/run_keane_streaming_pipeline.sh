@@ -16,6 +16,11 @@
 #     --subject sub-B06 \
 #     --cleanup-level minimal
 #
+#   # subject 자동 감지 (dataset의 sub-* 전체)
+#   bash src/scripts/run_keane_streaming_pipeline.sh \
+#     --dataset ds005073 \
+#     --cleanup-level minimal
+#
 #   # 여러 subject 처리 + dry-run
 #   bash src/scripts/run_keane_streaming_pipeline.sh \
 #     --dataset ds005073 \
@@ -104,8 +109,21 @@ case "$CLEANUP_LEVEL" in
 esac
 
 if [[ ${#SUBJECTS[@]} -eq 0 ]]; then
-    err "No subject provided. Use --subject sub-XXX [sub-YYY ...]"
-    exit 1
+    ds_dir="$DATA_ROOT/$DATASET"
+    if [[ ! -d "$ds_dir" ]]; then
+        err "Dataset directory not found for auto-discovery: $ds_dir"
+        exit 1
+    fi
+    while IFS= read -r sub; do
+        SUBJECTS+=("$sub")
+    done < <(find "$ds_dir" -maxdepth 1 -type d -name 'sub-*' -print | xargs -I{} basename "{}" | sort)
+
+    if [[ ${#SUBJECTS[@]} -eq 0 ]]; then
+        err "No subjects found in $ds_dir (expected sub-* directories)"
+        err "Provide explicit --subject or download subject directories first."
+        exit 1
+    fi
+    log "Auto-discovered subjects: ${#SUBJECTS[@]}"
 fi
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
