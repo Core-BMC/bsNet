@@ -92,6 +92,29 @@
     --n-jobs 8
   ```
 
+### `convert_keane_restfc_to_npz.py` — ds003404/ds005073 restFC 통합 변환 (신규)
+- **용도**: OpenNeuro `ds003404`(HC) + `ds005073`(BP/SZ) derivatives의 `.mat` FC를 통합 NPZ로 변환.
+- **입력**:
+  - `data/ds003404/derivatives/restFCArray.mat`
+  - `data/ds005073/derivatives/restFCArray_BP.mat`
+  - `data/ds005073/derivatives/restFCArray_SZ.mat`
+  - 각 `participants.tsv`
+- **출력**:
+  - `data/ds005073/results/keane_restfc_combined.npz`
+  - `data/ds005073/results/keane_restfc_metadata.csv`
+- **주의**: derivatives FC만 사용하므로 BS-NET 보정 자체는 수행하지 않음 (raw BOLD 필요).
+
+### `run_keane_fc_classification.py` — Keane FC-only 분류 (신규)
+- **용도**: 통합 NPZ에서 exploratory 분류 실행.
+- **태스크**:
+  - `hc_vs_psychosis` (HC vs BP+SZ)  ※ dataset confound 주의
+  - `bp_vs_sz` (within-ds005073)
+- **모델**: `logistic_l2`, `linear_svm`
+- **평가**: Repeated Stratified K-fold + permutation p-value
+- **출력**:
+  - `data/ds005073/results/keane_fc_classification_runs.csv`
+  - `data/ds005073/results/keane_fc_classification_summary.csv`
+
 ### `run_fmriprep_bsnet.py` — fMRIPrep/XCP-D 기반 검증
 - **용도**: XCP-D (기본) 또는 fMRIPrep-direct (레거시) 처리 결과에서 BS-NET 실행. Schaefer 100/400.
 - **CLI**: `--subject`, `--run-all`, `--input-mode {xcpd,fmriprep}`, `--parcels {100,400}`, `--xcpd-dir`, `--fmriprep-dir`, `-v`
@@ -173,6 +196,7 @@ python src/scripts/run_component_necessity.py --input-npy data/abide/timeseries_
 | `plot_figure7_classification.py` | Fig 7 | Track H classification (Accuracy/AUC bars + scatter, ΔAcc, Summary) |
 | `plot_component_necessity.py` | — | Component necessity bars + Δρ waterfall |
 | `plot_patient_utility_clustering.py` | Fig S6 (proposal) | ρ̂T strata별 비지도 분리도(ARI/BalAcc) + FC method heatmap |
+| `plot_patient_utility_classification.py` | Fig S7 (proposal) | LOSO supervised discrimination(BalAcc/AUC) + method heatmap + permutation p panel |
 | `style.py` | — | 공용 matplotlib 스타일 설정 (library) |
 
 ---
@@ -199,6 +223,8 @@ python src/scripts/run_component_necessity.py --input-npy data/abide/timeseries_
 | `run_dataset_pipeline.sh` | Per-dataset 점진적 실행 (ds* 단위) | `--dataset`, `--auto`, `--skip-download` |
 | `run_fmriprep_batch.sh` | fMRIPrep 배치 (Docker/Singularity) | `--subject`, `--csv`, `--all`, `--singularity` |
 | `run_fmriprep_manual.sh` | fMRIPrep v25.2.5 수동 실행 + 진단 | `--check`, `--subject`, `--batch` |
+| `run_fmriprep_keane.sh` | Keane(ds003404/ds005073) REST 전용 fMRIPrep 실행 | `--dataset`, `--subject`, `--dry-run` |
+| `run_keane_streaming_pipeline.sh` | Keane subject 단위 streaming (fMRIPrep→BS-NET→cleanup) | `--dataset`, `--subject`, `--cleanup-level` |
 | `run_xcpd_batch.sh` | XCP-D 배치 (36P, scrubbing, Schaefer 100/400) | `--subject`, `--parcels`, `--singularity` |
 | `setup_local_env.sh` | 환경 초기화 (conda/venv + pip) | `--venv` |
 

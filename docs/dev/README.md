@@ -118,3 +118,4 @@ CHANGELOG.md 와 동일한 스타일을 따른다 ([Keep a Changelog](https://ke
 | [26-04-04-13-36_dev_logs.md](26-04-04-13-36_dev_logs.md) | 2026-04-04 | CLAUDE.md 초기화, 세션 로그 체계 구축 (docs/dev/ 신설) |
 | [26-04-10-00-00_dev_logs.md](26-04-10-00-00_dev_logs.md) | 2026-04-10 | Fig4 sliding-window 확장, legend 전면 개편, 스토리라인 확정, 논문 집필 준비 문서 3건 |
 | [26-04-17-13-48_dev_logs.md](26-04-17-13-48_dev_logs.md) | 2026-04-17 | Fig 3를 N=468 메인 검증으로 재정의, strict+CONSORT를 Fig S3로 분리, ABIDE supplementary legend 정렬 |
+| [26-04-18-01-02_dev_logs.md](26-04-18-01-02_dev_logs.md) | 2026-04-18 | ADHD-200 PCP supervised utility FigS7 스크립트 추가, S6/S7 legend 및 INDEX 동기화 |

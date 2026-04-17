@@ -18,7 +18,7 @@
 ## 3. 정량 분석 결과 및 시각화 캡션 (Validation Results & Legends)
 - **`3.1_res_figure_legends.md`**: 메인 논문 Figure 1~7 canonical 레전드. (resting-state 중심, Figure 4 sliding-window 포함)
 - **`3.2_res_abide_figure_legends.md`**: ABIDE 확장 보충 캡션(Supplementary S*). CC400 확장, ceiling-method 비교.
-- **`3.3_res_adhd_figure_legends.md`**: ADHD 확장 보충 캡션(Supplementary S*). single/multi-seed 상세, multi-atlas 비교.
+- **`3.3_res_adhd_figure_legends.md`**: ADHD 확장 보충 캡션(Supplementary S*). PCP N=399 기반 S6(비지도 utility), S7(LOSO supervised utility) 포함.
 - **`3.4_res_classification_legend.md`**: Main Figure 7(Track H) 상세 레전드. Linear SVM 3-condition × 2-atlas 비교, Reference FC paradox 해석.
 
 ## 4. 퍼블리케이션 및 최종 보고서 (Final Reports)
@@ -73,6 +73,5 @@
 | Fig S1 | *(생성 예정)* | ABIDE CC400 멀티시드 확장 |
 | Fig S2 | *(생성 예정)* | ABIDE ceiling-method 비교 (CC200) |
 | Fig S3 | *(생성 예정)* | ABIDE ceiling-method 비교 (CC400) |
-| Fig S4 | *(생성 예정)* | ADHD CC400 상세 validation |
-| Fig S5 | *(생성 예정)* | ADHD single vs multi-seed 비교 |
-| Fig S6 | *(생성 예정)* | ADHD multi-atlas 비교 |
+| Fig S6 | `FigS6_Reliability_Aware_Clustering.png` | ADHD-200 PCP reliability-aware clustering utility (exploratory) |
+| Fig S7 | `FigS7_Reliability_Aware_Classification.png` | ADHD-200 PCP LOSO supervised discrimination utility (exploratory) |
