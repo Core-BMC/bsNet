@@ -203,16 +203,6 @@ def _evaluate_once(
     n_eval = int(np.sum(eval_mask))
     coverage = float(n_eval / len(y)) if len(y) > 0 else float("nan")
     if n_eval <= 1 or len(np.unique(y[eval_mask])) < 2:
-        if n_splits_used == 0:
-            logger.warning(
-                "No valid split: gate_mode=%s, q=%s, gamma=%s, "
-                "min_train=%d, min_test=%d",
-                gate_mode,
-                f"{rho_quantile:.3f}" if np.isfinite(rho_quantile) else "nan",
-                f"{rho_gamma:.3f}",
-                min_class_count_train,
-                min_class_count_test,
-            )
         return {
             "bal_acc": float("nan"),
             "roc_auc": float("nan"),
@@ -431,6 +421,12 @@ def main() -> None:
     parser.add_argument("--min-class-count-train", type=int, default=5)
     parser.add_argument("--min-class-count-test", type=int, default=1)
     parser.add_argument(
+        "--min-valid-splits",
+        type=int,
+        default=2,
+        help="Minimum valid CV splits required per repeat; below this, setting is marked invalid and permutation is skipped.",
+    )
+    parser.add_argument(
         "--exploratory-scope",
         type=str,
         choices=["primary", "all"],
@@ -535,6 +531,7 @@ def main() -> None:
             "n_subjects_total": int(len(y_all)),
             "n_eval_subjects": int(m["n_eval_subjects"]) if np.isfinite(m["n_eval_subjects"]) else np.nan,
             "n_splits_used": int(m["n_splits_used"]) if np.isfinite(m["n_splits_used"]) else np.nan,
+            "invalid_setting": 0,
             "coverage": float(m["coverage"]),
             "bal_acc": float(m["bal_acc"]),
             "roc_auc": float(m["roc_auc"]),
@@ -545,7 +542,27 @@ def main() -> None:
         }
 
         do_perm = (not args.permute_primary_only) or (s["family"] == "confirmatory")
-        if do_perm and args.n_permutations > 0 and np.isfinite(row["bal_acc"]):
+        valid_for_setting = (
+            np.isfinite(row["bal_acc"])
+            and np.isfinite(row["n_splits_used"])
+            and int(row["n_splits_used"]) >= int(args.min_valid_splits)
+        )
+        if not valid_for_setting:
+            row["invalid_setting"] = 1
+            if rep == 0:
+                logger.warning(
+                    "Invalid setting (skip permutation): family=%s feature=%s model=%s gate=%s q=%s gamma=%s valid_splits=%s (< %d)",
+                    s["family"],
+                    s["feature"],
+                    s["model"],
+                    s["gate_mode"],
+                    f"{float(s['rho_quantile']):.3f}" if np.isfinite(float(s["rho_quantile"])) else "nan",
+                    f"{float(s['rho_gamma']):.3f}",
+                    row["n_splits_used"],
+                    int(args.min_valid_splits),
+                )
+
+        if do_perm and args.n_permutations > 0 and valid_for_setting:
             label = (
                 f"{s['family']}/{feat}/{model_name}/{s['gate_mode']}"
                 f"/rep{rep + 1} [{args.n_permutations} perm]"
@@ -582,6 +599,7 @@ def main() -> None:
         "n_subjects_total",
         "n_eval_subjects",
         "n_splits_used",
+        "invalid_setting",
         "coverage",
         "bal_acc",
         "roc_auc",
@@ -613,6 +631,7 @@ def main() -> None:
             "rho_gamma": s["rho_gamma"],
             "n_subjects_total": s["n_subjects_total"],
             "n_repeats": len(rr),
+            "invalid_rate": float(np.mean([int(r["invalid_setting"]) for r in rr])),
         }
 
         for k in metrics + pmetrics:
@@ -662,6 +681,7 @@ def main() -> None:
         "rho_gamma",
         "n_subjects_total",
         "n_repeats",
+        "invalid_rate",
         "coverage_mean",
         "coverage_std",
         "n_eval_subjects_mean",
