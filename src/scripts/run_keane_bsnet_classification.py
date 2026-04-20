@@ -152,9 +152,11 @@ def _evaluate_once(
         test_sel = np.ones(len(test_idx), dtype=bool)
 
         if gate_mode == "hard":
-            thr = float(np.quantile(rho[train_idx], rho_quantile))
-            train_sel = rho[train_idx] >= thr
-            test_sel = rho[test_idx] >= thr
+            thr = float(np.nanquantile(rho[train_idx], rho_quantile))
+            if not np.isfinite(thr):
+                continue
+            train_sel = np.isfinite(rho[train_idx]) & (rho[train_idx] >= thr)
+            test_sel = np.isfinite(rho[test_idx]) & (rho[test_idx] >= thr)
         elif gate_mode in ("none", "soft"):
             pass
         else:
@@ -455,6 +457,13 @@ def main() -> None:
     if missing_rho:
         raise RuntimeError(f"Missing rho_hat_T for {len(missing_rho)} BP/SZ subjects")
     rho_all = np.array([rho_map[sid] for sid in sub_bp_sz], dtype=float)
+    finite_mask_bp = np.isfinite(rho_all)
+    if not np.all(finite_mask_bp):
+        n_drop = int(np.sum(~finite_mask_bp))
+        logger.warning("Dropping %d subjects with non-finite rho_hat_T", n_drop)
+        y_all = y_all[finite_mask_bp]
+        rho_all = rho_all[finite_mask_bp]
+        sub_bp_sz = sub_bp_sz[finite_mask_bp]
 
     settings = _build_settings(args)
     logger.info(
@@ -486,6 +495,7 @@ def main() -> None:
         feat = s["feature"]
         model_name = s["model"]
         x = np.asarray(npz[feat], dtype=np.float64)[mask_bp_sz]
+        x = x[finite_mask_bp]
         seed = args.random_seed + rep * 101
 
         m = _evaluate_once(
