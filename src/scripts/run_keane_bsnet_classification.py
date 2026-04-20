@@ -17,6 +17,11 @@ from sklearn.svm import SVC
 
 logger = logging.getLogger(__name__)
 
+try:
+    from tqdm.auto import tqdm
+except Exception:  # pragma: no cover - optional dependency
+    tqdm = None
+
 FEATURES_NPZ = Path("data/keane/results/keane_bsnet_features.npz")
 OUT_DIR = Path("data/keane/results")
 
@@ -106,6 +111,7 @@ def _perm_pvals(
     n_folds: int,
     seed: int,
     n_permutations: int,
+    progress_label: str = "",
 ) -> dict[str, float]:
     obs = _evaluate_once(x=x, y=y, model_name=model_name, n_folds=n_folds, seed=seed)
     obs_bal = obs["bal_acc"]
@@ -117,7 +123,18 @@ def _perm_pvals(
     null_auc = np.empty(n_permutations, dtype=float)
     null_pr = np.empty(n_permutations, dtype=float)
 
-    for i in range(n_permutations):
+    if tqdm is not None:
+        perm_iter = tqdm(
+            range(n_permutations),
+            desc=progress_label or "permutations",
+            unit="perm",
+            leave=False,
+        )
+    else:
+        logger.info("%s permutations: %d", progress_label or "Running", n_permutations)
+        perm_iter = range(n_permutations)
+
+    for i in perm_iter:
         y_perm = rng.permutation(y)
         m = _evaluate_once(
             x=x,
@@ -129,6 +146,16 @@ def _perm_pvals(
         null_bal[i] = m["bal_acc"]
         null_auc[i] = m["roc_auc"]
         null_pr[i] = m["auprc"]
+
+        if tqdm is None and n_permutations >= 10:
+            step = max(1, n_permutations // 10)
+            if (i + 1) % step == 0 or (i + 1) == n_permutations:
+                logger.info(
+                    "%s permutations: %d/%d",
+                    progress_label or "Running",
+                    i + 1,
+                    n_permutations,
+                )
 
     def _p(null: np.ndarray, obs_v: float) -> float:
         valid = np.isfinite(null)
@@ -193,46 +220,61 @@ def main() -> None:
     summary_csv = out_dir / f"keane_bsnet_bp_sz_summary{tag}.csv"
 
     rows_runs: list[dict] = []
+    jobs: list[tuple[str, str, int]] = []
     for feat in feature_names:
-        x_all = np.asarray(npz[feat], dtype=np.float64)[mask]
         for model_name in models:
             for rep in range(args.n_repeats):
-                seed = args.random_seed + rep * 101
-                m = _evaluate_once(
-                    x=x_all,
-                    y=y,
-                    model_name=model_name,
-                    n_folds=args.n_folds,
-                    seed=seed,
-                )
-                row = {
-                    "task": "bp_vs_sz",
-                    "feature": feat,
-                    "model": model_name,
-                    "repeat": rep,
-                    "n_subjects": int(len(y)),
-                    "bal_acc": float(m["bal_acc"]),
-                    "roc_auc": float(m["roc_auc"]),
-                    "auprc": float(m["auprc"]),
-                    "bal_acc_p_perm": np.nan,
-                    "roc_auc_p_perm": np.nan,
-                    "auprc_p_perm": np.nan,
-                }
+                jobs.append((feat, model_name, rep))
 
-                do_perm = (not args.permute_primary_only) or (
-                    feat == args.primary_feature and model_name == args.primary_model
-                )
-                if do_perm and args.n_permutations > 0:
-                    pvals = _perm_pvals(
-                        x=x_all,
-                        y=y,
-                        model_name=model_name,
-                        n_folds=args.n_folds,
-                        seed=seed,
-                        n_permutations=args.n_permutations,
-                    )
-                    row.update(pvals)
-                rows_runs.append(row)
+    if tqdm is not None:
+        job_iter = tqdm(jobs, desc="BPvsSZ runs", unit="run")
+    else:
+        logger.info("Total runs: %d", len(jobs))
+        job_iter = jobs
+
+    for feat, model_name, rep in job_iter:
+        x_all = np.asarray(npz[feat], dtype=np.float64)[mask]
+        seed = args.random_seed + rep * 101
+        m = _evaluate_once(
+            x=x_all,
+            y=y,
+            model_name=model_name,
+            n_folds=args.n_folds,
+            seed=seed,
+        )
+        row = {
+            "task": "bp_vs_sz",
+            "feature": feat,
+            "model": model_name,
+            "repeat": rep,
+            "n_subjects": int(len(y)),
+            "bal_acc": float(m["bal_acc"]),
+            "roc_auc": float(m["roc_auc"]),
+            "auprc": float(m["auprc"]),
+            "bal_acc_p_perm": np.nan,
+            "roc_auc_p_perm": np.nan,
+            "auprc_p_perm": np.nan,
+        }
+
+        do_perm = (not args.permute_primary_only) or (
+            feat == args.primary_feature and model_name == args.primary_model
+        )
+        if do_perm and args.n_permutations > 0:
+            progress_label = (
+                f"{feat}/{model_name}/rep{rep + 1} "
+                f"[{args.n_permutations} perm]"
+            )
+            pvals = _perm_pvals(
+                x=x_all,
+                y=y,
+                model_name=model_name,
+                n_folds=args.n_folds,
+                seed=seed,
+                n_permutations=args.n_permutations,
+                progress_label=progress_label,
+            )
+            row.update(pvals)
+        rows_runs.append(row)
 
     run_fields = [
         "task",
@@ -319,4 +361,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
