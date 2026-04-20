@@ -152,7 +152,7 @@ def main() -> None:
             n_bootstraps=int(args.n_bootstraps),
         )
         res = run_bootstrap_prediction(
-            ts_short=ts_short,
+            short_obs=ts_short,
             fc_reference=ref_vec,
             config=cfg,
             correction_method=args.correction_method,
@@ -239,4 +239,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
