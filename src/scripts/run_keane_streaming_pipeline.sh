@@ -254,12 +254,34 @@ run_fmriprep_one() {
         extra+=(--dry-run)
     fi
     log "fMRIPrep: $ds/$sub"
-    run_cmd bash "$SCRIPT_DIR/run_fmriprep_keane.sh" \
-        --dataset "$ds" \
-        --subject "$sub" \
-        --ncpus "$N_CPUS" \
-        --mem-mb "$MEM_MB" \
-        "${extra[@]}"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        run_cmd bash "$SCRIPT_DIR/run_fmriprep_keane.sh" \
+            --dataset "$ds" \
+            --subject "$sub" \
+            --ncpus "$N_CPUS" \
+            --mem-mb "$MEM_MB" \
+            "${extra[@]}"
+        return 0
+    fi
+
+    local output rc
+    set +e
+    output="$(
+        bash "$SCRIPT_DIR/run_fmriprep_keane.sh" \
+            --dataset "$ds" \
+            --subject "$sub" \
+            --ncpus "$N_CPUS" \
+            --mem-mb "$MEM_MB" \
+            "${extra[@]}" 2>&1
+    )"
+    rc=$?
+    set -e
+    echo "$output"
+
+    if echo "$output" | grep -q "SKIP: missing required inputs"; then
+        return 2
+    fi
+    return "$rc"
 }
 
 run_bsnet_one() {
@@ -374,9 +396,17 @@ for sub in "${SUBJECTS[@]}"; do
         rc=0
         continue
     fi
-    if ! run_fmriprep_one "$DATASET" "$sub"; then
+    run_fmriprep_one "$DATASET" "$sub" || rc=$?
+    rc=${rc:-0}
+    if [[ "$rc" -eq 2 ]]; then
+        warn "Skipping subject without rest inputs: $sub"
+        N_SKIP=$((N_SKIP + 1))
+        rc=0
+        continue
+    elif [[ "$rc" -ne 0 ]]; then
         err "fMRIPrep failed: $sub"
         N_FAIL=$((N_FAIL + 1))
+        rc=0
         continue
     fi
     if ! run_bsnet_one "$DATASET" "$sub"; then

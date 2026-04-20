@@ -119,11 +119,11 @@ run_one() {
 
     if [[ ! -d "$bids_dir/$sub_id" ]]; then
         echo "  SKIP: missing subject dir: $bids_dir/$sub_id"
-        return 1
+        return 0
     fi
     if ! has_min_inputs "$bids_dir" "$sub_id"; then
         echo "  SKIP: missing required inputs (anat T1w or rest bold) for $sub_id"
-        return 1
+        return 0
     fi
     if is_done "$ds_id" "$sub_id"; then
         echo "  SKIP: already processed ($ds_id/$sub_id)"
