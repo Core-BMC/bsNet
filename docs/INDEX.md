@@ -40,6 +40,7 @@
 - **`5.12_patient_utility_reliability_aware_clustering.md`**: 환자 데이터 활용성 보강 계획. `ρ̂T` strata 기반 HC/Patients 분리(비지도) 분석 설계, nilearn FC 방법 비교, 결과 figure 설계.
 - **`5.13_adhd_discrimination_citation_guide.md`**: ADHD vs HC discrimination을 위한 인용 중심 작성 가이드. tangent-linear 권장 조합, site/confound 통제, permutation/LOSO 권장, claim-to-citation 매핑 및 본문 템플릿 포함.
 - **`5.14_keane_reliability_gated_discrimination_design.md`**: Keane(BP/SZ) reliability-gated 분류 설계 문서. confirmatory/exploratory family, train-only threshold(누수 방지), split validity(최소 클래스 수), Holm/FDR 보정 규칙 포함.
+- **`5.15_project_full_storyline_report_20260420.md`**: Session 1–8 + Keane 확장까지 포함한 전체 프로젝트 상세 리포트. 실험별 실행 내용, 디버깅 이력, 주요 수치 결과, 통합 해석 및 현재 전략적 결론을 정리.
 
 ## 6. 운영 및 파이프라인 가이드 (Operations & Pipeline)
 - **`6.1_ops_local_setup.md`**: 로컬 환경 설정 가이드. Python venv/conda, 의존성 설치, Schaefer atlas 배치, FreeSurfer 라이선스 등.
