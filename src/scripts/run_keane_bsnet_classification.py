@@ -138,7 +138,8 @@ def _evaluate_once(
     gate_mode: str,
     rho_quantile: float,
     rho_gamma: float,
-    min_class_count: int,
+    min_class_count_train: int,
+    min_class_count_test: int,
 ) -> dict[str, float]:
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
     y_pred_all = np.full(len(y), -1, dtype=int)
@@ -166,9 +167,9 @@ def _evaluate_once(
 
         y_train = y[tr_idx]
         y_test = y[te_idx]
-        if not _is_valid_class_counts(y_train, min_per_class=min_class_count):
+        if not _is_valid_class_counts(y_train, min_per_class=min_class_count_train):
             continue
-        if not _is_valid_class_counts(y_test, min_per_class=max(1, min_class_count)):
+        if not _is_valid_class_counts(y_test, min_per_class=min_class_count_test):
             continue
 
         x_train = x[tr_idx]
@@ -241,7 +242,8 @@ def _perm_pvals(
     gate_mode: str,
     rho_quantile: float,
     rho_gamma: float,
-    min_class_count: int,
+    min_class_count_train: int,
+    min_class_count_test: int,
     n_permutations: int,
     progress_label: str = "",
 ) -> dict[str, float]:
@@ -255,7 +257,8 @@ def _perm_pvals(
         gate_mode=gate_mode,
         rho_quantile=rho_quantile,
         rho_gamma=rho_gamma,
-        min_class_count=min_class_count,
+        min_class_count_train=min_class_count_train,
+        min_class_count_test=min_class_count_test,
     )
     obs_bal = obs["bal_acc"]
     obs_auc = obs["roc_auc"]
@@ -289,7 +292,8 @@ def _perm_pvals(
             gate_mode=gate_mode,
             rho_quantile=rho_quantile,
             rho_gamma=rho_gamma,
-            min_class_count=min_class_count,
+            min_class_count_train=min_class_count_train,
+            min_class_count_test=min_class_count_test,
         )
         null_bal[i] = m["bal_acc"]
         null_auc[i] = m["roc_auc"]
@@ -412,7 +416,8 @@ def main() -> None:
     parser.add_argument("--primary-gate-quantile", type=float, default=0.4)
     parser.add_argument("--rho-quantiles", nargs="+", type=float, default=[0.3, 0.4, 0.5])
     parser.add_argument("--rho-gammas", nargs="+", type=float, default=[0.5, 1.0, 2.0])
-    parser.add_argument("--min-class-count", type=int, default=10)
+    parser.add_argument("--min-class-count-train", type=int, default=10)
+    parser.add_argument("--min-class-count-test", type=int, default=2)
     parser.add_argument(
         "--exploratory-scope",
         type=str,
@@ -493,7 +498,8 @@ def main() -> None:
             gate_mode=s["gate_mode"],
             rho_quantile=float(s["rho_quantile"]) if np.isfinite(s["rho_quantile"]) else 0.0,
             rho_gamma=float(s["rho_gamma"]),
-            min_class_count=args.min_class_count,
+            min_class_count_train=args.min_class_count_train,
+            min_class_count_test=args.min_class_count_test,
         )
 
         row: dict[str, Any] = {
@@ -534,7 +540,8 @@ def main() -> None:
                 gate_mode=s["gate_mode"],
                 rho_quantile=float(s["rho_quantile"]) if np.isfinite(s["rho_quantile"]) else 0.0,
                 rho_gamma=float(s["rho_gamma"]),
-                min_class_count=args.min_class_count,
+                min_class_count_train=args.min_class_count_train,
+                min_class_count_test=args.min_class_count_test,
                 n_permutations=args.n_permutations,
                 progress_label=label,
             )
@@ -684,4 +691,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
