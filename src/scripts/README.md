@@ -115,6 +115,20 @@
   - `data/ds005073/results/keane_fc_classification_runs.csv`
   - `data/ds005073/results/keane_fc_classification_summary.csv`
 
+### `run_keane_bsnet_recompute.py` — Keane TS 기반 BS-NET 재산출 (신규)
+- **용도**: `data/derivatives/bsnet/sub-*/sub-*_ts.npy`에서 BS-NET 지표를 재계산.
+- **핵심**: `--correction-method fisher_z`로 ceiling 패턴 완화된 ρ̂T 재산출.
+- **출력**:
+  - `data/keane/results/keane_bsnet_recomputed{_tag}.csv`
+  - `data/keane/results/keane_bsnet_features{_tag}.npz`
+
+### `run_keane_bsnet_classification.py` — Keane BP vs SZ 분류 (신규)
+- **용도**: `run_keane_bsnet_recompute.py`의 feature NPZ로 BP vs SZ 분류 수행.
+- **특징**: feature 조건(raw short / BS-NET pred / reference) 비교, permutation p-value 지원.
+- **출력**:
+  - `data/keane/results/keane_bsnet_bp_sz_runs{_tag}.csv`
+  - `data/keane/results/keane_bsnet_bp_sz_summary{_tag}.csv`
+
 ### `run_fmriprep_bsnet.py` — fMRIPrep/XCP-D 기반 검증
 - **용도**: XCP-D (기본) 또는 fMRIPrep-direct (레거시) 처리 결과에서 BS-NET 실행. Schaefer 100/400.
 - **CLI**: `--subject`, `--run-all`, `--input-mode {xcpd,fmriprep}`, `--parcels {100,400}`, `--xcpd-dir`, `--fmriprep-dir`, `-v`
