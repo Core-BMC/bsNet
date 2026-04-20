@@ -203,6 +203,16 @@ def _evaluate_once(
     n_eval = int(np.sum(eval_mask))
     coverage = float(n_eval / len(y)) if len(y) > 0 else float("nan")
     if n_eval <= 1 or len(np.unique(y[eval_mask])) < 2:
+        if n_splits_used == 0:
+            logger.warning(
+                "No valid split: gate_mode=%s, q=%s, gamma=%s, "
+                "min_train=%d, min_test=%d",
+                gate_mode,
+                f"{rho_quantile:.3f}" if np.isfinite(rho_quantile) else "nan",
+                f"{rho_gamma:.3f}",
+                min_class_count_train,
+                min_class_count_test,
+            )
         return {
             "bal_acc": float("nan"),
             "roc_auc": float("nan"),
@@ -418,7 +428,7 @@ def main() -> None:
     parser.add_argument("--primary-gate-quantile", type=float, default=0.4)
     parser.add_argument("--rho-quantiles", nargs="+", type=float, default=[0.3, 0.4, 0.5])
     parser.add_argument("--rho-gammas", nargs="+", type=float, default=[0.5, 1.0, 2.0])
-    parser.add_argument("--min-class-count-train", type=int, default=10)
+    parser.add_argument("--min-class-count-train", type=int, default=5)
     parser.add_argument("--min-class-count-test", type=int, default=1)
     parser.add_argument(
         "--exploratory-scope",
