@@ -419,7 +419,7 @@ def main() -> None:
     parser.add_argument("--rho-quantiles", nargs="+", type=float, default=[0.3, 0.4, 0.5])
     parser.add_argument("--rho-gammas", nargs="+", type=float, default=[0.5, 1.0, 2.0])
     parser.add_argument("--min-class-count-train", type=int, default=10)
-    parser.add_argument("--min-class-count-test", type=int, default=2)
+    parser.add_argument("--min-class-count-test", type=int, default=1)
     parser.add_argument(
         "--exploratory-scope",
         type=str,
