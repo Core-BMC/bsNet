@@ -1,6 +1,6 @@
 # BS-NET Scripts Index
 
-스크립트를 **7개 카테고리**로 분류한 인덱스. 각 스크립트의 용도, CLI, 입출력을 명시한다.
+스크립트를 **10개 카테고리**로 분류한 인덱스. 각 스크립트의 용도, CLI, 입출력을 명시한다.
 
 ---
 
@@ -8,13 +8,17 @@
 
 | # | 카테고리 | 스크립트 수 | 설명 |
 |---|----------|------------|------|
-| 1 | Validation (실증 검증) | 4 | ABIDE, ADHD, fMRIPrep 기반 실데이터 BS-NET 검증 + ADHD 분류 |
+| 1 | Validation (실증 검증) | 10+ | ABIDE, ADHD, fMRIPrep, Keane 기반 실데이터 검증 + 분류 |
 | 2 | Defense Experiments (방어 실험) | 8 | Track A–G 방어 실험 + failure analysis |
-| 3 | Data Acquisition (데이터 수집) | 2 | OpenNeuro 인덱싱 및 다운로드 |
-| 4 | Preprocessing (전처리) | 1 | Atlas parcellation, confound regression |
-| 5 | Visualization (시각화) | 1+5 | ABIDE plotting + src/visualization/ 논문 figure |
-| 6 | Simulation (시뮬레이션) | 2 | Synthetic baseline + duration sweep |
-| 7 | Pipeline Orchestration (파이프라인) | 6 (.sh) | fMRIPrep, XCP-D 배치, 환경 설정 |
+| 3 | Data Acquisition (데이터 수집/변환) | 5 | OpenNeuro 인덱싱, 다운로드, 형식 변환 |
+| 4 | Preprocessing (전처리) | 3 | ds007535, ds000243, setup_and_preprocess |
+| 5 | Convergence & Ablation | 3 | Convergence validation, progressive ablation, ABIDE duration sweep |
+| 6 | Downstream Analysis | 3 | Downstream suite, reliability-aware clustering/classification |
+| 7 | Visualization (시각화) | 2+17 | src/scripts/ plotting + src/visualization/ 논문 figure |
+| 8 | Simulation (시뮬레이션) | 2 | Synthetic baseline + duration sweep |
+| 9 | Utility | 2 | Atlas inspection, FC threshold visualization |
+| 10 | Pipeline Orchestration (파이프라인) | 14 (.sh) | fMRIPrep, XCP-D, Keane streaming, 환경 설정 |
+| 11 | TSD (Temporal Self-Distillation) | 1 | E0–E3 ablation 실험 |
 
 ---
 
@@ -133,6 +137,23 @@
   - `data/keane/results/keane_bsnet_bp_sz_gated_runs{_tag}.csv`
   - `data/keane/results/keane_bsnet_bp_sz_gated_summary{_tag}.csv`
 
+### `run_abide_filtered.py` — ABIDE 필터링 검증
+- **용도**: ABIDE PCP에서 조건 필터링 후 BS-NET 검증.
+- **출력**: `data/abide/results/`
+
+### `run_adhd200_pcp_filtered.py` — ADHD-200 PCP 전체 검증 (N=399)
+- **용도**: ADHD-200 PCP strict subset N=399 (6 sites) BS-NET 검증.
+- **출력**: `data/adhd/pcp/results/`
+
+### `run_duration_sweep.py` — Duration sweep 검증
+- **용도**: τ_short별 ρ̂T 변화 측정. ds000243, ds007535 지원.
+- **CLI**: `--dataset`, `--n-seeds`, `--n-jobs`
+- **출력**: `data/*/results/duration_sweep_*.csv`
+
+### `run_held_out_validation.py` — Held-out 검증
+- **용도**: Held-out split 기반 BS-NET 검증.
+- **출력**: `artifacts/reports/held_out_validation.csv`
+
 ### `run_fmriprep_bsnet.py` — fMRIPrep/XCP-D 기반 검증
 - **용도**: XCP-D (기본) 또는 fMRIPrep-direct (레거시) 처리 결과에서 BS-NET 실행. Schaefer 100/400.
 - **CLI**: `--subject`, `--run-all`, `--input-mode {xcpd,fmriprep}`, `--parcels {100,400}`, `--xcpd-dir`, `--fmriprep-dir`, `-v`
@@ -168,7 +189,7 @@ python src/scripts/run_component_necessity.py --input-npy data/abide/timeseries_
 
 ---
 
-## 3. Data Acquisition (데이터 수집)
+## 3. Data Acquisition & Conversion (데이터 수집/변환)
 
 ### `index_openneuro_hc.py`
 - **용도**: OpenNeuro GraphQL API로 7개 데이터셋의 HC 피험자 인덱싱.
@@ -178,8 +199,23 @@ python src/scripts/run_component_necessity.py --input-npy data/abide/timeseries_
 ### `download_hc_100.py`
 - **용도**: 인덱스 기반 100명 HC 다운로드 (7개 데이터셋에서 균형 샘플링).
 - **CLI**: `--n-subjects`, `--seed`, `--dry-run`
-- **의존**: `index_openneuro_hc.py` 출력
 - **출력**: `data/openneuro/<ds_id>/sub-*/`
+
+### `download_adhd200_pcp.py`
+- **용도**: ADHD-200 PCP 데이터 다운로드.
+- **출력**: `data/adhd/pcp/`
+
+### `convert_adhd200_pcp.py`
+- **용도**: ADHD-200 PCP 데이터를 BS-NET 입력 형식으로 변환.
+- **출력**: `data/adhd/pcp/timeseries_cache/`
+
+### `convert_xcpd_to_npy.py`
+- **용도**: XCP-D 출력을 BS-NET 입력용 .npy로 변환.
+- **입력**: `data/derivatives/xcp-d/`
+- **출력**: `data/*/timeseries_cache/`
+
+### `extract_xcpd_timeseries.py`
+- **용도**: XCP-D parcellated time series 추출 유틸리티.
 
 ---
 
@@ -190,11 +226,69 @@ python src/scripts/run_component_necessity.py --input-npy data/abide/timeseries_
 - **CLI**: `--test-one`, `--run-all`
 - **출력**: `data/atlas/`, `data/derivatives/sub-*/`
 
-*레거시 스크립트 (`run_real_data.py`, `run_real_data_scale.py`, `preprocess_real_data.py`)는 `backup/legacy_scripts_20260329/`로 아카이브됨.*
+### `preprocess_ds007535.py`
+- **용도**: ds007535 (SpeechHemi) task-residual FC 전처리. HRF-convolved task regressors + 36P.
+- **CLI**: `--input-dir`, `--n-jobs`
+- **출력**: `data/ds007535/timeseries_cache/`
+
+### `preprocess_ds000243.py`
+- **용도**: ds000243 (WashU resting-state) 36P confound regression. Multi-run concat 지원, TR=2.5s.
+- **CLI**: `--input-dir`, `--n-jobs`
+- **출력**: `data/ds000243/timeseries_cache/`
+
+*레거시 스크립트는 `backup/legacy_scripts_20260329/`로 아카이브됨.*
 
 ---
 
-## 5. Visualization (시각화)
+## 5. Convergence & Ablation (수렴 검증/삭감 실험)
+
+### `run_convergence_validation.py`
+- **용도**: τ_short별 ρ̂T vs r_FC gap 검증. ds000243 N=49, 18 τ_short points.
+- **CLI**: `--dataset`, `--n-seeds`, `--n-jobs`
+- **출력**: `data/ds000243/results/convergence_*.csv`
+
+### `run_progressive_ablation.py`
+- **용도**: L0→L5 cumulative 6-level 실데이터 ablation.
+- **CLI**: `--dataset`, `--n-seeds`, `--n-jobs`
+- **출력**: `data/*/results/progressive_ablation_*.csv`
+
+### `run_abide_duration_sweep.py`
+- **용도**: ABIDE 데이터셋 대상 duration sweep.
+- **출력**: `data/abide/results/duration_sweep_*.csv`
+
+### `run_tsd_ablation.py` — TSD E0–E3 Ablation (신규)
+- **용도**: Temporal Self-Distillation 이론 검증. E0(baseline BS-NET) → E1(w*_B bootstrap ensemble) → E2(w*_G Ridge LOOCV) → E3(combined).
+- **CLI**: `--dataset {ds000243,abide}`, `--experiment {E0,E1,E2,E3,all}`, `--atlas`, `--short-sec`, `--tr`, `--n-bootstraps`, `--n-seeds`, `--correction-method`, `--alpha-ridge`, `--n-jobs`
+- **입력**: `data/{ds000243,abide}/timeseries_cache/` (.npy time series)
+- **출력**: `data/*/results/tsd_ablation_runs_*.csv`, `tsd_ablation_summary_*.csv`, `tsd_glm_r2_*.csv`
+- **예시**:
+  ```bash
+  python src/scripts/run_tsd_ablation.py --dataset ds000243 --experiment all --n-seeds 10 --n-jobs 8
+  python src/scripts/run_tsd_ablation.py --dataset abide --experiment E0 E1 --n-seeds 5
+  ```
+
+---
+
+## 6. Downstream Analysis (하류 분석)
+
+### `run_downstream_analysis.py`
+- **용도**: 7-analysis suite (FC similarity, connectome, Cohen's d, SVM, graph metrics, ρ̂T-stratified, fingerprinting).
+- **CLI**: `--n-jobs`
+- **출력**: `data/adhd/pcp/results/downstream_*.csv`
+
+### `run_reliability_aware_clustering.py`
+- **용도**: ρ̂T tertile별 비지도 환자 분리 분석 (KMeans, GMM, Spectral).
+- **CLI**: `--n-repeats`, `--random-seed`, `--n-jobs`
+- **출력**: `data/adhd/pcp/results/adhd200_reliability_clustering_*.csv`
+
+### `run_reliability_aware_classification.py`
+- **용도**: LOSO/stratified k-fold 감독 분류. tangent FC, permutation p-value.
+- **CLI**: `--eval-scheme`, `--n-repeats`, `--n-permutations`, `--n-jobs`
+- **출력**: `data/adhd/pcp/results/adhd200_reliability_classification_*.csv`
+
+---
+
+## 7. Visualization (시각화)
 
 ### `plot_abide_results.py` (src/scripts/)
 - **용도**: ABIDE 단일시드/멀티시드 결과 4-panel figure.
@@ -205,21 +299,30 @@ python src/scripts/run_component_necessity.py --input-npy data/abide/timeseries_
 
 | 스크립트 | Figure | 내용 |
 |----------|--------|------|
-| `plot_figure1_combined.py` | Fig 1 | Prediction accuracy vs duration, marginal gain, uncertainty decay |
-| `plot_figure2_validation.py` | Fig 2 | N=100 validation (scatter, KDE, error, pass rate) |
-| `plot_figure3_topology.py` | Fig 3 | Small-worldness + degree variance |
-| `plot_figure4_subnetworks.py` | Fig 4 | Jaccard overlap + modularity |
-| `plot_figure5_abide.py` | Fig 5 | ABIDE multi-seed + ceiling effect (CC200/CC400) |
-| `plot_figure6_adhd.py` | Fig 6 | ADHD single/multi-seed + atlas comparison |
-| `plot_figure7_classification.py` | Fig 7 | Track H classification (Accuracy/AUC bars + scatter, ΔAcc, Summary) |
-| `plot_component_necessity.py` | — | Component necessity bars + Δρ waterfall |
-| `plot_patient_utility_clustering.py` | Fig S6 (proposal) | ρ̂T strata별 비지도 분리도(ARI/BalAcc) + FC method heatmap |
-| `plot_patient_utility_classification.py` | Fig S7 (proposal) | LOSO supervised discrimination(BalAcc/AUC) + method heatmap + permutation p panel |
+| `plot_figure1_combined.py` | Fig 1 | Method Overview — Pipeline Schematic + Convergence Validation + τ_min Estimation |
+| `plot_figure2_component.py` | Fig 2 | Component Necessity — LOO + Progressive 4-level + Cross-dataset + Distribution |
+| `plot_figure3_abide.py` | Fig 3 | ABIDE Validation — N=468, multi-seed, Fisher z, violin+boxplot |
+| `plot_figure4_adhd.py` | Fig 4 | ADHD Validation — cross-dataset generalization, violin+boxplot |
+| `plot_figure5_structure.py` | Fig 5 | Network Structure Preservation — topology/community analysis |
+| `plot_figure6_classification.py` | Fig 6 | ADHD Classification — Linear SVM, 3 FC conditions × 2 atlases |
+| `plot_figure_s1_progressive_full.py` | Fig S1 | 6-level progressive ablation × k-group (3×2 layout) |
+| `plot_figure_s2_k_stratification.py` | Fig S2 | k-stratification dose-response + per-site summary |
+| `plot_figure_s3_abide_filtered_consort.py` | Fig S3 | ABIDE filtered CONSORT flowchart |
+| `plot_patient_utility_clustering.py` | Fig S6 | ρ̂T strata 비지도 분리도(ARI/BalAcc) + FC method heatmap (EXPLORATORY) |
+| `plot_patient_utility_classification.py` | Fig S7 | LOSO supervised discrimination(BalAcc/AUC) + permutation p panel |
+| `plot_component_necessity.py` | — | Component necessity bars + Δρ waterfall (standalone) |
+| `plot_convergence_validation.py` | — | Convergence validation standalone plotting |
+| `plot_fc_intuition.py` | — | FC intuition visualization (legacy concept) |
+| `plot_figure0_conceptual.py` | — | Conceptual framework figure |
+| `plot_held_out_validation.py` | — | Held-out validation plotting |
+| `plot_network_visualization.py` | — | Network visualization utility |
 | `style.py` | — | 공용 matplotlib 스타일 설정 (library) |
+
+*구 버전 스크립트(plot_figure1_ds007535 등)는 `src/visualization/legacy/`에 보관.*
 
 ---
 
-## 6. Simulation (시뮬레이션)
+## 8. Simulation (시뮬레이션)
 
 ### `run_synthetic_baseline.py`
 - **용도**: BS-NET 기본 동작 확인. TR=1s, 50 ROIs, 100 bootstraps.
@@ -233,7 +336,20 @@ python src/scripts/run_component_necessity.py --input-npy data/abide/timeseries_
 
 ---
 
-## 7. Pipeline Orchestration (Shell Scripts)
+## 9. Utility (유틸리티)
+
+### `inspect_craddock_atlas.py`
+- **용도**: Craddock CC200/CC400 atlas ROI 검사 및 시각화.
+
+### `visualize_fc_threshold.py`
+- **용도**: FC matrix threshold 시각화 유틸리티.
+
+### `analyze_fc_stratification.py`
+- **용도**: FC 값 분포별 stratification 분석.
+
+---
+
+## 10. Pipeline Orchestration (Shell Scripts — 14개)
 
 | 스크립트 | 용도 | 주요 옵션 |
 |----------|------|-----------|
@@ -241,10 +357,16 @@ python src/scripts/run_component_necessity.py --input-npy data/abide/timeseries_
 | `run_dataset_pipeline.sh` | Per-dataset 점진적 실행 (ds* 단위) | `--dataset`, `--auto`, `--skip-download` |
 | `run_fmriprep_batch.sh` | fMRIPrep 배치 (Docker/Singularity) | `--subject`, `--csv`, `--all`, `--singularity` |
 | `run_fmriprep_manual.sh` | fMRIPrep v25.2.5 수동 실행 + 진단 | `--check`, `--subject`, `--batch` |
-| `run_fmriprep_keane.sh` | Keane(ds003404/ds005073) REST 전용 fMRIPrep 실행 | `--dataset`, `--subject`, `--dry-run` |
-| `run_keane_streaming_pipeline.sh` | Keane subject 단위 streaming (fMRIPrep→BS-NET→cleanup) | `--dataset`, `--subject`, `--cleanup-level` |
-| `run_xcpd_batch.sh` | XCP-D 배치 (36P, scrubbing, Schaefer 100/400) | `--subject`, `--parcels`, `--singularity` |
+| `run_fmriprep_keane.sh` | Keane(ds003404/ds005073) REST 전용 fMRIPrep | `--dataset`, `--subject`, `--dry-run` |
+| `run_keane_streaming_pipeline.sh` | Keane subject 단위 streaming (datalad→fMRIPrep→BS-NET→cleanup) | `--dataset`, `--subject`, `--cleanup-level` |
+| `run_xcpd_batch.sh` | XCP-D 배치 (36P, scrubbing, Schaefer) | `--subject`, `--parcels`, `--singularity` |
+| `run_xcpd_ds000243.sh` | ds000243 전용 XCP-D 실행 | — |
+| `run_ds000243_batch.sh` | ds000243 전체 배치 (preprocess + 6 atlas sweep) | — |
+| `run_ds007535_batch.sh` | ds007535 전체 배치 | — |
+| `run_component_necessity_batch.sh` | Component necessity 배치 실행 | — |
 | `setup_local_env.sh` | 환경 초기화 (conda/venv + pip) | `--venv` |
+| `setup_keane_datalad.sh` | Keane 데이터셋 DataLad clone 설정 | — |
+| `install_datalad.sh` | DataLad + git-annex 설치 | — |
 
 ---
 

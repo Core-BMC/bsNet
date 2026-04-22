@@ -61,7 +61,7 @@
 → Spearman-Brown prophecy (k=7.5) → Bayesian empirical prior → Attenuation correction
 → **Fisher z-space bounding** → ρ̂T
 
-## Current Status (2026-04-17, updated session 9)
+## Current Status (2026-04-22, updated)
 
 > 상세 이력: `docs/dev/` 참조 (세션별 Added/Changed/Fixed/TODO 기록)
 
@@ -70,14 +70,27 @@
 - **Session 6**: Figure 번호 체계 재구성 (7→6), Fig 1–6 전체 재생성, Fig 2 스타일 변경
 - **Session 7**: ADHD-200 PCP 전체 검증 (N=399) + Downstream Analysis + τ_min 개념
 - **Session 8**: Convergence Validation 실험 + 시각화 + τ_min empirical estimation
-- **Session 9 (현재)**: Fig 2 완성 + Supplementary S1/S2 신규 작성 + progressive ablation 스크립트
-- **Figure 번호 체계**: Main 1–6 확정, Supplementary S1–S2 추가
+- **Session 9**: Fig 2 완성 + Supplementary S1/S2 신규 작성 + progressive ablation 스크립트
+- **04-17 Sessions 1–4**: Fig 3 ABIDE main/supplementary 분리, Fig3/FigS3/Fig4 스타일 통일 (violin+boxplot+outlier)
+- **04-17 Sessions 5–7**: Reliability-aware clustering 파이프라인 (`run_reliability_aware_clustering.py`, `plot_patient_utility_clustering.py`), 퍼뮤테이션 p-value, class-balance 보정
+- **04-17 Session 8**: FigS6 guardrails (EXPLORATORY 워터마크, p-value annotations)
+- **04-17 Session 9**: ADHD discrimination citation guide (`docs/5.13`)
+- **04-17 Session 10**: Reliability-aware classification 파이프라인 (`run_reliability_aware_classification.py`) — LOSO + stratified k-fold, tangent FC, permutation p-values
+- **04-18 Session 1**: FigS7 supervised utility figure (`plot_patient_utility_classification.py`), PCP N=399 S6/S7 legends 갱신
+- **04-18 Sessions 2–4**: **Keane ds003404/ds005073 파이프라인** — FC 변환, FC-only 분류, REST fMRIPrep 스크립트, streaming pipeline
+- **04-18 이후 커밋**: Keane BS-NET 재산출 (`run_keane_bsnet_recompute.py`), BP vs SZ 분류 (`run_keane_bsnet_classification.py`) — confirmatory/exploratory family 분리, Holm/BH-FDR 보정, hard gate fold-train-only threshold, min-valid-splits 옵션
+- **Figure 번호 체계**: Main 1–6 확정, Supplementary S1–S3, S6–S7 추가
   - **Fig 1: Method Overview** (A: Pipeline Schematic, B1–B3: Convergence Validation, C: τ_min Estimation)
   - **Fig 2: Component Necessity** (A: LOO, B: Progressive 4-level, C: Cross-dataset, D: Distribution) — **완료**
-  - Fig 3: ABIDE | Fig 4: ADHD | Fig 5: Structure | Fig 6: Classification
-  - **Fig S1: 6-Level Progressive by k-Group** (3×2: ds000243 + ABIDE 4개 k-group + summary table) — **완료**
-  - **Fig S2: k-Stratification Analysis** (A: grouped boxplot, B: dose-response scatter, C: per-site table) — **완료**
-  - 구 Fig 1 Panel G (edge attenuation) → Supplementary 이동 가능
+  - **Fig 3: ABIDE Validation** — main/supplementary 분리 완료
+  - **Fig 4: ADHD Validation** — 스타일 통일 완료
+  - Fig 5: Structure | Fig 6: Classification
+  - **Fig S1: 6-Level Progressive by k-Group** (3×2) — **완료**
+  - **Fig S2: k-Stratification Analysis** — **완료**
+  - **Fig S3: ABIDE Filtered CONSORT** — **완료**
+  - **Fig S6: Reliability-Aware Clustering** (EXPLORATORY 워터마크) — **완료**
+  - **Fig S7: Reliability-Aware Classification** (permutation p annotation) — **완료**
+- **Keane ds003404/ds005073**: BP vs SZ classification, HC vs Psychosis, streaming pipeline (datalad→fMRIPrep→BS-NET→cleanup)
 - **ADHD-200 PCP 검증**: N=399 (6 sites), r_FC=0.525→ρ̂T=0.725, 100% improved, ceiling=0
 - **Convergence Validation**: ds000243 N=49, 18 τ_short points, gap 100% positive, ρ̂T peak=0.774 at 150s
 - **τ_min**: empirical plateau [90, 180]s, 95% peak at 40s, 실용 권장 60-120s
@@ -85,6 +98,16 @@
 - **ρ̂T Dose-Response**: 3/3 monotonicity 확인 (T1<T2<T3), BS-NET = reliability estimator로 확정
 - **τ_min 개념**: Minimum Common Bootstrap Duration — hemodynamic low-freq cycle 기반 이론적 하한
 - **스토리라인**: Method+Proof(Fig1) → Mechanism(Fig2) → Validation(Fig3) → Cross-Dataset(Fig4) → Safety(Fig5) → Utility(Fig6)
+- **04-22 Session 1**: TSD(Temporal Self-Distillation) 이론 검토 + E0–E3 ablation 실험 스크립트 작성
+  - TSD 이론: BS-NET을 5-category distillation 프레임워크로 재해석 (Statistical/Knowledge/Self/Cross-Architecture/Temporal)
+  - `run_tsd_ablation.py`: E0(baseline) → E1(w*_B bootstrap ensemble) → E2(w*_G Ridge LOOCV) → E3(combined)
+  - TSD 이론 검토 6건 권고사항 도출 (Cat 3 reframing, distillation qualifier, ds000243 non-stationarity 등)
+- **04-22 Session 2**: TSD 이론 문서 docx → markdown 변환 (`docs/5.16_tsd_theory_v2.md`)
+  - 6건 권고사항 전량 반영: Cat 3 Teeuw reframing, analytic distillation qualifier, Xiang 저자명, Guo Tier 1 승격, E0→E1 우선 전략, ds000243 non-stationarity
+- **04-22 Session 3**: TSD E0–E2 실험 완료 (ds000243, N=52, schaefer200, 10 seeds)
+  - E0=0.816, E1(vs teacher)=0.816, E2=0.725 → **E0≈E1, E2<E0**
+  - 결론: implicit distillation 포화 + GLM prediction이 actual teacher보다 열등 → E3 스킵
+  - BS-NET은 이미 최적 teacher(full scan FC)를 보유 → TSD는 이론적 렌즈, 실용 개선 불가
 
 ## Pending Tasks
 
@@ -130,10 +153,48 @@
 - [x] Figure 2 (Component Necessity): ds000243+ABIDE 실데이터, k≥3 필터링, 4-panel 완성
 - [ ] Figure 4 (Network Structure Preservation): ds000243 기반 topology/community 분석
 
-### Supplementary Figures (Session 9에서 완료)
+### Supplementary Figures
 - [x] Fig S1: 6-level progressive ablation × k-group (3×2 layout) — `plot_figure_s1_progressive_full.py`
 - [x] Fig S2: k-stratification dose-response + per-site summary — `plot_figure_s2_k_stratification.py`
 - [x] `run_progressive_ablation.py`: L0→L5 cumulative 6-level 실데이터 ablation 스크립트
+- [x] Fig S3: ABIDE Filtered CONSORT — `plot_figure_s3_abide_filtered_consort.py`
+- [x] Fig S6: Reliability-Aware Clustering — `plot_patient_utility_clustering.py` (EXPLORATORY 워터마크)
+- [x] Fig S7: Reliability-Aware Classification — `plot_patient_utility_classification.py` (permutation p annotation)
+
+### Keane ds003404/ds005073 — 신규 검증 데이터셋
+- [x] `convert_keane_restfc_to_npz.py`: .mat FC → NPZ/metadata 변환
+- [x] `run_keane_fc_classification.py`: FC-only exploratory 분류 (HC vs Psychosis, BP vs SZ)
+- [x] `run_fmriprep_keane.sh`: REST-only fMRIPrep 실행 스크립트
+- [x] `run_keane_streaming_pipeline.sh`: subject 단위 streaming (datalad→fMRIPrep→BS-NET→cleanup)
+- [x] `run_keane_bsnet_recompute.py`: ts.npy 기반 BS-NET 재산출
+- [x] `run_keane_bsnet_classification.py`: confirmatory(Holm) + exploratory(BH-FDR), hard gate train-only, min-valid-splits
+- [ ] Keane 실행 결과 수집 및 분석 (BP vs SZ accuracy, permutation p-value)
+- [ ] Keane 결과를 논문 Supplementary/Discussion에 반영
+
+### Reliability-Aware Pipelines
+- [x] `run_reliability_aware_clustering.py`: permutation p-value, class-balance 보정, parallel workers
+- [x] `run_reliability_aware_classification.py`: LOSO + stratified k-fold, tangent FC, permutation p-values
+- [x] `docs/5.12_patient_utility_reliability_aware_clustering.md`
+- [x] `docs/5.13_adhd_discrimination_citation_guide.md`
+
+### TSD (Temporal Self-Distillation) — 이론 + 실험
+- [x] TSD 이론 문서 검토 (BS-NET_TSD_Theory_v2.docx) — 5-category distillation mapping
+- [x] `run_tsd_ablation.py`: E0–E3 ablation 실험 스크립트 (ds000243/ABIDE 지원)
+- [x] TSD 이론 6건 권고사항 반영 — `docs/5.16_tsd_theory_v2.md`로 clean markdown 저장
+  - Cat 3 Teeuw reframing, analytic distillation qualifier, Xiang 저자명, Guo Tier 1 승격, E0→E1 전략, ds000243 non-stationarity
+- [x] docx tracked changes 작성 (BS-NET_TSD_Theory_v2_reviewed.docx) — 최종 보고서 출력 시 사용
+- **E0–E2 Distillation Ablation 실험** (완료, ds000243 N=52 schaefer200):
+  - [x] **E0 baseline**: ρ̂T=0.816±0.028, r_FC=0.716, Δ=+0.100
+  - [x] **E1 w\*_B**: ρ̂T_self=0.954 (vs ensemble), ρ̂T_vs_teacher=0.816 — **E0≈E1 확인**
+  - [x] **E0 vs E1 분석**: Δ(E1-E0)= -0.0003 → implicit distillation 포화
+  - [x] **E2 w\*_G**: ρ̂T=0.725±0.036, GLM R²≈0.45–0.59 — **E2 < E0 (Δ=-0.091)**
+  - [x] **E3 스킵 결정**: E2 < E0이므로 E1+E2 blend가 E0을 초과할 수 없음
+  - [ ] TSD 실험 결과 논문 반영 — **negative result로 보고, 이론적 렌즈로서의 가치 강조**
+- **실험 결론**:
+  - E0≈E1: BS-NET의 기존 파이프라인이 bootstrap ensemble 정보를 이미 완전히 활용
+  - E2<E0: GLM predicted FC(R²≈0.5)는 actual full-scan FC보다 열등한 reference
+  - BS-NET은 이미 최적 teacher(같은 subject의 full scan)를 보유 → 외부 prediction 불필요
+  - TSD 프레임워크 = BS-NET의 작동 원리를 설명하는 이론적 렌즈 (실용적 개선 아님)
 
 ### 논문 작성
 - [ ] Abstract, Introduction, Methods, Discussion, Limitations 집필
@@ -206,6 +267,13 @@
   - k<2: Δ≈0 (short≈total), k≥4: Δ scales with k (dose-response)
   - ABIDE k range: 1.3 (OHSU) – 5.3 (UM_2), 20 sites heterogeneity
 - **k-Filtering Decision**: Main Fig 2에 k≥3 적용 (N=223), k<3은 Supplementary S1/S2에서 분석
+- **Reliability-Aware Clustering** (ADHD-200 PCP N=399): ρ̂T 기반 strata별 k-means, permutation p-value, EXPLORATORY 가드레일
+- **Reliability-Aware Classification** (ADHD-200 PCP N=399): LOSO + stratified k-fold, tangent FC, ρ̂T hard gate (fold-train-only threshold)
+- **Keane ds003404/ds005073**: BP vs SZ classification pipeline
+  - Confirmatory (Primary) + Exploratory family 분리, Holm/BH-FDR multiple comparison correction
+  - Hard gate: fold별 train-only threshold 적용 (data leakage 방지)
+  - min-valid-splits 옵션: 유효 split 부족 시 설정 자동 스킵
+  - non-finite ρ̂T 대상 사전 드롭 + 경고 로그
 - **Convergence Validation** (ds000243, N=49, 4S256Parcels, 100bs × 10seeds):
   - τ_short=60s: ρ̂T=0.756±0.032, r_FC peak=0.566 (300s), gap=0.190, 49/49 positive
   - τ_short=120s: ρ̂T=0.771±0.032, r_FC peak=0.638 (240s), gap=0.134, 25/25 positive
@@ -216,6 +284,13 @@
   - 95% threshold at 40s, plateau [90, 180]s
   - Seed SD decreases monotonically: 0.011 (30s) → 0.003 (150s)
   - Reference artifact: ρ̂T drops at τ_short≥240s (insufficient τ_ref for short-scan subjects)
+- **TSD (Temporal Self-Distillation) 이론 검토** (상세: `docs/5.16_tsd_theory_v2.md`):
+  - BS-NET을 5-category distillation으로 재해석: Cat 1(Statistical-bootstrap), Cat 2(Knowledge-Guo GLM), Cat 3(Self-temporal split), Cat 4(Cross-Architecture-SB+attenuation), Cat 5(Temporal-SB prophecy)
+  - w*_B: bootstrap ensemble FC median = implicit distillation target (Cat 1+3)
+  - w*_G: within-dataset Ridge regression short→long FC predictor (Guo 2023 design, Cat 2)
+  - E0–E3 ablation: E0(baseline BS-NET) → E1(w*_B explicit) → E2(w*_G) → E3(combined)
+  - 6건 권고사항 반영 완료: Cat 3 Teeuw reframing, analytic distillation qualifier, Xiang 저자명, Guo Tier 1 승격, E0→E1 전략, ds000243 non-stationarity
+  - **ds000243 non-stationarity**: r_FC peaks at τ_ref≈240-300s then declines → 30분 FC ≠ 최적 teacher. ds000243의 가치 = 넓은 τ_short sweep 범위. ρ̂T는 이 non-stationarity를 SB prophecy로 bypass
 
 ## Conventions
 
@@ -246,34 +321,49 @@ ignore = ["E501", "N815"]
 ```
 bsNet/
 ├── src/
-│   ├── core/          # config, pipeline, bootstrap (4 correction methods), stats
+│   ├── core/          # config, pipeline, bootstrap (4 correction methods), stats, simulate
 │   ├── data/          # data_loader, synthetic data generator
-│   ├── scripts/       # 7 categories, see src/scripts/README.md
+│   ├── scripts/       # see src/scripts/README.md
 │   │   ├── [Validation]  run_abide_bsnet.py, run_nilearn_adhd_bsnet.py, run_fmriprep_bsnet.py, run_duration_sweep.py
 │   │   ├── [Defense]     run_{sensitivity,ablation,stationarity,shrinkage,...}.py (Track A–G)
-│   │   ├── [Data]        index_openneuro_hc.py, download_hc_100.py
-│   │   ├── [Viz]         plot_abide_results.py, plot_adhd_results.py, analyze_ceiling_effect.py
+│   │   ├── [Convergence] run_convergence_validation.py, run_progressive_ablation.py, run_abide_duration_sweep.py
+│   │   ├── [Downstream]  run_downstream_analysis.py, run_reliability_aware_{classification,clustering}.py
+│   │   ├── [Keane]       run_keane_bsnet_{recompute,classification}.py, run_keane_fc_classification.py, convert_keane_restfc_to_npz.py
+│   │   ├── [TSD]         run_tsd_ablation.py (E0–E3 Temporal Self-Distillation ablation)
+│   │   ├── [Data]        index_openneuro_hc.py, download_hc_100.py, download_adhd200_pcp.py, convert_{adhd200_pcp,xcpd_to_npy}.py
+│   │   ├── [Viz]         plot_abide_results.py, plot_adhd_results.py, analyze_{ceiling_effect,fc_stratification}.py
 │   │   ├── [Simulation]  run_synthetic_baseline.py, sweep_simulation.py
-│   │   ├── [Utility]     inspect_craddock_atlas.py
-│   │   ├── [Preprocess]  preprocess_ds007535.py (task-residual FC extraction)
-│   │   └── [Pipeline]    *.sh (fMRIPrep, XCP-D, component_necessity_batch)
-│   └── visualization/ # plotting utilities
+│   │   ├── [Utility]     inspect_craddock_atlas.py, visualize_fc_threshold.py
+│   │   ├── [Preprocess]  preprocess_ds007535.py, preprocess_ds000243.py, setup_and_preprocess.py
+│   │   └── [Pipeline]    run_fmriprep_{batch,keane,manual}.sh, run_xcpd_{batch,ds000243}.sh,
+│   │                      run_keane_streaming_pipeline.sh, run_ds000243_batch.sh, run_all_pipeline.sh,
+│   │                      setup_keane_datalad.sh, install_datalad.sh, setup_local_env.sh
+│   └── visualization/ # Fig 1–6, FigS1–S3/S6–S7, style.py, legacy/
 ├── tests/             # pytest (74 tests)
 ├── docs/              # 6-category docs (1.x theory ~ 6.x ops), see docs/INDEX.md
+│   └── figure/        # Fig1–6, FigS1–S3, FigS6–S7 PNG files
 ├── data/abide/        # ABIDE PCP cached time series + results
 ├── data/adhd/         # ADHD-200 cached time series + results
 ├── data/ds007535/     # SpeechHemi: raw/ (DataLad), timeseries_cache/, results/
+├── data/ds000243/     # WashU resting-state: raw/, timeseries_cache/, results/
+├── data/ds005073/     # Keane BP/SZ: results/ (keane_restfc_combined.npz, classification CSVs)
 ├── artifacts/reports/ # experiment result CSVs
 └── pyproject.toml
 ```
 
 ## Next Session TODO
-1. Fig 1A Pipeline schematic: Illustrator/외부 도구로 brain 이미지 포함 고급 버전 교체
-2. 논문 Methods 초고: convergence validation 실험 설계 + τ_min 수식 정리
-3. 논문 Results 초고: 수렴 패턴 + gap 통계 + τ_min plateau 기술
-4. 논문 Discussion: τ_min 개념 + "Why ~2 minutes?" + non-stationarity 논점
-5. Downstream utility figure: ρ̂T tertile dose-response 시각화 (Supplementary S3 후보)
-6. Git commit: Fig 2 + Fig S1/S2 + progressive ablation + dev log
+
+### Priority 1: 논문 작성
+1. **논문 Methods 초고**: convergence validation + τ_min 수식 + TSD 프레임워크 기술 (negative result 포함)
+2. **논문 Discussion**: τ_min + "Why ~2 minutes?" + non-stationarity + TSD 이론적 의의
+
+### Priority 2: Keane + 추가 검증
+3. **Keane 결과 수집** (서버): `run_keane_bsnet_classification.py` 실행 결과 확인 (BP vs SZ accuracy, permutation p-values)
+4. **Keane 결과 논문 반영**: Supplementary 또는 Discussion에 cross-disorder generalization 결과 기술
+
+### Priority 3: Figure + 기타
+5. Figure 4 (Network Structure Preservation): ds000243 기반 topology/community 분석
+6. TSD docx 최종 보고서 출력 (tracked changes 반영)
 
 ## Key References
 - Cheng et al. (2021): Split-half + CTT framework on HCP N=1003, DOI: 10.1016/j.neuroimage.2021.118005
@@ -285,6 +375,10 @@ bsNet/
 - Zimmerman (2007): Correction with biased reliability estimates, DOI: 10.1177/0013164406299132
 - Cole et al. (2014): Task-evoked vs intrinsic FC architecture, DOI: 10.1016/j.neuron.2014.05.014
 - Gratton et al. (2018): FC dominated by stable individual factors, DOI: 10.1016/j.neuron.2018.03.035
+- Guo et al. (2023): GLM-based short→long FC prediction (within-dataset), DOI: 10.1093/cercor/bhac519
+- Ellis (2024): SB prophecy convergence without parallel test assumption, DOI: 10.1007/s11336-024-09960-9
+- Hinton et al. (2015): Knowledge distillation, arXiv:1503.02531
+- Pieper et al. (2023): data2vec EMA self-distillation for brain decoding
 
 ## Correction Method Selection Guide
 BS-NET `correct_attenuation()` 함수의 `method` 파라미터:

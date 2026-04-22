@@ -16,13 +16,14 @@
 - **`2.5_log_experiment_20260401.md`**: 4차 작업 (세션 3). Figure 1/2/7 재설계, style.py ATLAS_META 통합, ds000243 파이프라인 인프라 구축, run_duration_sweep.py ds000243 지원 추가.
 
 ## 3. 정량 분석 결과 및 시각화 캡션 (Validation Results & Legends)
-- **`3.1_res_figure_legends.md`**: 메인 논문 Figure 1~7 canonical 레전드. (resting-state 중심, Figure 4 sliding-window 포함)
-- **`3.2_res_abide_figure_legends.md`**: ABIDE 확장 보충 캡션(Supplementary S*). CC400 확장, ceiling-method 비교.
-- **`3.3_res_adhd_figure_legends.md`**: ADHD 확장 보충 캡션(Supplementary S*). PCP N=399 기반 S6(비지도 utility), S7(LOSO supervised utility) 포함.
-- **`3.4_res_classification_legend.md`**: Main Figure 7(Track H) 상세 레전드. Linear SVM 3-condition × 2-atlas 비교, Reference FC paradox 해석.
+- **`3.1_res_figure_legends.md`**: 메인 논문 Figure 1–6 canonical 레전드.
+- **`3.2_res_abide_figure_legends.md`**: ABIDE 확장 보충 캡션(Supplementary). CC400 확장, ceiling-method 비교.
+- **`3.3_res_adhd_figure_legends.md`**: ADHD 확장 보충 캡션. PCP N=399 기준 S6(비지도 utility), S7(LOSO supervised utility) 포함.
+- **`3.4_res_classification_legend.md`**: Fig 6(Classification) 상세 레전드. Linear SVM 3-condition × 2-atlas 비교, Reference FC paradox 해석.
+- **`3.5_res_fc_intuition_legend.md`**: 구 FC Intuition figure 레전드 (현재 legacy).
 
 ## 4. 퍼블리케이션 및 최종 보고서 (Final Reports)
-- **`4.1_pub_report_academic.md`**: BS-NET의 Phase 1~4(이론 증명, 대규모 실증, 토폴로지 검증) 전 과정을 피어리뷰 학술 저널 형식으로 정리한 영문 학술 보고서.
+- **`4.1_pub_report_academic.md`**: BS-NET의 Phase 1~4 전 과정을 피어리뷰 학술 저널 형식으로 정리한 영문 학술 보고서.
 - **`4.2_pub_report_general.md`**: 비전문 대중/경영진 대상의 한국어 브리핑 보고서. 2분 스캔으로 15분 결과를 재현하는 BS-NET의 임상적 의의를 풀어 설명.
 
 ## 5. 개발 계획 및 유지보수 (Development Plans)
@@ -33,47 +34,57 @@
 - **`5.5_methods_preprocessing.md`**: Methods 섹션용 전처리 파이프라인 상세 기술 (fMRIPrep, XCP-D, Schaefer 400, LW shrinkage). DOI 8건.
 - **`5.6_failure_characterization.md`**: 9% 실패 피험자 특성 분석. N=300 (3 noise levels) 시뮬레이션, SNR≈1:1까지 100% pass 확인.
 - **`5.7_stationarity_discussion.md`**: Stationarity test 결과 논문 반영 방식 확정. Cheng et al. (2021) 선례 기반 방어 논증 3단계.
-- **`5.8_ceiling_effect_correction.md`**: Track G — Ceiling effect 원인 분석 및 보정. Fisher z-space correction(Shou 2014, Teeuw 2021)을 포함한 4-method 비교. ABIDE N=468 실증에서 original 85% ceiling → Fisher z 0% 해소. DOI 5건.
-- **`5.9_manuscript_why_questions_and_figure_map.md`**: 논문 집필 전용 why 질문 체크리스트 + 메인 Figure 1–7 canonical map + 번호 충돌 정리 규칙.
-- **`5.10_figure_design_audit_20260410.md`**: Figure 디자인 재점검 리포트. 메인/추가 Figure 최종 수정일·수정 횟수·완성도 및 공통 디자인 수정안(P0/P1/P2) 포함.
+- **`5.8_ceiling_effect_correction.md`**: Track G — Ceiling effect 원인 분석 및 보정. Fisher z-space correction 포함 4-method 비교. DOI 5건.
+- **`5.9_manuscript_why_questions_and_figure_map.md`**: 논문 집필 전용 why 질문 체크리스트 + 메인 Figure canonical map + 번호 충돌 정리 규칙.
+- **`5.10_figure_design_audit_20260410.md`**: Figure 디자인 재점검 리포트. 메인/추가 Figure 완성도 및 공통 디자인 수정안(P0/P1/P2) 포함.
 - **`5.11_storyline_figure_decision_matrix.md`**: 논문 스토리라인 우선 고정 + Figure별 재활용/신규/아카이브 의사결정 매트릭스.
-- **`5.12_patient_utility_reliability_aware_clustering.md`**: 환자 데이터 활용성 보강 계획. `ρ̂T` strata 기반 HC/Patients 분리(비지도) 분석 설계, nilearn FC 방법 비교, 결과 figure 설계.
-- **`5.13_adhd_discrimination_citation_guide.md`**: ADHD vs HC discrimination을 위한 인용 중심 작성 가이드. tangent-linear 권장 조합, site/confound 통제, permutation/LOSO 권장, claim-to-citation 매핑 및 본문 템플릿 포함.
-- **`5.14_keane_reliability_gated_discrimination_design.md`**: Keane(BP/SZ) reliability-gated 분류 설계 문서. confirmatory/exploratory family, train-only threshold(누수 방지), split validity(최소 클래스 수), Holm/FDR 보정 규칙 포함.
-- **`5.15_project_full_storyline_report_20260420.md`**: Session 1–8 + Keane 확장까지 포함한 전체 프로젝트 상세 리포트. 실험별 실행 내용, 디버깅 이력, 주요 수치 결과, 통합 해석 및 현재 전략적 결론을 정리.
+- **`5.12_methods_statistical_analysis.md`**: Methods 섹션용 통계 분석 상세 기술.
+- **`5.12_patient_utility_reliability_aware_clustering.md`**: 환자 데이터 활용성 보강 계획. `ρ̂T` strata 기반 HC/Patients 분리(비지도) 분석 설계. *(번호 충돌 — 추후 5.16으로 재번호 필요)*
+- **`5.13_adhd_discrimination_citation_guide.md`**: ADHD vs HC discrimination을 위한 인용 중심 작성 가이드. tangent-linear 권장 조합, permutation/LOSO 권장, claim-to-citation 매핑.
+- **`5.14_keane_reliability_gated_discrimination_design.md`**: Keane(BP/SZ) reliability-gated 분류 설계 문서. confirmatory/exploratory family, train-only threshold, Holm/FDR 보정.
+- **`5.15_project_full_storyline_report_20260420.md`**: Session 1–8 + Keane 확장 전체 프로젝트 상세 리포트.
+- **`5.16_tsd_theory_v2.md`**: BS-NET Temporal Self-Distillation 이론 (v2). 5-category distillation taxonomy, HCP-free within-subject teacher-student 구조, E0–E3 ablation 설계. 6건 권고사항 반영본.
 
 ## 6. 운영 및 파이프라인 가이드 (Operations & Pipeline)
 - **`6.1_ops_local_setup.md`**: 로컬 환경 설정 가이드. Python venv/conda, 의존성 설치, Schaefer atlas 배치, FreeSurfer 라이선스 등.
-- **`6.2_ops_real_data_pipeline.md`**: OpenNeuro HC 100명 실증 분석 전체 파이프라인. Step 0(환경) ~ Step 5(요약) 및 환경별 워크플로우(단일 머신, 랩탑+워크스테이션, HPC).
+- **`6.2_ops_real_data_pipeline.md`**: OpenNeuro HC 100명 실증 분석 전체 파이프라인. Step 0(환경) ~ Step 5(요약).
+
+### 기타 문서
+- **`compare_timesfm_note.md`**: TimesFM 비교 노트.
+- **`rsfmri_visualization.md`**: rsfMRI 시각화 가이드.
 
 ---
 
 ### 스크립트 인덱스
-- **`src/scripts/README.md`**: 전체 스크립트 분류 인덱스 (7개 카테고리, CLI 레퍼런스, 의존성 그래프)
+- **`src/scripts/README.md`**: 전체 스크립트 분류 인덱스 (카테고리별 CLI 레퍼런스, 의존성 그래프)
 
 ---
 
 ### 부속 자산 (Assets)
 - **`figure/`**: 최종 렌더링 이미지 (PNG). 배포용 사본.
+- **`figure/legacy/`**: 구 버전 Figure 아카이브.
 
-#### 메인 Figure (논문 본문용, 7개)
+#### 메인 Figure (논문 본문용, 6개)
 
 | # | 파일명 | 내용 | 스크립트 |
 |---|--------|------|---------|
-| Fig 1 | `Figure1_ds000243_DurationSweep.png` | Duration Sweep — resting-state(ds000243) 기준 메인 정본 | `plot_figure1_ds000243.py` |
-| Fig 2 | `Figure2_Validation_ds007535.png` | Empirical Validation — ds007535 N=30 (6 atlas, full BS-NET pipeline, 4-panel) | `plot_figure2_validation.py` |
-| Fig 3 | `Figure3_ComponentNecessity.png` | Component Necessity — ABIDE N=468 실데이터 violin+jitter (SB/Prior/LW leave-one-out) | `plot_figure3_component.py` |
-| Fig 4 | `Figure4_Structure_Preservation.png` | Network Structure Preservation + sliding-window stability (본문 포함) | `plot_figure4_structure.py` |
-| Fig 5 | `Figure5_ABIDE_Validation.png` | ABIDE Empirical Validation (N=468, CC200, 10 seeds, Fisher z, 4-panel) | `plot_figure5_abide_v2.py` |
-| Fig 6 | `Figure6_ADHD_Validation.png` | Cross-Dataset Generalization (N=40, CC200, 10 seeds, Fisher z, 4-panel) | `plot_figure6_adhd_v2.py` |
-| Fig 7 | `Figure7_ADHD_Classification.png` | Clinical Classification — grouped bar (CC200/CC400 hatching, 3 FC conditions) | `plot_figure7_classification.py` |
+| Fig 1 | `Fig1_Method_Overview.png` | Pipeline Schematic + Convergence Validation (B1–B3) + τ_min Estimation (C) | `plot_figure1_combined.py` |
+| Fig 2 | `Fig2_Component_Necessity.png` | LOO (A) + Progressive 4-level (B) + Cross-dataset (C) + Distribution (D) | `plot_figure2_component.py` |
+| Fig 3 | `Fig3_ABIDE_Validation.png` | ABIDE N=468 multi-seed Fisher z validation | `plot_figure3_abide.py` |
+| Fig 4 | `Fig4_ADHD_Validation.png` | ADHD-200 cross-dataset generalization | `plot_figure4_adhd.py` |
+| Fig 5 | `Fig5_Structure_Preservation.png` | Network topology/community preservation | `plot_figure5_structure.py` |
+| Fig 6 | `Fig6_ADHD_Classification.png` | Clinical classification (Linear SVM, 3 FC conditions) | `plot_figure6_classification.py` |
 
-#### 보충 Figure (Supplementary)
+#### Supplementary Figure (5개)
 
-| # | 파일명 | 내용 |
-|---|--------|------|
-| Fig S1 | *(생성 예정)* | ABIDE CC400 멀티시드 확장 |
-| Fig S2 | *(생성 예정)* | ABIDE ceiling-method 비교 (CC200) |
-| Fig S3 | *(생성 예정)* | ABIDE ceiling-method 비교 (CC400) |
-| Fig S6 | `FigS6_Reliability_Aware_Clustering.png` | ADHD-200 PCP reliability-aware clustering utility (exploratory) |
-| Fig S7 | `FigS7_Reliability_Aware_Classification.png` | ADHD-200 PCP LOSO supervised discrimination utility (exploratory) |
+| # | 파일명 | 내용 | 스크립트 |
+|---|--------|------|---------|
+| Fig S1 | `FigS1_Progressive_6Level.png` | 6-level progressive ablation × k-group (3×2 layout) | `plot_figure_s1_progressive_full.py` |
+| Fig S2 | `FigS2_k_Stratification.png` | k-stratification dose-response + per-site summary table | `plot_figure_s2_k_stratification.py` |
+| Fig S3 | `FigS3_ABIDE_Filtered_CONSORT.png` | ABIDE filtered CONSORT flowchart | `plot_figure_s3_abide_filtered_consort.py` |
+| Fig S6 | `FigS6_Reliability_Aware_Clustering.png` | ρ̂T strata unsupervised utility (EXPLORATORY 워터마크) | `plot_patient_utility_clustering.py` |
+| Fig S7 | `FigS7_Reliability_Aware_Classification.png` | LOSO supervised discrimination + permutation p annotation | `plot_patient_utility_classification.py` |
+
+### Dev Logs
+- **`dev/README.md`**: Dev log 작성 규칙 및 형식 가이드.
+- **`dev/26-03-26-00-00_dev_logs.md`** ~ **`dev/26-04-18-01-02_dev_logs.md`**: 세션별 상세 작업 이력 (12 files).
