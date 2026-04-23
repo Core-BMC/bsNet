@@ -118,6 +118,10 @@
   - E0=0.816, E1(vs teacher)=0.816, E2=0.725 → **E0≈E1, E2<E0**
   - 결론: implicit distillation 포화 + GLM prediction이 actual teacher보다 열등 → E3 스킵
   - BS-NET은 이미 최적 teacher(full scan FC)를 보유 → TSD는 이론적 렌즈, 실용 개선 불가
+- **04-22 Session 4**: Signal Recovery 실험 설계 + 로컬 스크립트 완성
+  - `docs/5.17_signal_recovery_design.md`: 3-condition 실험 설계 (Naive vs Reliability-guided vs BS-NET only)
+  - Diffusion-TS (ICLR 2024) 선정: imputation 모드, 코드 공개, test-time guidance만으로 conditioning 가능
+  - 로컬 스크립트 6종 + config 완성, 서버 실행 대기
 
 ## Pending Tasks
 

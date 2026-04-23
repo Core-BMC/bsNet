@@ -1,0 +1,68 @@
+# Diffusion-TS config for BS-NET Signal Recovery Experiment — Phase 1
+# Atlas: harvard_oxford (48 ROI), ds000243 (TR=2.5s)
+#
+# Based on Diffusion-TS fMRI default config with adjustments:
+#   - feature_size: 48 (harvard_oxford ROI count)
+#   - seq_length: 180 (target imputation length, 450s at TR=2.5s)
+#   - short_len: 48 (observed timepoints, 120s at TR=2.5s)
+#
+# Usage:
+#   python main.py --config configs/diffusion_ts_fmri_phase1.yaml --mode train
+#   python main.py --config configs/diffusion_ts_fmri_phase1.yaml --mode impute
+
+diffusion:
+  timesteps: 1000
+  beta_schedule: "cosine"        # cosine schedule (Nichol & Dhariwal 2021)
+  beta_start: 0.0001
+  beta_end: 0.02
+
+model:
+  name: "transformer"            # encoder-decoder transformer (not U-Net)
+  params:
+    seq_length: 180              # target sequence length (TRs)
+    feature_size: 48             # number of ROIs (harvard_oxford)
+    n_layer_enc: 4               # transformer encoder layers
+    n_layer_dec: 4               # transformer decoder layers
+    d_model: 96                  # model dimension
+    n_heads: 8                   # attention heads
+    d_ff: 384                    # feedforward dimension (4 * d_model)
+    dropout: 0.1
+    # Disentangled representation
+    n_trend_poly: 3              # polynomial degree for trend
+    n_season_topk: 5             # top-K Fourier components for seasonality
+
+training:
+  epochs: 100
+  batch_size: 32
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  lr_scheduler: "cosine"
+  warmup_steps: 500
+  gradient_clip: 1.0
+  # Loss weights
+  loss_weight_recon: 1.0         # L2 reconstruction loss
+  loss_weight_fft: 0.1           # FFT frequency domain loss
+
+imputation:
+  # Reconstruction-guided sampling (Algorithm 1 from paper)
+  guidance_weight: 1.0           # λ for observation consistency loss
+  observed_len: 48               # first 48 TRs are observed (120s)
+  n_samples: 10                  # number of imputation samples per subject
+  # Reliability weighting (Condition B only)
+  use_reliability_weights: false # set true for Condition B
+  reliability_weights_path: null # path to test_reliability_weights.npy
+
+data:
+  train_path: "data/ds000243/signal_recovery/harvard_oxford/train.npy"
+  # Shape: [N_windows, 180, 48]
+  normalize: true                # z-score per ROI
+  # BOLD signal characteristics
+  tr: 2.5                        # repetition time (seconds)
+  lowcut: 0.01                   # bandpass lower bound (Hz)
+  highcut: 0.1                   # bandpass upper bound (Hz)
+
+logging:
+  log_dir: "results/signal_recovery/phase1"
+  save_every: 10                 # checkpoint every N epochs
+  sample_every: 5                # generate samples every N epochs
+  wandb: false

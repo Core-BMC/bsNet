@@ -108,6 +108,11 @@
   - E0=0.816, E1(vs teacher)=0.816, E2=0.725 → **E0≈E1, E2<E0**
   - 결론: implicit distillation 포화 + GLM prediction이 actual teacher보다 열등 → E3 스킵
   - BS-NET은 이미 최적 teacher(full scan FC)를 보유 → TSD는 이론적 렌즈, 실용 개선 불가
+- **04-22 Session 4**: Signal Recovery 실험 설계 + 로컬 스크립트 완성
+  - `docs/5.17_signal_recovery_design.md`: 3-condition 실험 설계 (Naive vs Reliability-guided vs BS-NET only)
+  - Diffusion-TS (ICLR 2024) 선정: imputation 모드 지원, 코드 공개, test-time guidance만으로 conditioning 가능
+  - 로컬 스크립트 6종: prepare_signal_recovery_data.py, compute_reliability_weights.py, eval_signal_recovery.py, run_signal_recovery.py, patch_diffusion_ts_solver.py, setup_diffusion_ts.sh
+  - `configs/diffusion_ts_fmri_phase1.yaml`: 48 ROI × 180 TR Phase 1 설정
 
 ## Pending Tasks
 
@@ -195,6 +200,20 @@
   - E2<E0: GLM predicted FC(R²≈0.5)는 actual full-scan FC보다 열등한 reference
   - BS-NET은 이미 최적 teacher(같은 subject의 full scan)를 보유 → 외부 prediction 불필요
   - TSD 프레임워크 = BS-NET의 작동 원리를 설명하는 이론적 렌즈 (실용적 개선 아님)
+
+### Signal Recovery Experiment (Phase 1)
+- [x] 실험 설계 문서 (`docs/5.17_signal_recovery_design.md`)
+- [x] 데이터 준비 스크립트 (`prepare_signal_recovery_data.py`)
+- [x] Reliability weight 산출 스크립트 (`compute_reliability_weights.py`)
+- [x] 평가 스크립트 (`eval_signal_recovery.py`)
+- [x] Imputation 실행 스크립트 (`run_signal_recovery.py`)
+- [x] Diffusion-TS solver patch 도구 (`patch_diffusion_ts_solver.py`)
+- [x] 서버 환경 설정 스크립트 (`setup_diffusion_ts.sh`)
+- [x] Phase 1 config (`configs/diffusion_ts_fmri_phase1.yaml`)
+- [ ] 서버 실행: Diffusion-TS clone → train → Condition A/B imputation → eval
+- [ ] Diffusion-TS solver.py 실제 API 확인 후 patch 조정
+- [ ] Phase 1 결과 분석: B > A 여부 확인
+- [ ] Phase 2: schaefer200 (200 ROI) 확장 (Phase 1 성공 시)
 
 ### 논문 작성
 - [ ] Abstract, Introduction, Methods, Discussion, Limitations 집필
@@ -347,23 +366,28 @@ bsNet/
 ├── data/ds007535/     # SpeechHemi: raw/ (DataLad), timeseries_cache/, results/
 ├── data/ds000243/     # WashU resting-state: raw/, timeseries_cache/, results/
 ├── data/ds005073/     # Keane BP/SZ: results/ (keane_restfc_combined.npz, classification CSVs)
+├── configs/           # Diffusion-TS fMRI configs (signal recovery)
+├── external/          # External repos (Diffusion-TS clone, gitignored)
 ├── artifacts/reports/ # experiment result CSVs
 └── pyproject.toml
 ```
 
 ## Next Session TODO
 
-### Priority 1: 논문 작성
-1. **논문 Methods 초고**: convergence validation + τ_min 수식 + TSD 프레임워크 기술 (negative result 포함)
-2. **논문 Discussion**: τ_min + "Why ~2 minutes?" + non-stationarity + TSD 이론적 의의
+### Priority 1: Signal Recovery 서버 실행
+1. **git push → server pull**: 로컬 스크립트 6종 + config + design doc
+2. **Diffusion-TS setup**: `bash src/scripts/setup_diffusion_ts.sh` → clone + pip install
+3. **데이터 준비**: `prepare_signal_recovery_data.py` (harvard_oxford 48 ROI)
+4. **Diffusion-TS 코드 리뷰**: solver.py restore() API 확인 → patch 조정
+5. **학습 + 실행**: train → Condition A/B imputation → eval
 
-### Priority 2: Keane + 추가 검증
-3. **Keane 결과 수집** (서버): `run_keane_bsnet_classification.py` 실행 결과 확인 (BP vs SZ accuracy, permutation p-values)
-4. **Keane 결과 논문 반영**: Supplementary 또는 Discussion에 cross-disorder generalization 결과 기술
+### Priority 2: 논문 작성
+6. **논문 Methods 초고**: convergence validation + τ_min + signal recovery + TSD
+7. **논문 Discussion**: τ_min + non-stationarity + TSD + reliability as prerequisite
 
-### Priority 3: Figure + 기타
-5. Figure 4 (Network Structure Preservation): ds000243 기반 topology/community 분석
-6. TSD docx 최종 보고서 출력 (tracked changes 반영)
+### Priority 3: Keane + Figure
+8. **Keane 결과 수집** (서버): BP vs SZ accuracy, permutation p-values
+9. Figure 4 (Network Structure Preservation): ds000243 기반 topology/community
 
 ## Key References
 - Cheng et al. (2021): Split-half + CTT framework on HCP N=1003, DOI: 10.1016/j.neuroimage.2021.118005

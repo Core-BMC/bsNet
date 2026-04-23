@@ -44,6 +44,7 @@
 - **`5.14_keane_reliability_gated_discrimination_design.md`**: Keane(BP/SZ) reliability-gated 분류 설계 문서. confirmatory/exploratory family, train-only threshold, Holm/FDR 보정.
 - **`5.15_project_full_storyline_report_20260420.md`**: Session 1–8 + Keane 확장 전체 프로젝트 상세 리포트.
 - **`5.16_tsd_theory_v2.md`**: BS-NET Temporal Self-Distillation 이론 (v2). 5-category distillation taxonomy, HCP-free within-subject teacher-student 구조, E0–E3 ablation 설계. 6건 권고사항 반영본.
+- **`5.17_signal_recovery_design.md`**: Reliability-Conditioned Signal Recovery 실험 설계. BS-NET ρ̂T를 Diffusion-TS의 conditioning으로 사용하여 generative FC recovery 개선 실증. 3-condition 비교 (Naive vs Reliability-guided vs BS-NET only).
 
 ## 6. 운영 및 파이프라인 가이드 (Operations & Pipeline)
 - **`6.1_ops_local_setup.md`**: 로컬 환경 설정 가이드. Python venv/conda, 의존성 설치, Schaefer atlas 배치, FreeSurfer 라이선스 등.
