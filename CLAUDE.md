@@ -111,8 +111,12 @@
 - **04-22 Session 4**: Signal Recovery 실험 설계 + 로컬 스크립트 완성
   - `docs/5.17_signal_recovery_design.md`: 3-condition 실험 설계 (Naive vs Reliability-guided vs BS-NET only)
   - Diffusion-TS (ICLR 2024) 선정: imputation 모드 지원, 코드 공개, test-time guidance만으로 conditioning 가능
-  - 로컬 스크립트 6종: prepare_signal_recovery_data.py, compute_reliability_weights.py, eval_signal_recovery.py, run_signal_recovery.py, patch_diffusion_ts_solver.py, setup_diffusion_ts.sh
-  - `configs/diffusion_ts_fmri_phase1.yaml`: 48 ROI × 180 TR Phase 1 설정
+  - 로컬 스크립트 6종 + config + convert_train_to_mat.py
+- **04-23 Session 5**: Signal Recovery Phase 1 서버 실행 + 결과
+  - Diffusion-TS 학습 완료 (10K epochs, 20분, RTX 4090)
+  - **C (0.815) > A (0.788) > B (0.781)**: generative recovery가 raw short FC보다 열등
+  - BS-NET ρ̂T (0.816) > 모든 diffusion condition → analytic approach 우수성 확인
+  - Phase 2 진행 불필요 — Phase 1에서 결론 도출
 
 ## Pending Tasks
 
@@ -210,10 +214,12 @@
 - [x] Diffusion-TS solver patch 도구 (`patch_diffusion_ts_solver.py`)
 - [x] 서버 환경 설정 스크립트 (`setup_diffusion_ts.sh`)
 - [x] Phase 1 config (`configs/diffusion_ts_fmri_phase1.yaml`)
-- [ ] 서버 실행: Diffusion-TS clone → train → Condition A/B imputation → eval
-- [ ] Diffusion-TS solver.py 실제 API 확인 후 patch 조정
-- [ ] Phase 1 결과 분석: B > A 여부 확인
-- [ ] Phase 2: schaefer200 (200 ROI) 확장 (Phase 1 성공 시)
+- [x] 서버 실행: Diffusion-TS train → Condition A/B imputation → eval 완료
+- [x] Diffusion-TS solver.py 실제 API 확인 후 patch 조정 완료
+- [x] Phase 1 결과 분석: C > A > B (generative recovery 실패, analytic SB prophecy 우수)
+- [x] Phase 2 진행 불필요 — Phase 1에서 결론 도출
+- [ ] 논문에 Signal Recovery 결과 반영 (Discussion/Supplementary)
+- [ ] Figure: Condition A/B/C 비교 bar plot
 
 ### 논문 작성
 - [ ] Abstract, Introduction, Methods, Discussion, Limitations 집필
@@ -310,6 +316,14 @@
   - E0–E3 ablation: E0(baseline BS-NET) → E1(w*_B explicit) → E2(w*_G) → E3(combined)
   - 6건 권고사항 반영 완료: Cat 3 Teeuw reframing, analytic distillation qualifier, Xiang 저자명, Guo Tier 1 승격, E0→E1 전략, ds000243 non-stationarity
   - **ds000243 non-stationarity**: r_FC peaks at τ_ref≈240-300s then declines → 30분 FC ≠ 최적 teacher. ds000243의 가치 = 넓은 τ_short sweep 범위. ρ̂T는 이 non-stationarity를 SB prophecy로 bypass
+- **Signal Recovery Phase 1** (ds000243, harvard_oxford 48 ROI, N=10 test, Diffusion-TS ICLR 2024):
+  - C (Raw short FC): r_FC = **0.815 ± 0.049** — baseline
+  - A (Naive imputation): r_FC = 0.788 ± 0.057 — C보다 -0.027
+  - B (Reliability-guided): r_FC = 0.781 ± 0.071 — C보다 -0.034
+  - Strong guidance (coef 10x): r_FC = 0.716 — 더 악화
+  - Observed preservation: 완벽 (corr=1.0)
+  - **결론**: Diffusion 생성 132 TRs가 FC를 희석. BS-NET ρ̂T (0.816) > Naive imputation (0.788)
+  - **논문 framing**: Analytic SB prophecy > generative signal recovery for FC quality
 
 ## Conventions
 
@@ -374,20 +388,18 @@ bsNet/
 
 ## Next Session TODO
 
-### Priority 1: Signal Recovery 서버 실행
-1. **git push → server pull**: 로컬 스크립트 6종 + config + design doc
-2. **Diffusion-TS setup**: `bash src/scripts/setup_diffusion_ts.sh` → clone + pip install
-3. **데이터 준비**: `prepare_signal_recovery_data.py` (harvard_oxford 48 ROI)
-4. **Diffusion-TS 코드 리뷰**: solver.py restore() API 확인 → patch 조정
-5. **학습 + 실행**: train → Condition A/B imputation → eval
+### Priority 1: 논문 작성
+1. **논문 Methods 초고**: convergence validation + τ_min + signal recovery + TSD
+2. **논문 Discussion**: analytic vs generative (signal recovery 결과 활용), τ_min, non-stationarity
+3. **Signal Recovery figure**: Condition A/B/C bar plot (Discussion/Supplementary용)
 
-### Priority 2: 논문 작성
-6. **논문 Methods 초고**: convergence validation + τ_min + signal recovery + TSD
-7. **논문 Discussion**: τ_min + non-stationarity + TSD + reliability as prerequisite
+### Priority 2: Keane + Figure
+4. **Keane 결과 수집** (서버): BP vs SZ accuracy, permutation p-values
+5. Figure 4 (Network Structure Preservation): ds000243 기반 topology/community
 
-### Priority 3: Keane + Figure
-8. **Keane 결과 수집** (서버): BP vs SZ accuracy, permutation p-values
-9. Figure 4 (Network Structure Preservation): ds000243 기반 topology/community
+### Priority 3: 마무리
+6. TSD docx 최종 보고서 출력 (tracked changes 반영)
+7. 전체 Figure 번호 재점검 + Supplementary 구성
 
 ## Key References
 - Cheng et al. (2021): Split-half + CTT framework on HCP N=1003, DOI: 10.1016/j.neuroimage.2021.118005
