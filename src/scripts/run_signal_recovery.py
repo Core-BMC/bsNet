@@ -1,231 +1,216 @@
 #!/usr/bin/env python3
-"""Run Diffusion-TS imputation for signal recovery experiment.
+"""Run Diffusion-TS imputation for BS-NET signal recovery experiment.
 
-Executes Condition A (naive) and Condition B (reliability-guided) imputation
-using a trained Diffusion-TS model. Uses Diffusion-TS's restore() API with
-patched roi_weights support (from patch_diffusion_ts_solver.py).
+Loads trained Diffusion-TS model and runs imputation on our test subjects
+for Condition A (naive, uniform weights) and Condition B (reliability-guided).
 
-Prerequisites:
-  - Trained Diffusion-TS checkpoint
-  - Prepared data (prepare_signal_recovery_data.py)
-  - Reliability weights (compute_reliability_weights.py)
-  - Patched Diffusion-TS (patch_diffusion_ts_solver.py --apply)
+Must be run from external/Diffusion-TS directory.
 
 Usage:
   cd external/Diffusion-TS
-  PYTHONPATH=.:../../ python3 ../../src/scripts/run_signal_recovery.py \\
-      --data-dir ../../data/ds000243/signal_recovery/harvard_oxford \\
-      --checkpoint results/signal_recovery/phase1/best_model.pt \\
-      --output-dir ../../results/signal_recovery
-
-Architecture notes:
-  Diffusion-TS restore() API:
-    - Takes a DataLoader of (x, mask) pairs
-    - x: [B, seq_len, N_ROI] — full-length tensor, observed portion filled
-    - mask: [B, seq_len, N_ROI] — boolean, True where observed
-    - Internally calls sample_infill → p_sample_infill → langevin_fn
-    - langevin_fn performs Langevin dynamics with gradient guidance:
-        infill_loss = (x_start[mask] - target[mask]) ** 2
-    - Our patch adds roi_weights to modulate infill_loss per-ROI
+  PYTHONPATH=. python3 ../../src/scripts/run_signal_recovery.py \
+      --config ../../configs/diffusion_ts_fmri_phase1.yaml \
+      --data-dir ../../data/ds000243/signal_recovery/harvard_oxford \
+      --milestone 10 \
+      --output-dir ../../results/signal_recovery \
+      --gpu 0
 """
 from __future__ import annotations
 
 import argparse
 import json
 import logging
+import os
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import torch
+from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import DataLoader, TensorDataset
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def build_imputation_dataloader(
+# Diffusion-TS normalization helpers (copied from their codebase)
+def normalize_to_neg_one_to_one(x: np.ndarray) -> np.ndarray:
+    return x * 2.0 - 1.0
+
+def unnormalize_to_zero_to_one(x: np.ndarray) -> np.ndarray:
+    return (x + 1.0) * 0.5
+
+
+def build_test_dataloader(
     test_short: np.ndarray,
     seq_len: int,
+    scaler: MinMaxScaler,
     batch_size: int = 8,
-) -> tuple[DataLoader, np.ndarray]:
-    """Build DataLoader for Diffusion-TS restore() API.
+    neg_one_to_one: bool = True,
+) -> DataLoader:
+    """Build DataLoader matching Diffusion-TS restore() API.
 
-    Diffusion-TS expects:
-      x: [B, seq_len, N_ROI] — padded time series (zeros for missing)
-      mask: [B, seq_len, N_ROI] — boolean True for observed timepoints
+    restore() expects (x, t_m) pairs:
+      x: [B, seq_len, N_ROI] — full normalized data (zeros for missing)
+      t_m: [B, seq_len, N_ROI] — boolean mask (True = observed)
 
     Args:
-        test_short: [N_test, short_len, N_ROI] observed short scans
-        seq_len: target full sequence length
-        batch_size: batch size for inference
+        test_short: [N_test, short_len, N_ROI] raw test data
+        seq_len: target sequence length
+        scaler: fitted MinMaxScaler from training data
+        batch_size: batch size
+        neg_one_to_one: if True, scale to [-1, 1]
 
     Returns:
-        (dataloader, mask_array) — DataLoader of (x_padded, mask) pairs
+        DataLoader yielding (x_normalized, mask) pairs
     """
     n_test, short_len, n_roi = test_short.shape
 
-    # Pad short scans to full length
-    x_padded = np.zeros((n_test, seq_len, n_roi), dtype=np.float32)
+    # Pad to full sequence length
+    x_padded = np.zeros((n_test, seq_len, n_roi), dtype=np.float64)
     x_padded[:, :short_len, :] = test_short
 
-    # Mask: True where observed
+    # Normalize: MinMaxScaler per feature, then optional [-1, 1]
+    # scaler expects [N, n_features], so reshape
+    for i in range(n_test):
+        x_padded[i] = scaler.transform(x_padded[i])
+
+    if neg_one_to_one:
+        x_padded = normalize_to_neg_one_to_one(x_padded)
+
+    # Mask: True for observed timepoints
     mask = np.zeros((n_test, seq_len, n_roi), dtype=bool)
     mask[:, :short_len, :] = True
 
-    x_tensor = torch.from_numpy(x_padded)
-    mask_tensor = torch.from_numpy(mask)
+    x_tensor = torch.from_numpy(x_padded).float()
+    mask_tensor = torch.from_numpy(mask).bool()
 
     dataset = TensorDataset(x_tensor, mask_tensor)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-
-    return dataloader, mask
+    return DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
 
-def load_trainer(checkpoint_path: str, device: str = "cuda") -> Any:
-    """Load Diffusion-TS Trainer from checkpoint.
+def fit_scaler(data_dir: Path) -> MinMaxScaler:
+    """Fit MinMaxScaler on training data (same as Diffusion-TS does).
 
-    NOTE: Must be called from within the Diffusion-TS directory.
-
-    Args:
-        checkpoint_path: path to saved model checkpoint
-        device: cuda or cpu
-
-    Returns:
-        Trainer instance with loaded model
+    Reads the concatenated .mat file and fits scaler.
     """
-    try:
-        from engine.solver import Trainer
-    except ImportError as e:
-        raise ImportError(
-            f"Cannot import Diffusion-TS Trainer: {e}\n"
-            "Run from external/Diffusion-TS/ with PYTHONPATH=.:../../"
-        )
+    from scipy import io as sio
 
-    # Load checkpoint — the exact loading mechanism depends on
-    # how Diffusion-TS saves checkpoints. Adjust as needed.
-    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-
-    # If checkpoint is a Trainer state dict:
-    if "trainer" in checkpoint:
-        trainer = checkpoint["trainer"]
+    mat_path = data_dir / "diffusion_ts_data" / "sim4.mat"
+    if mat_path.exists():
+        raw = sio.loadmat(str(mat_path))["ts"]
     else:
-        # May need to reconstruct Trainer from config + model weights
-        logger.warning(
-            "Checkpoint format unclear. You may need to adjust loading logic."
-        )
-        raise NotImplementedError(
-            "Checkpoint loading needs adjustment for this Diffusion-TS version. "
-            "Check how the model was saved during training."
-        )
+        # Fallback: use train.npy (reshape to 2D)
+        train = np.load(data_dir / "train.npy")
+        raw = train.reshape(-1, train.shape[-1])
 
-    return trainer
-
-
-def run_imputation(
-    trainer: Any,
-    dataloader: DataLoader,
-    shape: tuple[int, int],
-    roi_weights: torch.Tensor | None = None,
-    n_samples: int = 10,
-    sampling_steps: int = 50,
-    coef: float = 0.1,
-    stepsize: float = 0.1,
-) -> np.ndarray:
-    """Run Diffusion-TS imputation via restore() API.
-
-    Args:
-        trainer: Diffusion-TS Trainer instance
-        dataloader: DataLoader of (x_padded, mask) pairs
-        shape: (seq_len, n_roi)
-        roi_weights: [1, 1, N_ROI] reliability weights (None for Condition A)
-        n_samples: number of imputation runs to average
-        sampling_steps: number of diffusion sampling steps
-        coef: guidance coefficient (default from Diffusion-TS)
-        stepsize: Langevin step size (default from Diffusion-TS)
-
-    Returns:
-        [N_test, seq_len, N_ROI] imputed time series (mean of n_samples runs)
-    """
-    all_samples = []
-
-    for run_idx in range(n_samples):
-        logger.info(f"  Imputation run {run_idx + 1}/{n_samples}")
-
-        # Call patched restore() with roi_weights
-        samples, reals, masks = trainer.restore(
-            raw_dataloader=dataloader,
-            shape=shape,
-            coef=coef,
-            stepsize=stepsize,
-            sampling_steps=sampling_steps,
-            roi_weights=roi_weights,  # None for Condition A, tensor for B
-        )
-        all_samples.append(samples)  # [N_test, seq_len, N_ROI]
-
-    # Average across runs
-    imputed = np.mean(all_samples, axis=0)
-    return imputed.astype(np.float32)
+    scaler = MinMaxScaler()
+    scaler.fit(raw)
+    return scaler
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run Diffusion-TS signal recovery")
+    parser = argparse.ArgumentParser(description="Run signal recovery imputation")
+    parser.add_argument("--config", type=str, required=True,
+                        help="Diffusion-TS config YAML")
     parser.add_argument("--data-dir", type=str, required=True,
                         help="Signal recovery data directory")
-    parser.add_argument("--checkpoint", type=str, required=True,
-                        help="Trained Diffusion-TS checkpoint")
-    parser.add_argument("--output-dir", type=str, required=True,
-                        help="Output directory for imputed time series")
-    parser.add_argument("--n-samples", type=int, default=10,
-                        help="Number of imputation samples per subject")
-    parser.add_argument("--sampling-steps", type=int, default=50,
-                        help="Diffusion sampling steps (50=fast, 1000=full)")
-    parser.add_argument("--coef", type=float, default=0.1,
-                        help="Guidance coefficient")
-    parser.add_argument("--stepsize", type=float, default=0.1,
-                        help="Langevin step size")
-    parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--skip-naive", action="store_true",
-                        help="Skip Condition A (naive imputation)")
-    parser.add_argument("--skip-guided", action="store_true",
-                        help="Skip Condition B (reliability-guided)")
+    parser.add_argument("--output-dir", type=str, required=True)
+    parser.add_argument("--milestone", type=int, default=10,
+                        help="Checkpoint milestone to load")
+    parser.add_argument("--n-runs", type=int, default=5,
+                        help="Number of imputation runs to average")
+    parser.add_argument("--sampling-steps", type=int, default=250)
+    parser.add_argument("--coef", type=float, default=1e-2,
+                        help="Guidance coefficient (from config test_dataset)")
+    parser.add_argument("--stepsize", type=float, default=5e-2,
+                        help="Langevin step size (from config test_dataset)")
+    parser.add_argument("--batch-size", type=int, default=10)
+    parser.add_argument("--gpu", type=int, default=0)
+    parser.add_argument("--skip-naive", action="store_true")
+    parser.add_argument("--skip-guided", action="store_true")
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load data
+    if args.gpu is not None:
+        torch.cuda.set_device(args.gpu)
+
+    # --- Load config and create model ---
+    from Utils.io_utils import load_yaml_config, instantiate_from_config, seed_everything
+    from engine.solver import Trainer
+    from engine.logger import Logger
+    from Data.build_dataloader import build_dataloader
+
+    seed_everything(42)
+    config = load_yaml_config(args.config)
+
+    # Create model
+    model = instantiate_from_config(config["model"]).cuda()
+
+    # Create a minimal args namespace for Trainer
+    class FakeArgs:
+        def __init__(self, name, output_dir):
+            self.save_dir = str(output_dir)
+            self.name = name
+            self.tensorboard = False
+            self.output = str(output_dir)
+    fake_args = FakeArgs("bsnet_phase1", output_dir)
+    os.makedirs(fake_args.save_dir, exist_ok=True)
+
+    # Build training dataloader (needed for Trainer init)
+    logger.info("Building training dataloader (for Trainer init)...")
+    config["dataloader"]["train_dataset"]["params"]["output_dir"] = fake_args.save_dir
+    dataloader_info = build_dataloader(config, fake_args)
+
+    # Create Trainer and load checkpoint
+    trainer = Trainer(
+        config=config, args=fake_args, model=model,
+        dataloader=dataloader_info, logger=None,
+    )
+    trainer.load(args.milestone)
+    logger.info(f"Loaded checkpoint milestone {args.milestone}")
+
+    # --- Prepare test data ---
     test_short = np.load(data_dir / "test_short.npy")
     with open(data_dir / "split_info.json") as f:
         split_info = json.load(f)
 
     seq_len = split_info["seq_len"]
     n_test, short_len, n_roi = test_short.shape
-    shape = (seq_len, n_roi)
+    shape = [seq_len, n_roi]
     logger.info(f"Test: {n_test} subjects, {short_len} → {seq_len} TRs, {n_roi} ROIs")
 
-    # Build DataLoader
-    dataloader, mask_arr = build_imputation_dataloader(
-        test_short, seq_len, batch_size=args.batch_size
+    # Fit scaler from training data
+    scaler = fit_scaler(data_dir)
+    logger.info(f"Scaler fitted: min={scaler.data_min_[:3]}..., max={scaler.data_max_[:3]}...")
+
+    # Build test DataLoader
+    test_dl = build_test_dataloader(
+        test_short, seq_len, scaler,
+        batch_size=args.batch_size, neg_one_to_one=True,
     )
 
-    # Load trained model
-    logger.info(f"Loading checkpoint: {args.checkpoint}")
-    trainer = load_trainer(args.checkpoint, args.device)
-
-    # --- Condition A: Naive imputation (roi_weights=None) ---
+    # --- Condition A: Naive imputation ---
     if not args.skip_naive:
         logger.info("=== Condition A: Naive imputation (uniform weights) ===")
-        imputed_a = run_imputation(
-            trainer, dataloader, shape,
-            roi_weights=None,
-            n_samples=args.n_samples,
-            sampling_steps=args.sampling_steps,
-            coef=args.coef,
-            stepsize=args.stepsize,
-        )
+        all_samples_a = []
+        for run_idx in range(args.n_runs):
+            logger.info(f"  Run {run_idx + 1}/{args.n_runs}")
+            samples, reals, masks = trainer.restore(
+                test_dl, shape=shape,
+                coef=args.coef, stepsize=args.stepsize,
+                sampling_steps=args.sampling_steps,
+            )
+            # Unnormalize: [-1,1] → [0,1] → original scale
+            samples = unnormalize_to_zero_to_one(samples)
+            samples_orig = scaler.inverse_transform(
+                samples.reshape(-1, n_roi)
+            ).reshape(samples.shape)
+            all_samples_a.append(samples_orig)
+
+        imputed_a = np.mean(all_samples_a, axis=0).astype(np.float32)
         out_a = output_dir / "imputed_naive.npy"
         np.save(out_a, imputed_a)
         logger.info(f"Saved: {out_a} {imputed_a.shape}")
@@ -235,36 +220,37 @@ def main() -> None:
         weights_path = data_dir / "test_reliability_weights.npy"
         if not weights_path.exists():
             logger.error(f"Reliability weights not found: {weights_path}")
-            logger.error("Run compute_reliability_weights.py first.")
             return
 
         rel_weights = np.load(weights_path)  # [N_test, N_ROI]
-        logger.info(f"Reliability weights: {rel_weights.shape}, "
-                     f"mean={rel_weights.mean():.3f}, "
-                     f"range=[{rel_weights.min():.3f}, {rel_weights.max():.3f}]")
-
-        # Convert to tensor: [1, 1, N_ROI] — broadcast over batch and time
-        # Note: We use the mean across test subjects for uniform weighting
-        # (each subject's weights are similar since same atlas)
         mean_weights = rel_weights.mean(axis=0)  # [N_ROI]
-        roi_weights_tensor = torch.from_numpy(mean_weights).float()
-        roi_weights_tensor = roi_weights_tensor.unsqueeze(0).unsqueeze(0)  # [1, 1, N_ROI]
-        roi_weights_tensor = roi_weights_tensor.to(args.device)
+        roi_weights = torch.from_numpy(mean_weights).float().cuda()
+        roi_weights = roi_weights.unsqueeze(0).unsqueeze(0)  # [1, 1, N_ROI]
+        logger.info(f"Reliability weights: mean={mean_weights.mean():.3f}, "
+                     f"range=[{mean_weights.min():.3f}, {mean_weights.max():.3f}]")
 
         logger.info("=== Condition B: Reliability-guided imputation ===")
-        imputed_b = run_imputation(
-            trainer, dataloader, shape,
-            roi_weights=roi_weights_tensor,
-            n_samples=args.n_samples,
-            sampling_steps=args.sampling_steps,
-            coef=args.coef,
-            stepsize=args.stepsize,
-        )
+        all_samples_b = []
+        for run_idx in range(args.n_runs):
+            logger.info(f"  Run {run_idx + 1}/{args.n_runs}")
+            samples, reals, masks = trainer.restore(
+                test_dl, shape=shape,
+                coef=args.coef, stepsize=args.stepsize,
+                sampling_steps=args.sampling_steps,
+                roi_weights=roi_weights,
+            )
+            samples = unnormalize_to_zero_to_one(samples)
+            samples_orig = scaler.inverse_transform(
+                samples.reshape(-1, n_roi)
+            ).reshape(samples.shape)
+            all_samples_b.append(samples_orig)
+
+        imputed_b = np.mean(all_samples_b, axis=0).astype(np.float32)
         out_b = output_dir / "imputed_guided.npy"
         np.save(out_b, imputed_b)
         logger.info(f"Saved: {out_b} {imputed_b.shape}")
 
-    logger.info("\nDone. Run eval_signal_recovery.py for evaluation.")
+    logger.info("\nImputation complete. Run eval_signal_recovery.py next.")
 
 
 if __name__ == "__main__":
