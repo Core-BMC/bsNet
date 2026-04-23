@@ -1,68 +1,85 @@
-# Diffusion-TS config for BS-NET Signal Recovery Experiment — Phase 1
-# Atlas: harvard_oxford (48 ROI), ds000243 (TR=2.5s)
-#
-# Based on Diffusion-TS fMRI default config with adjustments:
-#   - feature_size: 48 (harvard_oxford ROI count)
-#   - seq_length: 180 (target imputation length, 450s at TR=2.5s)
-#   - short_len: 48 (observed timepoints, 120s at TR=2.5s)
+# Diffusion-TS config for BS-NET Signal Recovery — Phase 1
+# Based on Config/fmri.yaml with adjustments for:
+#   - harvard_oxford atlas (48 ROI instead of 50)
+#   - seq_length 180 TR (450s) instead of 24
+#   - Data: ds000243 concatenated training subjects
 #
 # Usage:
-#   python main.py --config configs/diffusion_ts_fmri_phase1.yaml --mode train
-#   python main.py --config configs/diffusion_ts_fmri_phase1.yaml --mode impute
-
-diffusion:
-  timesteps: 1000
-  beta_schedule: "cosine"        # cosine schedule (Nichol & Dhariwal 2021)
-  beta_start: 0.0001
-  beta_end: 0.02
+#   cd external/Diffusion-TS
+#   python main.py --config_file ../../configs/diffusion_ts_fmri_phase1.yaml \
+#       --train --name bsnet_phase1 --gpu 0
 
 model:
-  name: "transformer"            # encoder-decoder transformer (not U-Net)
+  target: Models.interpretable_diffusion.gaussian_diffusion.Diffusion_TS
   params:
-    seq_length: 180              # target sequence length (TRs)
-    feature_size: 48             # number of ROIs (harvard_oxford)
-    n_layer_enc: 4               # transformer encoder layers
-    n_layer_dec: 4               # transformer decoder layers
-    d_model: 96                  # model dimension
-    n_heads: 8                   # attention heads
-    d_ff: 384                    # feedforward dimension (4 * d_model)
-    dropout: 0.1
-    # Disentangled representation
-    n_trend_poly: 3              # polynomial degree for trend
-    n_season_topk: 5             # top-K Fourier components for seasonality
+    seq_length: 180
+    feature_size: 48             # harvard_oxford ROI count
+    n_layer_enc: 4
+    n_layer_dec: 4
+    d_model: 96
+    timesteps: 1000
+    sampling_timesteps: 1000
+    loss_type: 'l1'
+    beta_schedule: 'cosine'
+    n_heads: 4
+    mlp_hidden_times: 4
+    attn_pd: 0.0
+    resid_pd: 0.0
+    kernel_size: 5
+    padding_size: 2
 
-training:
-  epochs: 100
-  batch_size: 32
-  learning_rate: 0.0001
-  weight_decay: 0.01
-  lr_scheduler: "cosine"
-  warmup_steps: 500
-  gradient_clip: 1.0
-  # Loss weights
-  loss_weight_recon: 1.0         # L2 reconstruction loss
-  loss_weight_fft: 0.1           # FFT frequency domain loss
+solver:
+  base_lr: 1.0e-5
+  max_epochs: 10000             # Reduced from 15000 (larger windows = more data per epoch)
+  results_folder: ./Checkpoints_bsnet_phase1
+  gradient_accumulate_every: 4  # Increased for memory (longer sequences)
+  save_cycle: 1000
+  ema:
+    decay: 0.995
+    update_interval: 10
 
-imputation:
-  # Reconstruction-guided sampling (Algorithm 1 from paper)
-  guidance_weight: 1.0           # λ for observation consistency loss
-  observed_len: 48               # first 48 TRs are observed (120s)
-  n_samples: 10                  # number of imputation samples per subject
-  # Reliability weighting (Condition B only)
-  use_reliability_weights: false # set true for Condition B
-  reliability_weights_path: null # path to test_reliability_weights.npy
+  scheduler:
+    target: engine.lr_sch.ReduceLROnPlateauWithWarmup
+    params:
+      factor: 0.5
+      patience: 2000
+      min_lr: 1.0e-5
+      threshold: 1.0e-1
+      threshold_mode: rel
+      warmup_lr: 8.0e-4
+      warmup: 500
+      verbose: False
 
-data:
-  train_path: "data/ds000243/signal_recovery/harvard_oxford/train.npy"
-  # Shape: [N_windows, 180, 48]
-  normalize: true                # z-score per ROI
-  # BOLD signal characteristics
-  tr: 2.5                        # repetition time (seconds)
-  lowcut: 0.01                   # bandpass lower bound (Hz)
-  highcut: 0.1                   # bandpass upper bound (Hz)
+dataloader:
+  train_dataset:
+    target: Utils.Data_utils.real_datasets.fMRIDataset
+    params:
+      name: bsnet_fmri
+      proportion: 1.0            # All data for training (test subjects already separated)
+      data_root: ../../data/ds000243/signal_recovery/harvard_oxford/diffusion_ts_data
+      window: 180                # seq_length
+      save2npy: True
+      neg_one_to_one: True
+      seed: 42
+      period: train
 
-logging:
-  log_dir: "results/signal_recovery/phase1"
-  save_every: 10                 # checkpoint every N epochs
-  sample_every: 5                # generate samples every N epochs
-  wandb: false
+  test_dataset:
+    target: Utils.Data_utils.real_datasets.fMRIDataset
+    params:
+      name: bsnet_fmri
+      proportion: 0.9
+      data_root: ../../data/ds000243/signal_recovery/harvard_oxford/diffusion_ts_data
+      window: 180
+      save2npy: True
+      neg_one_to_one: True
+      seed: 42
+      period: test
+      style: separate
+      distribution: geometric
+    coefficient: 1.0e-2           # coef for langevin guidance
+    step_size: 5.0e-2             # stepsize for langevin
+    sampling_steps: 250
+
+  batch_size: 16                  # Reduced from 64 (180 TR vs 24 TR → ~7.5x memory)
+  sample_size: 64                 # Reduced from 256
+  shuffle: True
