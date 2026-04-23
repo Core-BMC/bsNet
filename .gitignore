@@ -32,3 +32,4 @@ logs/
 fs_license.txt
 
 external/
+results/**/*.npy
