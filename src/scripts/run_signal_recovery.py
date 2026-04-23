@@ -2,283 +2,170 @@
 """Run Diffusion-TS imputation for signal recovery experiment.
 
 Executes Condition A (naive) and Condition B (reliability-guided) imputation
-using a trained Diffusion-TS model. This script wraps Diffusion-TS inference
-with BS-NET reliability weighting.
+using a trained Diffusion-TS model. Uses Diffusion-TS's restore() API with
+patched roi_weights support (from patch_diffusion_ts_solver.py).
 
 Prerequisites:
-  - Trained Diffusion-TS checkpoint (from setup_diffusion_ts.sh → train)
+  - Trained Diffusion-TS checkpoint
   - Prepared data (prepare_signal_recovery_data.py)
   - Reliability weights (compute_reliability_weights.py)
+  - Patched Diffusion-TS (patch_diffusion_ts_solver.py --apply)
 
 Usage:
   cd external/Diffusion-TS
   PYTHONPATH=.:../../ python3 ../../src/scripts/run_signal_recovery.py \\
       --data-dir ../../data/ds000243/signal_recovery/harvard_oxford \\
       --checkpoint results/signal_recovery/phase1/best_model.pt \\
-      --config Config/diffusion_ts_fmri_phase1.yaml \\
       --output-dir ../../results/signal_recovery
+
+Architecture notes:
+  Diffusion-TS restore() API:
+    - Takes a DataLoader of (x, mask) pairs
+    - x: [B, seq_len, N_ROI] — full-length tensor, observed portion filled
+    - mask: [B, seq_len, N_ROI] — boolean, True where observed
+    - Internally calls sample_infill → p_sample_infill → langevin_fn
+    - langevin_fn performs Langevin dynamics with gradient guidance:
+        infill_loss = (x_start[mask] - target[mask]) ** 2
+    - Our patch adds roi_weights to modulate infill_loss per-ROI
 """
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
+from torch.utils.data import DataLoader, TensorDataset
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def load_diffusion_ts_model(
-    config_path: str,
-    checkpoint_path: str,
-    device: str = "cuda",
-) -> Any:
-    """Load trained Diffusion-TS model from checkpoint.
+def build_imputation_dataloader(
+    test_short: np.ndarray,
+    seq_len: int,
+    batch_size: int = 8,
+) -> tuple[DataLoader, np.ndarray]:
+    """Build DataLoader for Diffusion-TS restore() API.
 
-    NOTE: This function must be called from within the Diffusion-TS directory
-    so that its modules are importable.
+    Diffusion-TS expects:
+      x: [B, seq_len, N_ROI] — padded time series (zeros for missing)
+      mask: [B, seq_len, N_ROI] — boolean True for observed timepoints
 
     Args:
-        config_path: path to YAML config
-        checkpoint_path: path to model checkpoint (.pt)
+        test_short: [N_test, short_len, N_ROI] observed short scans
+        seq_len: target full sequence length
+        batch_size: batch size for inference
+
+    Returns:
+        (dataloader, mask_array) — DataLoader of (x_padded, mask) pairs
+    """
+    n_test, short_len, n_roi = test_short.shape
+
+    # Pad short scans to full length
+    x_padded = np.zeros((n_test, seq_len, n_roi), dtype=np.float32)
+    x_padded[:, :short_len, :] = test_short
+
+    # Mask: True where observed
+    mask = np.zeros((n_test, seq_len, n_roi), dtype=bool)
+    mask[:, :short_len, :] = True
+
+    x_tensor = torch.from_numpy(x_padded)
+    mask_tensor = torch.from_numpy(mask)
+
+    dataset = TensorDataset(x_tensor, mask_tensor)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+
+    return dataloader, mask
+
+
+def load_trainer(checkpoint_path: str, device: str = "cuda") -> Any:
+    """Load Diffusion-TS Trainer from checkpoint.
+
+    NOTE: Must be called from within the Diffusion-TS directory.
+
+    Args:
+        checkpoint_path: path to saved model checkpoint
         device: cuda or cpu
 
     Returns:
-        (model, config) tuple
+        Trainer instance with loaded model
     """
-    # Diffusion-TS imports (must be in PYTHONPATH)
     try:
-        from Utils.io_utils import load_yaml_config
-        from Models.interpretable_diffusion.model_utils import (
-            get_model,
-        )
+        from engine.solver import Trainer
     except ImportError as e:
         raise ImportError(
-            f"Cannot import Diffusion-TS modules: {e}\n"
-            "Ensure you're running from external/Diffusion-TS/ "
-            "with PYTHONPATH=.:../../"
+            f"Cannot import Diffusion-TS Trainer: {e}\n"
+            "Run from external/Diffusion-TS/ with PYTHONPATH=.:../../"
         )
 
-    config = load_yaml_config(config_path)
-    model = get_model(config)
+    # Load checkpoint — the exact loading mechanism depends on
+    # how Diffusion-TS saves checkpoints. Adjust as needed.
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    model.to(device)
-    model.eval()
-    return model, config
 
-
-def impute_naive(
-    model: Any,
-    test_short: np.ndarray,
-    seq_len: int,
-    n_samples: int = 10,
-    device: str = "cuda",
-) -> np.ndarray:
-    """Condition A: Naive imputation (all ROIs equally weighted).
-
-    Args:
-        model: trained Diffusion-TS model
-        test_short: [N_test, short_len, N_ROI] observed short scans
-        seq_len: target sequence length
-        n_samples: number of imputation samples (averaged)
-        device: cuda or cpu
-
-    Returns:
-        [N_test, seq_len, N_ROI] imputed time series (mean of samples)
-    """
-    n_test, short_len, n_roi = test_short.shape
-    all_imputed = []
-
-    for i in range(n_test):
-        if (i + 1) % 5 == 0 or i == 0:
-            logger.info(f"  Naive imputation [{i+1}/{n_test}]")
-
-        observed = torch.from_numpy(test_short[i]).float().to(device)  # [short_len, n_roi]
-
-        # Create observation mask: 1 = observed, 0 = to generate
-        mask = torch.zeros(seq_len, n_roi, device=device)
-        mask[:short_len] = 1.0
-
-        # Pad observed to full length
-        x_obs = torch.zeros(seq_len, n_roi, device=device)
-        x_obs[:short_len] = observed
-
-        # Generate n_samples and average
-        samples = []
-        for _ in range(n_samples):
-            with torch.no_grad():
-                # Diffusion-TS restore() with uniform weights (all 1s)
-                weights = torch.ones(1, 1, n_roi, device=device)
-                x_imputed = _guided_imputation(
-                    model, x_obs.unsqueeze(0), mask.unsqueeze(0), weights
-                )
-            samples.append(x_imputed.squeeze(0).cpu().numpy())
-
-        imputed_mean = np.mean(samples, axis=0)  # [seq_len, n_roi]
-        all_imputed.append(imputed_mean)
-
-    return np.stack(all_imputed).astype(np.float32)
-
-
-def impute_reliability_guided(
-    model: Any,
-    test_short: np.ndarray,
-    reliability_weights: np.ndarray,
-    seq_len: int,
-    n_samples: int = 10,
-    device: str = "cuda",
-) -> np.ndarray:
-    """Condition B: Reliability-guided imputation.
-
-    Reliability weights from BS-NET modulate the reconstruction guidance:
-    high-reliability ROIs get stronger observation constraints.
-
-    Args:
-        model: trained Diffusion-TS model
-        test_short: [N_test, short_len, N_ROI]
-        reliability_weights: [N_test, N_ROI] per-ROI weights in [0.1, 1.0]
-        seq_len: target sequence length
-        n_samples: number of imputation samples
-        device: cuda or cpu
-
-    Returns:
-        [N_test, seq_len, N_ROI] imputed time series
-    """
-    n_test, short_len, n_roi = test_short.shape
-    all_imputed = []
-
-    for i in range(n_test):
-        if (i + 1) % 5 == 0 or i == 0:
-            logger.info(f"  Reliability-guided imputation [{i+1}/{n_test}]")
-
-        observed = torch.from_numpy(test_short[i]).float().to(device)
-        w_rho = torch.from_numpy(reliability_weights[i]).float().to(device)  # [n_roi]
-
-        mask = torch.zeros(seq_len, n_roi, device=device)
-        mask[:short_len] = 1.0
-
-        x_obs = torch.zeros(seq_len, n_roi, device=device)
-        x_obs[:short_len] = observed
-
-        # Reshape weights for broadcasting: [1, 1, n_roi]
-        weights = w_rho.unsqueeze(0).unsqueeze(0)
-
-        samples = []
-        for _ in range(n_samples):
-            with torch.no_grad():
-                x_imputed = _guided_imputation(
-                    model, x_obs.unsqueeze(0), mask.unsqueeze(0), weights
-                )
-            samples.append(x_imputed.squeeze(0).cpu().numpy())
-
-        imputed_mean = np.mean(samples, axis=0)
-        all_imputed.append(imputed_mean)
-
-    return np.stack(all_imputed).astype(np.float32)
-
-
-def _guided_imputation(
-    model: Any,
-    x_obs: torch.Tensor,
-    mask: torch.Tensor,
-    weights: torch.Tensor,
-    guidance_weight: float = 1.0,
-) -> torch.Tensor:
-    """Reconstruction-guided imputation (Algorithm 1 from Diffusion-TS paper).
-
-    This is the core modification point: the observation consistency loss
-    is weighted by BS-NET reliability.
-
-    Args:
-        model: Diffusion-TS model with forward/reverse diffusion
-        x_obs: [B, seq_len, n_roi] padded observations
-        mask: [B, seq_len, n_roi] observation mask (1=observed)
-        weights: [B, 1, n_roi] reliability weights per ROI
-        guidance_weight: guidance strength multiplier
-
-    Returns:
-        [B, seq_len, n_roi] imputed time series
-
-    NOTE: This function needs adaptation to the actual Diffusion-TS API.
-          The pseudocode below follows Algorithm 1 from the paper.
-          Actual implementation depends on model.restore() signature.
-    """
-    # ================================================================
-    # ADAPTATION POINT: Replace this with actual Diffusion-TS API call
-    # ================================================================
-    #
-    # The key modification vs standard Diffusion-TS imputation:
-    #
-    # Standard (Condition A):
-    #   loss_obs = F.mse_loss(x_hat_obs, x_obs)
-    #
-    # Reliability-weighted (Condition B):
-    #   loss_obs = (weights * (x_hat_obs - x_obs) ** 2).mean()
-    #
-    # Both use the same model — only the guidance loss changes.
-    #
-    # Option 1: If model has restore() method
-    try:
-        # Try Diffusion-TS's built-in imputation with custom weights
-        x_imputed = model.restore(
-            x_obs,
-            mask,
-            guidance_weight=guidance_weight,
-            roi_weights=weights,  # Custom kwarg — requires patch
+    # If checkpoint is a Trainer state dict:
+    if "trainer" in checkpoint:
+        trainer = checkpoint["trainer"]
+    else:
+        # May need to reconstruct Trainer from config + model weights
+        logger.warning(
+            "Checkpoint format unclear. You may need to adjust loading logic."
         )
-        return x_imputed
-    except (TypeError, AttributeError):
-        pass
+        raise NotImplementedError(
+            "Checkpoint loading needs adjustment for this Diffusion-TS version. "
+            "Check how the model was saved during training."
+        )
 
-    # Option 2: Manual reverse diffusion with guidance
-    # This implements Algorithm 1 step by step
-    device = x_obs.device
-    batch_size, seq_len, n_roi = x_obs.shape
-    timesteps = model.timesteps if hasattr(model, "timesteps") else 1000
+    return trainer
 
-    # Start from pure noise
-    x_t = torch.randn_like(x_obs)
 
-    # Reverse diffusion with guidance
-    for t in reversed(range(timesteps)):
-        t_tensor = torch.full((batch_size,), t, device=device, dtype=torch.long)
+def run_imputation(
+    trainer: Any,
+    dataloader: DataLoader,
+    shape: tuple[int, int],
+    roi_weights: torch.Tensor | None = None,
+    n_samples: int = 10,
+    sampling_steps: int = 50,
+    coef: float = 0.1,
+    stepsize: float = 0.1,
+) -> np.ndarray:
+    """Run Diffusion-TS imputation via restore() API.
 
-        # Predict x_0 from x_t
-        x_0_pred = model(x_t, t_tensor)  # model predicts x_0 directly
+    Args:
+        trainer: Diffusion-TS Trainer instance
+        dataloader: DataLoader of (x_padded, mask) pairs
+        shape: (seq_len, n_roi)
+        roi_weights: [1, 1, N_ROI] reliability weights (None for Condition A)
+        n_samples: number of imputation runs to average
+        sampling_steps: number of diffusion sampling steps
+        coef: guidance coefficient (default from Diffusion-TS)
+        stepsize: Langevin step size (default from Diffusion-TS)
 
-        # Compute guidance gradient (weighted observation loss)
-        x_0_pred_detached = x_0_pred.detach().requires_grad_(True)
-        loss_obs = (
-            weights * mask * (x_0_pred_detached - x_obs) ** 2
-        ).sum() * guidance_weight
+    Returns:
+        [N_test, seq_len, N_ROI] imputed time series (mean of n_samples runs)
+    """
+    all_samples = []
 
-        if loss_obs.requires_grad:
-            grad = torch.autograd.grad(loss_obs, x_0_pred_detached)[0]
-            x_0_pred = x_0_pred - grad
+    for run_idx in range(n_samples):
+        logger.info(f"  Imputation run {run_idx + 1}/{n_samples}")
 
-        # Replace observed portion
-        x_0_pred = mask * x_obs + (1 - mask) * x_0_pred
+        # Call patched restore() with roi_weights
+        samples, reals, masks = trainer.restore(
+            raw_dataloader=dataloader,
+            shape=shape,
+            coef=coef,
+            stepsize=stepsize,
+            sampling_steps=sampling_steps,
+            roi_weights=roi_weights,  # None for Condition A, tensor for B
+        )
+        all_samples.append(samples)  # [N_test, seq_len, N_ROI]
 
-        # Compute x_{t-1} from x_0_pred (DDPM posterior)
-        if t > 0:
-            alpha_t = model.alphas_cumprod[t] if hasattr(model, "alphas_cumprod") else 1.0
-            alpha_prev = model.alphas_cumprod[t - 1] if hasattr(model, "alphas_cumprod") else 1.0
-            beta_t = 1 - alpha_t / alpha_prev
-
-            noise = torch.randn_like(x_t)
-            x_t = (
-                torch.sqrt(alpha_prev) * x_0_pred
-                + torch.sqrt(1 - alpha_prev) * noise
-            )
-        else:
-            x_t = x_0_pred
-
-    return x_t
+    # Average across runs
+    imputed = np.mean(all_samples, axis=0)
+    return imputed.astype(np.float32)
 
 
 def main() -> None:
@@ -287,12 +174,17 @@ def main() -> None:
                         help="Signal recovery data directory")
     parser.add_argument("--checkpoint", type=str, required=True,
                         help="Trained Diffusion-TS checkpoint")
-    parser.add_argument("--config", type=str, required=True,
-                        help="Diffusion-TS config YAML")
     parser.add_argument("--output-dir", type=str, required=True,
                         help="Output directory for imputed time series")
     parser.add_argument("--n-samples", type=int, default=10,
                         help="Number of imputation samples per subject")
+    parser.add_argument("--sampling-steps", type=int, default=50,
+                        help="Diffusion sampling steps (50=fast, 1000=full)")
+    parser.add_argument("--coef", type=float, default=0.1,
+                        help="Guidance coefficient")
+    parser.add_argument("--stepsize", type=float, default=0.1,
+                        help="Langevin step size")
+    parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--skip-naive", action="store_true",
                         help="Skip Condition A (naive imputation)")
@@ -306,34 +198,39 @@ def main() -> None:
 
     # Load data
     test_short = np.load(data_dir / "test_short.npy")
-    seq_len_info = None
-    try:
-        import json
-        with open(data_dir / "split_info.json") as f:
-            seq_len_info = json.load(f)
-    except FileNotFoundError:
-        pass
+    with open(data_dir / "split_info.json") as f:
+        split_info = json.load(f)
 
-    seq_len = seq_len_info["seq_len"] if seq_len_info else 180
+    seq_len = split_info["seq_len"]
     n_test, short_len, n_roi = test_short.shape
-    logger.info(f"Test data: {n_test} subjects, {short_len} TRs observed → {seq_len} TRs target, {n_roi} ROIs")
+    shape = (seq_len, n_roi)
+    logger.info(f"Test: {n_test} subjects, {short_len} → {seq_len} TRs, {n_roi} ROIs")
 
-    # Load model
-    logger.info(f"Loading model from {args.checkpoint}")
-    model, config = load_diffusion_ts_model(args.config, args.checkpoint, args.device)
+    # Build DataLoader
+    dataloader, mask_arr = build_imputation_dataloader(
+        test_short, seq_len, batch_size=args.batch_size
+    )
 
-    # --- Condition A: Naive ---
+    # Load trained model
+    logger.info(f"Loading checkpoint: {args.checkpoint}")
+    trainer = load_trainer(args.checkpoint, args.device)
+
+    # --- Condition A: Naive imputation (roi_weights=None) ---
     if not args.skip_naive:
-        logger.info("=== Condition A: Naive imputation ===")
-        imputed_a = impute_naive(
-            model, test_short, seq_len,
-            n_samples=args.n_samples, device=args.device,
+        logger.info("=== Condition A: Naive imputation (uniform weights) ===")
+        imputed_a = run_imputation(
+            trainer, dataloader, shape,
+            roi_weights=None,
+            n_samples=args.n_samples,
+            sampling_steps=args.sampling_steps,
+            coef=args.coef,
+            stepsize=args.stepsize,
         )
-        out_path_a = output_dir / "imputed_naive.npy"
-        np.save(out_path_a, imputed_a)
-        logger.info(f"Saved: {out_path_a} {imputed_a.shape}")
+        out_a = output_dir / "imputed_naive.npy"
+        np.save(out_a, imputed_a)
+        logger.info(f"Saved: {out_a} {imputed_a.shape}")
 
-    # --- Condition B: Reliability-guided ---
+    # --- Condition B: Reliability-guided imputation ---
     if not args.skip_guided:
         weights_path = data_dir / "test_reliability_weights.npy"
         if not weights_path.exists():
@@ -341,18 +238,31 @@ def main() -> None:
             logger.error("Run compute_reliability_weights.py first.")
             return
 
-        reliability_weights = np.load(weights_path)
-        logger.info(f"Reliability weights: {reliability_weights.shape}, "
-                     f"mean={reliability_weights.mean():.3f}")
+        rel_weights = np.load(weights_path)  # [N_test, N_ROI]
+        logger.info(f"Reliability weights: {rel_weights.shape}, "
+                     f"mean={rel_weights.mean():.3f}, "
+                     f"range=[{rel_weights.min():.3f}, {rel_weights.max():.3f}]")
+
+        # Convert to tensor: [1, 1, N_ROI] — broadcast over batch and time
+        # Note: We use the mean across test subjects for uniform weighting
+        # (each subject's weights are similar since same atlas)
+        mean_weights = rel_weights.mean(axis=0)  # [N_ROI]
+        roi_weights_tensor = torch.from_numpy(mean_weights).float()
+        roi_weights_tensor = roi_weights_tensor.unsqueeze(0).unsqueeze(0)  # [1, 1, N_ROI]
+        roi_weights_tensor = roi_weights_tensor.to(args.device)
 
         logger.info("=== Condition B: Reliability-guided imputation ===")
-        imputed_b = impute_reliability_guided(
-            model, test_short, reliability_weights, seq_len,
-            n_samples=args.n_samples, device=args.device,
+        imputed_b = run_imputation(
+            trainer, dataloader, shape,
+            roi_weights=roi_weights_tensor,
+            n_samples=args.n_samples,
+            sampling_steps=args.sampling_steps,
+            coef=args.coef,
+            stepsize=args.stepsize,
         )
-        out_path_b = output_dir / "imputed_guided.npy"
-        np.save(out_path_b, imputed_b)
-        logger.info(f"Saved: {out_path_b} {imputed_b.shape}")
+        out_b = output_dir / "imputed_guided.npy"
+        np.save(out_b, imputed_b)
+        logger.info(f"Saved: {out_b} {imputed_b.shape}")
 
     logger.info("\nDone. Run eval_signal_recovery.py for evaluation.")
 
