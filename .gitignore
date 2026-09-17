@@ -36,3 +36,4 @@ results/**/*.npy
 docs/.bkit-memory.json
 docs/.pdca-status.json
 .ruff_cache/
+.claude/settings.json
