@@ -1,11 +1,8 @@
 # CLAUDE.md — BS-NET Project
 
-## Co-Author
-이 프로젝트의 리팩토링 작업은 Claude (Anthropic)의 지원을 받아 수행되었습니다.
 
 ## Git Policy
 - 커밋 메시지에 Co-Authored-By 트레일러를 포함하지 않는다.
-- Co-author 정보는 이 문서에만 기록한다.
 
 ## Script Execution Policy
 - 스크립트는 **사용자가 직접 실행**한다.
@@ -20,7 +17,7 @@
 
 ## Git Commit Policy
 - `git commit`은 **사용자가 직접 실행**한다.
-- Claude는 staging(`git add`)까지만 처리하고, **커밋 메시지만 제공**한다.
+- Claude는 staging(`git add`)까지만 처리하고, **커밋 메시지만 제공**한다. 그리고 커밋 메시지에 Co-Authored-By 트레일러를 포함하지 않는다.
 - 커밋 메시지는 코드블록으로 복사 가능하게 제공한다.
 - **이유**: Cowork sandbox의 FUSE 파일시스템에서 `.git/index.lock` 제거 불가로 `git commit` 실행 불가.
 
