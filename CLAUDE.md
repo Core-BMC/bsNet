@@ -337,51 +337,11 @@
 | Inline  | ρ̂T                           | rFC                  |
 | Code    | `rho_hat_T`                   | `r_fc`               |
 
-### Ruff Configuration (pyproject.toml)
-```toml
-[tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
-ignore = ["E501", "N815"]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/*.py" = ["N802", "N803", "N806"]
-```
+Ruff config: see `pyproject.toml` (`[tool.ruff]`).
 
 ## Project Structure
-```
-bsNet/
-├── src/
-│   ├── core/          # config, pipeline, bootstrap (4 correction methods), stats, simulate
-│   ├── data/          # data_loader, synthetic data generator
-│   ├── scripts/       # see src/scripts/README.md
-│   │   ├── [Validation]  run_abide_bsnet.py, run_nilearn_adhd_bsnet.py, run_fmriprep_bsnet.py, run_duration_sweep.py
-│   │   ├── [Defense]     run_{sensitivity,ablation,stationarity,shrinkage,...}.py (Track A–G)
-│   │   ├── [Convergence] run_convergence_validation.py, run_progressive_ablation.py, run_abide_duration_sweep.py
-│   │   ├── [Downstream]  run_downstream_analysis.py, run_reliability_aware_{classification,clustering}.py
-│   │   ├── [Keane]       run_keane_bsnet_{recompute,classification}.py, run_keane_fc_classification.py, convert_keane_restfc_to_npz.py
-│   │   ├── [TSD]         run_tsd_ablation.py (E0–E3 Temporal Self-Distillation ablation)
-│   │   ├── [Data]        index_openneuro_hc.py, download_hc_100.py, download_adhd200_pcp.py, convert_{adhd200_pcp,xcpd_to_npy}.py
-│   │   ├── [Viz]         plot_abide_results.py, plot_adhd_results.py, analyze_{ceiling_effect,fc_stratification}.py
-│   │   ├── [Simulation]  run_synthetic_baseline.py, sweep_simulation.py
-│   │   ├── [Utility]     inspect_craddock_atlas.py, visualize_fc_threshold.py
-│   │   ├── [Preprocess]  preprocess_ds007535.py, preprocess_ds000243.py, setup_and_preprocess.py
-│   │   └── [Pipeline]    run_fmriprep_{batch,keane,manual}.sh, run_xcpd_{batch,ds000243}.sh,
-│   │                      run_keane_streaming_pipeline.sh, run_ds000243_batch.sh, run_all_pipeline.sh,
-│   │                      setup_keane_datalad.sh, install_datalad.sh, setup_local_env.sh
-│   └── visualization/ # Fig 1–6, FigS1–S3/S6–S7, style.py, legacy/
-├── tests/             # pytest (74 tests)
-├── docs/              # 6-category docs (1.x theory ~ 6.x ops), see docs/INDEX.md
-│   └── figure/        # Fig1–6, FigS1–S3, FigS6–S7 PNG files
-├── data/abide/        # ABIDE PCP cached time series + results
-├── data/adhd/         # ADHD-200 cached time series + results
-├── data/ds007535/     # SpeechHemi: raw/ (DataLad), timeseries_cache/, results/
-├── data/ds000243/     # WashU resting-state: raw/, timeseries_cache/, results/
-├── data/ds005073/     # Keane BP/SZ: results/ (keane_restfc_combined.npz, classification CSVs)
-├── configs/           # Diffusion-TS fMRI configs (signal recovery)
-├── external/          # External repos (Diffusion-TS clone, gitignored)
-├── artifacts/reports/ # experiment result CSVs
-└── pyproject.toml
-```
+Layout: `src/{core,data,scripts,visualization}/`, `tests/`, `docs/` (see `docs/INDEX.md`), `data/{abide,adhd,ds007535,ds000243,ds005073}/`, `configs/`, `external/`, `artifacts/reports/`.
+Script index (categories, CLI, I/O per script): `src/scripts/README.md`.
 
 ## Next Session TODO
 
@@ -413,61 +373,6 @@ bsNet/
 - Hinton et al. (2015): Knowledge distillation, arXiv:1503.02531
 - Pieper et al. (2023): data2vec EMA self-distillation for brain decoding
 
-## Correction Method Selection Guide
-BS-NET `correct_attenuation()` 함수의 `method` 파라미터:
-
-| Method | 코드 | 설명 | 논문 근거 | Ceiling 해소 |
-|--------|------|------|-----------|-------------|
-| Original | `"original"` | 표준 CTT 보정 + hard clip | Spearman (1904) | ✗ (85%) |
-| **Fisher z** | `"fisher_z"` | z-space에서 가법 보정 → tanh 역변환 | Shou (2014), Teeuw (2021) | **✓ (0%)** |
-| Partial | `"partial"` | α=0.5 감쇠 보정 | Zimmerman (2007) | ✓ (0%) |
-| Soft clamp | `"soft_clamp"` | tanh 압축 (순위 보존) | — | ✓ (0%) |
-
-**권장**: `"fisher_z"` (학술적으로 가장 방어 가능, ceiling 완전 해소, 의미 있는 improvement 유지)
-
-## XCP-D Atlas 명칭 가이드 (v26.x NIfTI 모드)
-
-XCP-D v26.x NIfTI 처리 시 `Schaefer200`/`Schaefer400` 이름은 인식되지 않음.
-내장 아틀라스는 **Schaefer (피질) + Tian (피질하) 결합 4S 시리즈**로 제공됨.
-
-| BS-NET 아틀라스 | XCP-D 4S 이름 | 피질 ROI | 피질하 ROI | 총 ROI |
-|----------------|---------------|----------|------------|--------|
-| schaefer200    | `4S256Parcels` | 200      | 56         | 256    |
-| schaefer400    | `4S456Parcels` | 400      | 56         | 456    |
-| schaefer100    | `4S156Parcels` | 100      | 56         | 156    |
-| schaefer300    | `4S356Parcels` | 300      | 56         | 356    |
-
-**XCP-D Docker 실행 옵션** (ds000243, NIfTI 모드):
-```bash
-docker run --rm \
-  -v /path/to/fmriprep:/data:ro \
-  -v /path/to/xcpd:/out \
-  -v /path/to/work:/work \
-  pennlinc/xcp_d:latest \
-  /data /out participant \
-  --mode linc --input-type fmriprep \
-  --file-format nifti \
-  -p 36P --fd-thresh 0.5 \
-  --lower-bpf 0.01 --upper-bpf 0.1 \
-  --smoothing 0 --combine-runs y \
-  --atlases 4S256Parcels 4S456Parcels \
-  --skip connectivity --min-time 120 \
-  --nprocs 8 --mem-mb 16000 -w /work --notrack
-```
-
-**필수 전처리**: fMRIPrep 출력에 native-space T1w symlink 필요
-```bash
-# fMRIPrep이 MNI-space T1w만 출력한 경우
-cd data/derivatives/fmriprep/sub-XXX/anat/
-ln -s sub-XXX_space-MNI152NLin6Asym_res-2_desc-preproc_T1w.nii.gz \
-      sub-XXX_desc-preproc_T1w.nii.gz
-ln -s sub-XXX_space-MNI152NLin6Asym_res-2_desc-brain_mask.nii.gz \
-      sub-XXX_desc-brain_mask.nii.gz
-```
-
-**convert_xcpd_to_npy.py ATLAS_NAME_MAP** — 4S 시리즈 키:
-- `"4S156Parcels"` → `"4s156parcels"`
-- `"4S256Parcels"` → `"4s256parcels"`
-- `"4S356Parcels"` → `"4s356parcels"`
-- `"4S456Parcels"` → `"4s456parcels"`
+Correction method selection guide (`correct_attenuation()`): see `src/core/CLAUDE.md`.
+XCP-D atlas naming guide + Docker options: see `src/scripts/CLAUDE.md`.
 

@@ -34,6 +34,5 @@ fs_license.txt
 external/
 results/**/*.npy
 docs/.bkit-memory.json
-.gitignore
-.gitignore
 docs/.pdca-status.json
+.ruff_cache/
